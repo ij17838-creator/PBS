@@ -288,6 +288,8 @@ td.top{color:var(--accent);font-weight:700}
 .obs-state{font-family:var(--font-mono);font-size:.88rem;font-weight:600;color:var(--muted)}
 .obs-ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between}
 .interval .unit{display:flex;align-items:center;gap:8px}
+.obs-times{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.plan-time input{font-family:var(--font-mono);min-width:130px}
 .interval input{width:96px;font-family:var(--font-mono)}
 .sheets{display:flex;flex-direction:column;gap:16px}
 .sheet{border:1px solid var(--line-strong);border-radius:var(--r);background:var(--surface);min-width:0}
@@ -457,7 +459,7 @@ function defaultData(key){
   switch(key){
     case 'define':return {name:'',definition:'',start:'',end:'',examples:'',nonExamples:'',measures:[],setting:'',checks:[]};
     case 'qabf':return {forms:[],activeForm:null};
-    case 'abc':return {sheets:[],session:null,interval:15,audio:{}};
+    case 'abc':return {sheets:[],session:null,interval:15,audio:{},plan:{start:'',end:'',fired:''}};
     case 'hypo':return {when:'',behavior:'',funcs:[],funcOther:'',evidence:'',confidence:'',memo:''};
     default:{const o={};(MEMO_FIELDS[key]||[]).forEach(f=>o[f[0]]='');return o;}
   }
@@ -472,6 +474,7 @@ function ensureProject(p){
   const a=p.procs.abc.data;
   a.audio=a.audio||{};a.sheets=Array.isArray(a.sheets)?a.sheets:[];
   if(!(Number(a.interval)>=1))a.interval=15;
+  a.plan=Object.assign({start:'',end:'',fired:''},a.plan||{});
   migrateAbc(p);
   a.sheets.forEach(ensureSheet);
   if(a.session&&!a.sheets.some(x=>x.sessionId===a.session.id))a.session=null;
@@ -925,15 +928,25 @@ function obsView(p){
     <span class="obs-state" id="obs-state">${obsStateText(p)}</span>
   </div>
   <div class="obs-ctrl">
-    <label class="field interval"><span>관찰 간격</span><span class="unit"><input type="number" inputmode="numeric" min="1" max="180" step="1" id="obs-interval" data-f="abcset:interval" value="${a.interval}"><span>분</span></span></label>
-    ${running?`<button type="button" class="btn" data-act="obs-end">관찰 종료</button>`:`<button type="button" class="btn" data-act="obs-start">${cur.length?'새 관찰 시작':'관찰 시작'}</button>`}
+    <div class="obs-times">
+      <label class="field interval"><span>관찰 간격</span><span class="unit"><input type="number" inputmode="numeric" min="1" max="180" step="1" id="obs-interval" data-f="abcset:interval" value="${a.interval}"><span>분</span></span></label>
+      <label class="field plan-time"><span>관찰 시작 시간</span><input type="time" id="obs-plan-start" data-plan="start" value="${esc(a.plan.start)}"></label>
+      <label class="field plan-time"><span>최종 종료 시간</span><input type="time" id="obs-plan-end" data-plan="end" value="${esc(a.plan.end)}"></label>
+    </div>
+    <span id="obs-ctrl-btn">${obsCtrlBtn(p)}</span>
   </div>
-  <p class="hint">'지금 시각 찍기'를 누르면 기록 중인 관찰지에 그 시각의 행이 생깁니다. 관찰 간격이 지나면 새 관찰지가 아래에 이어 붙고, 녹음 중이었다면 녹음을 이전 관찰지에 저장한 뒤 새 관찰지에서 다시 녹음합니다. 아동·관찰자·장소·상황은 고치지 않으면 이전 관찰지 내용이 그대로 이어집니다.</p>
+  <p class="hint">관찰 시작 시간을 정해 두면 이 화면이 열려 있을 때 그 시각에 관찰이 저절로 시작됩니다. 최종 종료 시간을 정하면 마지막 관찰지는 그 시각에 끝나고 더 이상 관찰지가 추가되지 않습니다. '지금 시각 찍기'를 누르면 기록 중인 관찰지에 그 시각의 행이 생깁니다. 관찰 간격이 지나면 새 관찰지가 아래에 이어 붙고, 녹음 중이었다면 녹음을 이전 관찰지에 저장한 뒤 새 관찰지에서 다시 녹음합니다. 아동·관찰자·장소·상황은 고치지 않으면 이전 관찰지 내용이 그대로 이어집니다.</p>
   <div class="sheets" id="sheets-current">${cur.length?cur.map(sh=>sheetView(p,sh)).join(''):`<div class="empty">아직 관찰지가 없습니다. '관찰 시작', '지금 시각 찍기', '녹음 시작' 중 하나를 누르면 첫 관찰지가 만들어지고 시간이 흐르기 시작합니다.</div>`}</div>`;
+}
+function obsCtrlBtn(p){
+  const s=abcData(p).session;const running=!!(s&&s.running);const cur=s?sessionSheets(p,s.id):[];
+  return running?`<button type="button" class="btn" data-act="obs-end">관찰 종료</button>`:`<button type="button" class="btn" data-act="obs-start">${cur.length?'새 관찰 시작':'관찰 시작'}</button>`;
 }
 function obsStateText(p){
   const sh=activeSheet(p);
-  if(sh)return `관찰 중 · 관찰지 ${sheetNo(p,sh)} · ${fmtDur(msLeft(sh)/1000)} 남음`;
+  if(sh){const e=abcData(p).session.endAt;return `관찰 중 · 관찰지 ${sheetNo(p,sh)} · ${fmtDur(msLeft(sh)/1000)} 남음`+(e?` · ${fmtTime(e)} 종료`:'');}
+  const ps=planStartToday(p);
+  if(ps&&Date.now()<Date.parse(ps))return `${fmtTime(ps)}에 관찰 시작 예정`;
   return abcData(p).session?'관찰 종료됨':'관찰 전';
 }
 function sheetHead(p,sh){
@@ -1365,19 +1378,34 @@ async function updateUsage(){
 }
 
 /* ---------- observation sessions (관찰지 이어 붙이기) ---------- */
-function makeSheet(p,sessionId,startISO,prev){
+/* 관찰 시작·최종 종료 시간("HH:MM")을 실제 시각으로 바꾼다 */
+function atClock(baseMs,hm){const [h,m]=hm.split(':').map(Number);const d=new Date(baseMs);d.setHours(h,m||0,0,0);return d.getTime();}
+function planStartToday(p){const ps=abcData(p).plan.start;return ps?new Date(atClock(Date.now(),ps)).toISOString():null;}
+/* 세션 시작 시각 뒤에 처음 오는 최종 종료 시각 (자정을 넘기는 관찰도 처리) */
+function planEndAfter(p,startISO){
+  const pe=abcData(p).plan.end;if(!pe)return null;
+  const st=Date.parse(startISO);let e=atClock(st,pe);if(e<=st)e+=86400000;
+  return new Date(e).toISOString();
+}
+function sheetEnd(p,startISO,endAt){
+  let e=Date.parse(startISO)+abcData(p).interval*60000;
+  if(endAt)e=Math.min(e,Date.parse(endAt));
+  return new Date(e).toISOString();
+}
+function makeSheet(p,sessionId,startISO,prev,endAt){
   const a=abcData(p);
   const src=prev||a.sheets.slice().sort(byStart).pop()||null;
   const t=nowISO();
-  return ensureSheet({id:uid('s'),sessionId,start:startISO,end:new Date(Date.parse(startISO)+a.interval*60000).toISOString(),endedAt:null,
+  return ensureSheet({id:uid('s'),sessionId,start:startISO,end:sheetEnd(p,startISO,endAt),endedAt:null,
     child:src?src.child:(p.code||''),observer:src?src.observer:'',place:src?src.place:'',situation:src?src.situation:'',
     rows:[],note:'',interp:'',audioIds:[],createdAt:t,updatedAt:t});
 }
 function startSession(p,startISO){
   const a=abcData(p);
   if(a.session&&a.session.running)endSession(p,true);
-  const s={id:uid('n'),running:true,activeSheetId:null};
-  const sh=makeSheet(p,s.id,startISO||nowISO(),null);
+  startISO=startISO||nowISO();
+  const s={id:uid('n'),running:true,activeSheetId:null,endAt:planEndAfter(p,startISO)};
+  const sh=makeSheet(p,s.id,startISO,null,s.endAt);
   a.sheets.push(sh);s.activeSheetId=sh.id;a.session=s;
   touch(p,'abc');saveNow();persistStorage();
   return sh;
@@ -1396,6 +1424,15 @@ function rollover(p,old){
   const now=Date.now(),oldEnd=Date.parse(old.end),iv=a.interval*60000;
   const recHere=rec.state==='recording'&&rec.seg&&rec.seg.target.projectId===p.id&&rec.seg.target.sheetId===old.id;
   old.endedAt=old.end;
+  if(s.endAt&&oldEnd>=Date.parse(s.endAt)){
+    /* 최종 종료 시간이 되었다: 관찰지를 더 붙이지 않고 관찰을 끝낸다. 작성 중인 화면은 그대로 둔다 */
+    s.running=false;
+    if(recHere)stopRecording();
+    touch(p,'abc');saveNow();
+    if(onAbcPage(p))keepView(()=>{markSheetEnded(p,old);const b=$('#obs-ctrl-btn');if(b)b.innerHTML=obsCtrlBtn(p);refreshSummary(p);updateLive();updateRecUI();});
+    toast(`최종 종료 시간(${fmtTime(s.endAt)})이 되어 관찰을 마쳤습니다`);
+    return;
+  }
   if(now-oldEnd>=iv&&!recHere){
     /* 화면이 꺼져 있는 등 한 간격 이상 지나 버린 경우: 빈 관찰지를 만들지 않고 관찰을 끝낸다 */
     s.running=false;touch(p,'abc');saveNow();
@@ -1404,28 +1441,54 @@ function rollover(p,old){
     return;
   }
   const startMs=now-oldEnd<iv?oldEnd:now;
-  const nw=makeSheet(p,s.id,new Date(startMs).toISOString(),old);
+  const nw=makeSheet(p,s.id,new Date(startMs).toISOString(),old,s.endAt);
   /* 새 관찰지에는 시작 시각이 적힌 빈 행을 하나 넣어 둔다 */
   nw.rows.push({id:uid('w'),time:nw.start,a:'',b:p.procs.define.data.name||'',c:''});
   a.sheets.push(nw);s.activeSheetId=nw.id;
   if(recHere)rolloverRecording({projectId:p.id,sheetId:nw.id});
   touch(p,'abc');saveNow();
   if(onAbcPage(p)){
-    const oe=$('#sh-'+old.id);
-    if(oe){
-      oe.classList.remove('active');
-      const h=$('#shh-'+old.id);if(h)h.innerHTML=sheetHead(p,old);
-      const r=$('#shr-'+old.id);if(r)r.textContent=rangeText(old);
-      const foot=oe.querySelector('.sheet-foot');
-      if(foot&&!foot.querySelector('[data-key="del-sheet:'+old.id+'"]'))foot.insertAdjacentHTML('beforeend',`<div class="row end"><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-sheet:${old.id}">이 관찰지 삭제</button></div>`);
-    }
-    const box=$('#sheets-current');
-    if(box)box.insertAdjacentHTML('beforeend',sheetView(p,nw));
-    refreshSummary(p);updateLive();updateRecUI();
+    /* 새 관찰지는 아래에 붙이고, 보고 있던 위치·입력 중인 칸은 그대로 둔다 */
+    keepView(()=>{
+      markSheetEnded(p,old);
+      const box=$('#sheets-current');
+      if(box)box.insertAdjacentHTML('beforeend',sheetView(p,nw));
+      refreshSummary(p);updateLive();updateRecUI();
+    });
   }
   toast(`${a.interval}분이 지나 새 관찰지를 추가했습니다`+(recHere?' · 녹음은 저장하고 다시 시작했습니다':''));
 }
+function markSheetEnded(p,old){
+  const oe=$('#sh-'+old.id);if(!oe)return;
+  oe.classList.remove('active');
+  const h=$('#shh-'+old.id);if(h)h.innerHTML=sheetHead(p,old);
+  const r=$('#shr-'+old.id);if(r)r.textContent=rangeText(old);
+  const foot=oe.querySelector('.sheet-foot');
+  if(foot&&!foot.querySelector('[data-key="del-sheet:'+old.id+'"]'))foot.insertAdjacentHTML('beforeend',`<div class="row end"><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-sheet:${old.id}">이 관찰지 삭제</button></div>`);
+}
+function keepView(fn){
+  const x=window.scrollX,y=window.scrollY;const ae=document.activeElement;let ss=null,se=null;
+  try{ss=ae.selectionStart;se=ae.selectionEnd;}catch(e){}
+  fn();
+  if(ae&&ae!==document.body&&document.contains(ae)&&document.activeElement!==ae){try{ae.focus({preventScroll:true});if(ss!=null&&ae.setSelectionRange)ae.setSelectionRange(ss,se);}catch(e){}}
+  if(window.scrollX!==x||window.scrollY!==y)window.scrollTo(x,y);
+}
+/* 관찰 시작 시간이 되면 저절로 관찰을 시작한다 (하루에 한 번) */
+function planAutoStart(p){
+  const a=abcData(p);const ps=a.plan.start;if(!ps)return;
+  const now=Date.now();const st=atClock(now,ps);if(now<st)return;
+  const key=dayKey(new Date(st).toISOString())+' '+ps;if(a.plan.fired===key)return;
+  if(a.session&&a.session.running){a.plan.fired=key;scheduleSave();return;}
+  const end=planEndAfter(p,new Date(st).toISOString());
+  const late=end?now>=Date.parse(end):now-st>=a.interval*60000;
+  a.plan.fired=key;
+  if(late){scheduleSave();return;}
+  startSession(p,new Date(now-st<60000?st:now).toISOString());
+  if(onAbcPage(p))renderAbcAll();
+  toast(`관찰 시작 시간(${ps})이 되어 관찰을 시작했습니다`);
+}
 function tick(){
+  store.projects.forEach(planAutoStart);
   store.projects.forEach(p=>{
     const a=abcData(p);const s=a.session;if(!s||!s.running)return;
     const sh=sheetById(p,s.activeSheetId);
@@ -1645,7 +1708,7 @@ function onField(el){
       a.interval=n;el.value=n;
       const sh=activeSheet(p);
       if(sh){
-        sh.end=new Date(Math.max(Date.parse(sh.start)+n*60000,Date.now())).toISOString();
+        sh.end=new Date(Math.max(Date.parse(sheetEnd(p,sh.start,a.session.endAt)),Date.now())).toISOString();
         const h=$('#shh-'+sh.id);if(h)h.innerHTML=sheetHead(p,sh);
         const r=$('#shr-'+sh.id);if(r)r.textContent=rangeText(sh);
       }
@@ -1656,11 +1719,30 @@ function onField(el){
       p.procs[ui.proc].data[name]=val;touch(p,ui.proc);break;
   }
 }
+function setPlanTime(el){
+  const p=curProject();if(!p)return;const a=abcData(p);const k=el.dataset.plan;
+  const v=/^\d{2}:\d{2}/.test(el.value)?el.value.slice(0,5):'';
+  a.plan[k]=v;if(k==='start')a.plan.fired='';
+  const s=a.session;
+  if(k==='end'&&s&&s.running){
+    const first=sessionSheets(p,s.id)[0];
+    s.endAt=planEndAfter(p,first?first.start:nowISO());
+    const sh=activeSheet(p);
+    if(sh){
+      sh.end=new Date(Math.max(Date.parse(sheetEnd(p,sh.start,s.endAt)),Date.now())).toISOString();
+      const h=$('#shh-'+sh.id);if(h)h.innerHTML=sheetHead(p,sh);
+      const r=$('#shr-'+sh.id);if(r)r.textContent=rangeText(sh);
+    }
+  }
+  touch(p,'abc');saveNow();updateLive();
+  toast(v?`${k==='start'?'관찰 시작 시간':'최종 종료 시간'}을 ${v}(으)로 정했습니다`:`${k==='start'?'관찰 시작 시간':'최종 종료 시간'}을 지웠습니다`);
+}
 document.addEventListener('input',e=>{const el=e.target.closest('[data-f]');if(el&&el.id!=='obs-interval')onField(el);});
 document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.matches&&d.matches('details[data-sheet]')){if(d.open)ui.openSheets.add(d.dataset.sheet);else ui.openSheets.delete(d.dataset.sheet);}},true);
 document.addEventListener('change',async e=>{
   const el=e.target;
   if(el.matches('[data-f]')&&(el.type==='checkbox'||el.tagName==='SELECT'||el.type==='date'||el.type==='datetime-local'||el.type==='number')){onField(el);return;}
+  if(el.matches('[data-plan]')){setPlanTime(el);return;}
   if(el.id==='import-file'&&el.files&&el.files[0]){const f=el.files[0];el.value='';await importBackup(f);return;}
   if(el.matches('[data-attach]')&&el.files&&el.files[0]){
     const file=el.files[0];el.value='';
