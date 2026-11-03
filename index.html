@@ -341,7 +341,7 @@ td.top{color:var(--accent);font-weight:700}
   .rec-btn{flex:1 1 100%;justify-content:center}
   .save-state{display:none}
 }
-/* 손글씨(S펜) 입력 */
+/* 손글씨(S펜) 입력: 글자를 입력하는 모든 칸 */
 .ink{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 .ink-btn{align-self:flex-start;min-height:32px;padding:4px 10px;border:1px dashed var(--line-strong);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:.8rem;cursor:pointer}
 .ink-btn:hover{color:var(--accent);border-color:var(--accent)}
@@ -353,6 +353,7 @@ td.top{color:var(--accent);font-weight:700}
 .ink-tools{display:flex;flex-wrap:wrap;gap:6px}
 .ink-tools button{min-height:34px;padding:4px 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:.8rem;cursor:pointer}
 .ink-tools button.on{background:var(--accent-soft);border-color:var(--accent)}
+.q-items-panel li > .ink{grid-column:3;margin-top:0}
 .ink-tools .ink-done{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);margin-left:auto}
 @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important;scroll-behavior:auto!important} }
 </style>
@@ -975,9 +976,9 @@ function rowView(p,sh,r){
   const k=`${sh.id}:${r.id}`;const ph=esc(p.procs.define.data.name||'관찰한 행동');
   return `<div class="abc-tr" id="rw-${r.id}">
     <div class="td t"><span class="cell-label">시간</span><input type="time" step="1" id="rw-${r.id}-time" data-f="row:${k}:time" value="${r.time?fmtTime(r.time,true):''}" aria-label="발생 시각"></div>
-    <div class="td a"><span class="cell-label"><span class="abc-tag t-a">A</span>선행사건</span><textarea rows="2" id="rw-${r.id}-a" data-f="row:${k}:a" aria-label="선행사건">${esc(r.a)}</textarea>${inkView(sh,r,'a')}</div>
-    <div class="td b"><span class="cell-label"><span class="abc-tag t-b">B</span>행동</span><textarea rows="2" id="rw-${r.id}-b" data-f="row:${k}:b" placeholder="${ph}" aria-label="행동">${esc(r.b)}</textarea>${inkView(sh,r,'b')}</div>
-    <div class="td c"><span class="cell-label"><span class="abc-tag t-c">C</span>후속결과</span><textarea rows="2" id="rw-${r.id}-c" data-f="row:${k}:c" aria-label="후속결과">${esc(r.c)}</textarea>${inkView(sh,r,'c')}</div>
+    <div class="td a"><span class="cell-label"><span class="abc-tag t-a">A</span>선행사건</span><textarea rows="2" id="rw-${r.id}-a" data-f="row:${k}:a" aria-label="선행사건">${esc(r.a)}</textarea></div>
+    <div class="td b"><span class="cell-label"><span class="abc-tag t-b">B</span>행동</span><textarea rows="2" id="rw-${r.id}-b" data-f="row:${k}:b" placeholder="${ph}" aria-label="행동">${esc(r.b)}</textarea></div>
+    <div class="td c"><span class="cell-label"><span class="abc-tag t-c">C</span>후속결과</span><textarea rows="2" id="rw-${r.id}-c" data-f="row:${k}:c" aria-label="후속결과">${esc(r.c)}</textarea></div>
     <div class="td x"><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-row:${k}" title="이 행 삭제">삭제</button></div>
     ${ui.confirm==='del-row:'+k?`<div class="td cf">${confirmBox('이 행을 삭제합니다.','del-row',r.id,`data-sid="${sh.id}"`)}</div>`:''}
   </div>`;
@@ -1666,9 +1667,36 @@ document.addEventListener('change',async e=>{
   }
 });
 
-/* ---------- 손글씨(S펜) 입력: 선행사건·행동·후속결과 칸 ---------- */
-/* 획은 r.ink[a|b|c] = {w,h,s:[[굵기,x1,y1,x2,y2,...],...]} 로 저장한다 (CSS px 좌표) */
-const inkUI={key:null,pad:null,penSeen:false};
+/* ---------- 손글씨(S펜) 입력: 글자를 입력하는 모든 칸 ---------- */
+/* 글자로 바꾸지 않고 쓴 모양 그대로 저장한다.
+   각 칸의 손글씨는 그 칸 값을 가진 객체의 .ink[필드] = {w,h,s:[[굵기,x1,y1,x2,y2,...],...]} (CSS px 좌표) */
+const INK_SEL='textarea[data-f],input[data-f]:not([type]),input[data-f][type=text],#new-code,#new-memo';
+const inkUI={pad:null,penSeen:false,pending:{}};
+function inkSpec(el){return el.dataset.f||(el.id==='new-code'?'new:code':el.id==='new-memo'?'new:memo':'');}
+/* 칸 이름(data-f)으로 손글씨를 담을 객체와 필드를 찾는다 */
+function inkTarget(spec){
+  const i=spec.indexOf(':');const scope=spec.slice(0,i),name=spec.slice(i+1);
+  if(scope==='new')return {obj:inkUI.pending,field:name,save:()=>{}};
+  if(scope==='qitem'){store.settings.qabfInk=store.settings.qabfInk||{};return {obj:store.settings.qabfInk,field:name,save:()=>scheduleSave(),flat:true};}
+  const p=curProject();if(!p)return null;
+  switch(scope){
+    case 'proj':return {obj:p,field:name,save:()=>{p.updatedAt=nowISO();scheduleSave();}};
+    case 'define':return {obj:p.procs.define.data,field:name,save:()=>touch(p,'define')};
+    case 'qform':{const f=activeForm(p);if(!f)return null;return {obj:f,field:name,save:()=>{f.updatedAt=nowISO();touch(p,'qabf');}};}
+    case 'sheet':{const [sid,fd]=name.split(':');const sh=sheetById(p,sid);if(!sh)return null;return {obj:sh,field:fd,save:()=>{sh.updatedAt=nowISO();touch(p,'abc');}};}
+    case 'row':{const [sid,rid,fd]=name.split(':');const sh=sheetById(p,sid);if(!sh)return null;const r=sh.rows.find(x=>x.id===rid);if(!r)return null;
+      return {obj:r,field:fd,save:()=>{sh.updatedAt=nowISO();touch(p,'abc');}};}
+    case 'hypo':return {obj:p.procs.hypo.data,field:name,save:()=>touch(p,'hypo')};
+    case 'mf':{const key=ui.proc;if(!p.procs[key])return null;return {obj:p.procs[key].data,field:name,save:()=>touch(p,key)};}
+  }
+  return null;
+}
+function inkGet(t){const box=t.flat?t.obj:t.obj.ink;const v=box&&box[t.field];return v&&v.s&&v.s.length?v:null;}
+function inkPut(t,v){
+  if(t.flat){if(v)t.obj[t.field]=v;else delete t.obj[t.field];return;}
+  if(v){t.obj.ink=t.obj.ink||{};t.obj.ink[t.field]=v;}
+  else if(t.obj.ink){delete t.obj.ink[t.field];if(!Object.keys(t.obj.ink).length)delete t.obj.ink;}
+}
 function inkPath(st){
   const pts=st.slice(1);if(pts.length<2)return '';
   let d=`M${pts[0]} ${pts[1]}`;
@@ -1679,35 +1707,39 @@ function inkPath(st){
 function inkSvg(ink){
   return `<svg viewBox="0 0 ${ink.w} ${ink.h}" preserveAspectRatio="xMinYMin meet" aria-hidden="true">${ink.s.map(st=>`<path d="${inkPath(st)}" fill="none" stroke="currentColor" stroke-width="${st[0]}" stroke-linecap="round" stroke-linejoin="round"/>`).join('')}</svg>`;
 }
-function inkHas(r,f){return !!(r.ink&&r.ink[f]&&r.ink[f].s&&r.ink[f].s.length);}
-function inkInner(sh,r,f){
-  const k=`${sh.id}:${r.id}:${f}`;
-  return inkHas(r,f)
-    ?`<button type="button" class="ink-view" data-act="ink-open" data-k="${k}" title="눌러서 손글씨 고치기" aria-label="손글씨 메모 (눌러서 고치기)">${inkSvg(r.ink[f])}</button>`
-    :`<button type="button" class="ink-btn" data-act="ink-open" data-k="${k}">✍ 손글씨</button>`;
+function inkInner(spec){
+  const t=inkTarget(spec);const ink=t&&inkGet(t);
+  return ink
+    ?`<button type="button" class="ink-view" data-act="ink-open" title="눌러서 손글씨 고치기" aria-label="손글씨 (눌러서 고치기)">${inkSvg(ink)}</button>`
+    :`<button type="button" class="ink-btn" data-act="ink-open" aria-label="손글씨로 쓰기">✍ 손글씨</button>`;
 }
-function inkView(sh,r,f){return `<div class="ink" id="ink-${r.id}-${f}">${inkInner(sh,r,f)}</div>`;}
-function inkFind(k){
-  const [sid,rid,f]=k.split(':');const p=curProject();if(!p)return null;
-  const sh=sheetById(p,sid);if(!sh)return null;const r=sh.rows.find(x=>x.id===rid);if(!r)return null;
-  return {p,sh,r,f};
+/* 화면이 그려질 때마다 입력칸 바로 뒤에 손글씨 자리를 붙인다 */
+function inkScan(){
+  document.querySelectorAll(INK_SEL).forEach(el=>{
+    const spec=inkSpec(el);if(!spec)return;
+    const nx=el.nextElementSibling;
+    if(nx&&nx.classList.contains('ink')&&nx.dataset.k===spec)return;
+    const box=document.createElement('div');box.className='ink';box.dataset.k=spec;
+    box.innerHTML=inkInner(spec);el.insertAdjacentElement('afterend',box);
+  });
 }
+let inkScanQueued=false;
+new MutationObserver(()=>{if(inkScanQueued)return;inkScanQueued=true;Promise.resolve().then(()=>{inkScanQueued=false;inkScan();});}).observe(document.body,{childList:true,subtree:true});
+/* 손글씨 자리를 눌러도 감싼 label 때문에 키보드가 뜨지 않게 한다 */
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.ink'))e.preventDefault();});
 function inkClose(){
-  const pad=inkUI.pad;inkUI.pad=null;inkUI.key=null;if(!pad)return;
-  const t=inkFind(pad.k);const box=document.getElementById(pad.boxId);
-  if(t&&box)box.innerHTML=inkInner(t.sh,t.r,t.f);
+  const pad=inkUI.pad;inkUI.pad=null;if(!pad)return;
+  const box=pad.box.isConnected?pad.box:null;
+  if(box)box.innerHTML=inkInner(box.dataset.k);
 }
 function inkSave(pad){
-  const t=inkFind(pad.k);if(!t)return;
-  t.r.ink=t.r.ink||{};
-  if(pad.strokes.length)t.r.ink[t.f]={w:pad.w,h:pad.h,s:pad.strokes};
-  else{delete t.r.ink[t.f];if(!Object.keys(t.r.ink).length)delete t.r.ink;}
-  t.sh.updatedAt=nowISO();touch(t.p,'abc');
+  inkPut(pad.t,pad.strokes.length?{w:pad.w,h:pad.h,s:pad.strokes}:null);
+  pad.t.save();
 }
-function inkOpen(k){
+function inkOpen(box){
   if(inkUI.pad)inkClose();
-  const t=inkFind(k);if(!t)return;
-  const box=document.getElementById(`ink-${t.r.id}-${t.f}`);if(!box)return;
+  const spec=box.dataset.k;const t=inkTarget(spec);if(!t)return;
+  const single=!/^textarea$/i.test((box.previousElementSibling||{}).tagName||'');
   box.innerHTML=`<div class="ink-pad${inkUI.penSeen?' pen-only':''}">
     <canvas aria-label="손글씨 입력 칸"></canvas>
     <div class="ink-tools">
@@ -1720,12 +1752,12 @@ function inkOpen(k){
     </div></div>`;
   const cv=box.querySelector('canvas');
   const W=Math.max(120,Math.round(cv.getBoundingClientRect().width||box.clientWidth||240));
-  const old=inkHas(t.r,t.f)?t.r.ink[t.f]:null;
+  const old=inkGet(t);
   const sc=old?W/old.w:1;
   const rd=v=>Math.round(v*10)/10;
   const strokes=old?old.s.map(st=>[rd(st[0]*Math.min(Math.max(sc,.5),2)),...st.slice(1).map(v=>rd(v*sc))]):[];
-  const pad={k,boxId:box.id,cv,ctx:cv.getContext('2d'),w:W,h:Math.max(160,old?Math.ceil(old.h*sc):0),strokes,hist:[],tool:'pen',cur:null,pid:null};
-  inkUI.pad=pad;inkUI.key=k;
+  const pad={box,t,cv,ctx:cv.getContext('2d'),w:W,h:Math.max(single?110:160,old?Math.ceil(old.h*sc):0),strokes,hist:[],tool:'pen',cur:null,pid:null};
+  inkUI.pad=pad;
   inkResize(pad);
   inkBind(pad,box);
 }
@@ -1797,7 +1829,17 @@ function inkBind(pad,box){
     else if(a==='done'){inkSave(pad);inkClose();}
   });
 }
-actions['ink-open']=el=>inkOpen(el.dataset.k);
+actions['ink-open']=el=>{const box=el.closest('.ink');if(box)inkOpen(box);};
+/* 새 프로젝트 칸에 쓴 손글씨는 프로젝트가 만들어질 때 그 프로젝트의 학생 코드·메모 칸으로 옮긴다 */
+document.addEventListener('submit',e=>{
+  if(!e.target||e.target.id!=='new-form')return;
+  const pend=inkUI.pending.ink;if(!pend||!Object.keys(pend).length)return;
+  if($('#new-form'))return; /* 만들기에 실패해 첫 화면에 그대로 있으면 손글씨를 남겨 둔다 */
+  const p=curProject();if(!p)return;
+  p.ink=Object.assign(p.ink||{},pend);inkUI.pending={};saveNow();
+  document.querySelectorAll('.ink').forEach(x=>{if(!x.querySelector('canvas'))x.innerHTML=inkInner(x.dataset.k);});
+});
+inkScan();
 
 /* toast */
 let toastTimer=null;
