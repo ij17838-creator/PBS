@@ -4,6 +4,45 @@
 
 ---
 
+## 2026-11-05 · 행동평정척도: 전용 입력 화면
+
+### 한 일
+- '기본 메모' 칸 4개(척도 이름·실시일·점수·메모)를 전용 화면으로 바꿨습니다. 절차 카드의 '기본 메모' 표시는 없앴습니다.
+- **척도 정보**: 척도 이름, 척도 종류(행동 문제 선별 / 기능 평가(MAS·QABF 등) / 적응행동 / 기타, 하나만) + 종류별 해석 안내, 실시 목적.
+- **응답자**(여러 명): 이름·호칭, 관계, 실시일, 학생을 관찰한 기간. 행 추가·삭제(삭제 확인).
+- **하위영역별 점수**(행 추가): 하위영역, 응답자(위 목록에서 선택), 원점수, 표준점수·백분위, 기준(정상·경계·위험·임상·해당 없음). 응답자 2명 이상의 점수가 있으면 하위영역 × 응답자 비교표가 자동으로 나옴.
+- **표적행동과의 연결**: 결과가 표적행동에 대해 말해 주는 것, 기능 가설 단서(가설 화면과 같은 5개 기능, 여러 개), 단서가 된 문항·영역.
+- **응답자 간 차이**, **해석 시 주의점 · 메모**(예전 '메모'를 여기로 합침).
+- **원본 파일 · 재실시**: 사진·PDF 첨부(미리보기·저장·삭제), 재실시 예정일, 재실시 메모.
+- 예시 프로젝트(첫 실행 시)에 예시 값 채움.
+
+### 데이터
+- `rating.data` 새 필드: `type, purpose, raters[{id,name,role,date,period}], rows[{id,domain,rater,raw,std,level}], target, funcs[], funcNote, diff, cautions, retestDate, retestNote, files[{id,name,mime,size,createdAt}]`.
+- 예전 필드: `scale`은 그대로 척도 이름. `when`·`scores`는 값이 있을 때만 접힌 "예전에 적은 내용"에서 보이고 고칠 수 있음. `memo`는 `ensureProject`에서 `cautions`로 옮기고 비움.
+- 첨부 파일은 녹음과 같은 IndexedDB(`pbs-observe-audio`, projectId 색인)에 저장. 백업 '녹음 포함'·불러오기·복제·프로젝트 삭제가 첨부 파일도 함께 처리하도록 `blobIds(p)`를 추가해 썼습니다.
+
+### 확인한 것
+- Playwright(개발용 사본에서 내부 함수 접근): 예전 형식 자료 이전, 응답자·점수 행 추가, 응답자 이름 바꾸면 점수 행 선택지 이름도 바뀜, 비교표 표시, 종류 안내, 사진 첨부·미리보기, 응답자 삭제 시 점수 행의 응답자만 비워짐, 새로고침 후 유지, 프로젝트 복제 시 첨부 파일 복사, 375px 폭에서 가로 스크롤 없음, 콘솔 오류 없음.
+- 시험하지 못한 것: 실기기 S펜 손글씨(새 칸에도 자동으로 붙는 것만 확인), 백업 파일 내보내기·불러오기로 첨부 파일 왕복(코드만 고침), 큰 사진·PDF.
+
+### 알려진 한계
+- 척도는 프로젝트당 하나만 기록합니다(척도를 여러 개 쓰면 다른 척도는 메모에).
+- 비교표는 하위영역 이름이 글자까지 같아야 같은 줄로 묶입니다.
+- 첨부 파일 크기 제한이 없습니다. 백업 파일은 '녹음 포함'일 때만 첨부 파일이 들어갑니다(버튼 이름은 그대로).
+- 가설 화면의 자료 요약에는 평정척도 결과가 아직 나오지 않습니다.
+
+### 코드 위치 (`index.html`)
+- 상수: `RATING_TYPES`, `RATING_TYPE_TIP`, `RATING_ROLES`, `RATING_LEVELS`
+- 화면: `/* 3. rating */`의 `viewRating`, `raterRow`, `scoreRow`, `ratingCompare`, `rFileRow`, `hydrateRatingFiles`
+- 입력: `onField`의 `rating`·`rrow`, `actions`의 `r-add`, `del-rrow`, `del-rfile`, `rfile-save`, `chip`의 `rtype`(하나)·`rfunc`(여러 개), change 처리의 `[data-rfile]`, `inkTarget`의 `rating`·`rrow`
+- 백업: `blobIds`, `remapAudio`, `exportProjects`, `importBackup`, `duplicateProject`, `deleteProject`
+- CSS: `.r-list`, `.r-row`, `.r-grid`, `.r-file`, `.r-thumb`, `.r-doc`
+
+### 다음에 할 일
+- 가설 화면 자료 요약에 평정척도 기능 단서 보여 주기.
+- 재실시 결과를 같은 화면에 '사후' 점수로 넣어 전후 비교하기.
+- 실기기에서 확인.
+
 ## 2026-11-05 · 표적행동 정의 화면: 관찰·면담 전 '초안' 흐름으로 개선
 
 ### 한 일

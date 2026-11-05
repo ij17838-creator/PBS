@@ -181,6 +181,20 @@ details.card[open]{gap:14px}
 .stage-tag{font-size:.7rem;font-weight:700;color:var(--warn);background:var(--warn-soft);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle}
 .three{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
 details.card.later summary small{font-weight:400;color:var(--muted);margin-left:6px}
+/* 행동평정척도: 응답자·점수 행, 첨부 파일 */
+.r-list{display:flex;flex-direction:column;gap:10px}
+.r-row{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--surface-2);display:flex;flex-direction:column;gap:10px}
+.r-row-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.r-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px 12px;align-items:start}
+.r-grid.score{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.r-grid.score .wide2{grid-column:span 2}
+.r-x{display:flex;align-items:flex-end;justify-content:flex-end;align-self:end;min-height:44px}
+.r-file{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--surface-2)}
+.r-thumb{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:var(--sunk)}
+.r-doc{width:64px;height:64px;display:grid;place-items:center;border-radius:8px;background:var(--sunk);font-family:var(--font-mono);font-weight:600;font-size:.8rem;color:var(--muted)}
+.r-file-info{flex:1 1 160px;min-width:0;display:flex;flex-direction:column}
+.r-file-info b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:420px){.r-grid.score .wide2{grid-column:1/-1}}
 
 /* QABF */
 .q-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
@@ -420,7 +434,7 @@ function toggleIn(arr,v){const i=arr.indexOf(v);if(i>=0)arr.splice(i,1);else arr
 const PROCS=[
   {key:'define',no:1,title:'표적행동 정의',desc:'관찰·측정 가능한 조작적 정의',lede:'다른 관찰자가 읽어도 같은 행동을 같은 기준으로 셀 수 있게 정의합니다. 여기서 정한 행동 이름과 정의는 다른 절차 화면 위쪽에 자동으로 표시됩니다.'},
   {key:'qabf',no:2,title:'QABF',desc:'행동 기능 질문지 (간접 평가)',lede:'교사·보호자 등 응답자마다 응답지를 하나씩 만듭니다. 25문항에 0~3점 또는 X(해당 없음)로 답하면 5개 하위척도 점수가 자동으로 계산됩니다.'},
-  {key:'rating',no:3,title:'행동평정척도',desc:'행동 심각도와 기초선',basic:true,lede:'사용한 척도의 이름, 실시일, 점수를 기록해 둡니다. 전용 입력 화면은 다음 버전에서 추가됩니다.'},
+  {key:'rating',no:3,title:'행동평정척도',desc:'행동 심각도와 기초선',lede:'사용한 척도의 종류, 응답자, 하위영역별 점수를 기록하고 표적행동과 연결해 해석합니다. 사후 평가 때 다시 실시하면 중재 전후를 비교할 수 있습니다.'},
   {key:'abc',no:4,title:'ABC 관찰 · 일화기록',desc:'선행사건–행동–후속결과, 녹음',lede:'A-B-C 관찰지 양식에 기록합니다. 관찰을 시작하면 설정한 간격(기본 15분)마다 새 관찰지가 이어지고, 녹음은 관찰지마다 따로 저장됩니다.'},
   {key:'hypo',no:5,title:'자료 종합 · 가설',desc:'QABF와 ABC를 비교해 가설 세우기',lede:'QABF와 ABC 관찰 결과를 나란히 보고 행동의 기능에 대한 가설 문장을 씁니다. 아직 없는 자료는 \'아직 없음\'으로 표시됩니다.'},
   {key:'plan',no:6,title:'중재 계획',desc:'선행사건·대체행동·후속결과',basic:true,lede:'가설에 맞춰 중재 계획을 적습니다. 전용 입력 화면은 다음 버전에서 추가됩니다.'},
@@ -461,6 +475,10 @@ const MEASURE_GUIDE={
 };
 const MIND_WORDS=['화가','화나','짜증','일부러','고의','관심을 끌','관심 끌','하기 싫','싫어서','불안','심심','기분','원해서','하고 싶어서','속상'];
 const DEF_CHECKS=['눈으로 보거나 귀로 들을 수 있는 행동인가','횟수를 세거나 시간을 잴 수 있는가','다른 관찰자도 같은 기준으로 판단할 수 있는가','시작과 끝이 분명한가','\'화가 나서\'처럼 마음 상태를 추측하는 말이 들어 있지 않은가'];
+const RATING_TYPES=['행동 문제 선별','기능 평가 (MAS·QABF 등)','적응행동','기타'];
+const RATING_TYPE_TIP={'행동 문제 선별':'문제행동이 얼마나 심한지, 어느 영역에 몰려 있는지 봅니다. 기능(왜 하는지)은 알려 주지 않습니다.','기능 평가 (MAS·QABF 등)':'행동이 어떤 기능(관심·회피 등)을 하는지 단서를 줍니다. 아래 \'기능 가설 단서\'에 이어서 적으세요.','적응행동':'학생이 할 수 있는 행동 수준을 봅니다. 대체행동을 고를 때 참고합니다.','기타':'척도의 목적을 아래 메모에 적어 두세요.'};
+const RATING_ROLES=['','담임교사','교과교사','특수교사','보호자','보조인력','본인','기타'];
+const RATING_LEVELS=['','정상','경계 · 위험','임상','해당 없음'];
 const FUNCS=['관심 얻기','과제·요구 피하기','물건·활동 얻기','감각 자극 얻기','신체적 불편 줄이기'];
 const CONF=['낮음','보통','높음'];
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition||null;
@@ -486,6 +504,8 @@ function defaultData(key){
     case 'qabf':return {forms:[],activeForm:null};
     case 'abc':return {sheets:[],session:null,interval:15,audio:{},plan:{start:'',end:'',fired:''}};
     case 'hypo':return {when:'',behavior:'',funcs:[],funcOther:'',evidence:'',confidence:'',memo:''};
+    /* scale·when·scores·memo는 예전 '기본 메모' 칸. when·scores는 예전에 적은 내용으로 보여 주고, memo는 주의점 칸으로 옮긴다 */
+    case 'rating':return {scale:'',when:'',scores:'',memo:'',type:'',purpose:'',raters:[],rows:[],target:'',funcs:[],funcNote:'',diff:'',cautions:'',retestDate:'',retestNote:'',files:[]};
     default:{const o={};(MEMO_FIELDS[key]||[]).forEach(f=>o[f[0]]='');return o;}
   }
 }
@@ -499,6 +519,9 @@ function ensureProject(p){
   const dd=p.procs.define.data;
   if(!Array.isArray(dd.measures))dd.measures=[];if(!Array.isArray(dd.sources))dd.sources=[];if(!Array.isArray(dd.priority))dd.priority=[];
   if(!dd.measure&&dd.measures.length)dd.measure=dd.measures[0];/* 예전 '측정 방법'(여러 개)은 첫 번째를 예정 측정 방법으로 */
+  const rd=p.procs.rating.data;
+  ['raters','rows','funcs','files'].forEach(k=>{if(!Array.isArray(rd[k]))rd[k]=[];});
+  if(rd.memo&&rd.memo.trim()){rd.cautions=rd.cautions&&rd.cautions.trim()?rd.cautions+'\n'+rd.memo:rd.memo;rd.memo='';}/* 예전 '메모'는 주의점·메모 칸으로 합친다 */
   const a=p.procs.abc.data;
   a.audio=a.audio||{};a.sheets=Array.isArray(a.sheets)?a.sheets:[];
   if(!(Number(a.interval)>=1))a.interval=15;
@@ -751,6 +774,7 @@ function render(){
   else main.innerHTML=viewProc(p,ui.proc);
   renderCrumbs();
   if(ui.view==='proc'&&ui.proc==='abc'){hydrateAudio();updateLive();}
+  if(ui.view==='proc'&&ui.proc==='rating')hydrateRatingFiles();
   updateRecUI();
   scheduleSave();
 }
@@ -865,6 +889,7 @@ function viewProc(p,key){
     case 'qabf':body=viewQabf(p);break;
     case 'abc':body=viewAbc(p);break;
     case 'hypo':body=viewHypo(p);break;
+    case 'rating':body=viewRating(p);break;
     default:body=viewMemo(p,key);
   }
   return `
@@ -1272,6 +1297,113 @@ function hypoSentence(p){
   return `${esc(w)}, 「${esc(b)}」 행동이 나타난다. 추정 기능: ${esc(f)}.`;
 }
 
+/* 3. rating (행동평정척도) */
+function ratingData(p){return p.procs.rating.data;}
+function raterLabel(d,id){const i=d.raters.findIndex(r=>r.id===id);if(i<0)return '';const r=d.raters[i];return r.name||r.role||`응답자 ${i+1}`;}
+function rFileKB(n){return n>=1048576?(n/1048576).toFixed(1)+'MB':Math.max(1,Math.round(n/1024))+'KB';}
+function raterRow(d,r,i){
+  const k=`rater:${r.id}`;
+  return `<div class="r-row" id="rr-${r.id}">
+    <div class="r-row-head"><b>응답자 ${i+1}</b><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-rrow:${k}">삭제</button></div>
+    <div class="r-grid">
+      <label class="field"><span>이름·호칭</span><input id="rr-${r.id}-name" data-f="rrow:${k}:name" value="${esc(r.name)}" placeholder="예: 담임교사 A"></label>
+      <label class="field"><span>관계</span><select id="rr-${r.id}-role" data-f="rrow:${k}:role">${RATING_ROLES.map(x=>`<option value="${x}"${r.role===x?' selected':''}>${x||'선택'}</option>`).join('')}</select></label>
+      <label class="field"><span>실시일</span><input type="date" id="rr-${r.id}-date" data-f="rrow:${k}:date" value="${esc(r.date)}"></label>
+      <label class="field"><span>학생을 관찰한 기간</span><input id="rr-${r.id}-period" data-f="rrow:${k}:period" value="${esc(r.period)}" placeholder="예: 3월부터 약 8개월, 주 5일"></label>
+    </div>
+    ${ui.confirm==='del-rrow:'+k?confirmBox('이 응답자를 삭제합니다. 이 응답자로 적은 점수 행은 남고 응답자 칸만 비워집니다.','del-rrow',k):''}
+  </div>`;
+}
+function scoreRow(d,r){
+  const k=`row:${r.id}`;
+  return `<div class="r-row" id="rs-${r.id}">
+    <div class="r-grid score">
+      <label class="field wide2"><span>하위영역</span><input id="rs-${r.id}-domain" data-f="rrow:${k}:domain" value="${esc(r.domain)}" placeholder="예: 주의력 문제"></label>
+      <label class="field"><span>응답자</span><select id="rs-${r.id}-rater" data-f="rrow:${k}:rater"><option value="">선택</option>${d.raters.map((x,i)=>`<option value="${x.id}"${r.rater===x.id?' selected':''}>${esc(x.name||x.role||`응답자 ${i+1}`)}</option>`).join('')}</select></label>
+      <label class="field"><span>원점수</span><input id="rs-${r.id}-raw" data-f="rrow:${k}:raw" value="${esc(r.raw)}" inputmode="decimal" placeholder="예: 14"></label>
+      <label class="field"><span>표준점수·백분위</span><input id="rs-${r.id}-std" data-f="rrow:${k}:std" value="${esc(r.std)}" placeholder="예: T 68, 96%ile"></label>
+      <label class="field"><span>기준</span><select id="rs-${r.id}-level" data-f="rrow:${k}:level">${RATING_LEVELS.map(x=>`<option value="${x}"${r.level===x?' selected':''}>${x||'선택'}</option>`).join('')}</select></label>
+      <div class="r-x"><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-rrow:${k}" title="이 행 삭제">삭제</button></div>
+    </div>
+    ${ui.confirm==='del-rrow:'+k?confirmBox('이 점수 행을 삭제합니다.','del-rrow',k):''}
+  </div>`;
+}
+/* 응답자가 둘 이상이고 점수가 있으면 하위영역 × 응답자 표를 보여 준다 */
+function ratingCompare(d){
+  const ids=d.raters.map(r=>r.id).filter(id=>d.rows.some(x=>x.rater===id&&(x.raw||x.std)));
+  if(ids.length<2)return '<p class="hint">응답자 두 명 이상의 점수를 적으면 여기에 응답자별 비교표가 나타납니다.</p>';
+  const doms=[];d.rows.forEach(x=>{const n=(x.domain||'').trim();if(n&&!doms.includes(n))doms.push(n);});
+  const cell=(dom,id)=>{const x=d.rows.find(y=>(y.domain||'').trim()===dom&&y.rater===id);if(!x)return '<td class="muted">-</td>';
+    const v=[x.raw,x.std].filter(Boolean).join(' / ')||'-';return `<td class="num${x.level==='임상'||x.level==='경계 · 위험'?' top':''}">${esc(v)}${x.level?` <small>${esc(x.level)}</small>`:''}</td>`;};
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>하위영역</th>${ids.map(id=>`<th>${esc(raterLabel(d,id))}</th>`).join('')}</tr></thead>
+    <tbody>${doms.map(dom=>`<tr><td>${esc(dom)}</td>${ids.map(id=>cell(dom,id)).join('')}</tr>`).join('')}</tbody>
+  </table></div><p class="hint">원점수 / 표준점수·백분위 순입니다. 경계·위험과 임상은 굵게 표시합니다.</p>`;
+}
+function rFileRow(f){
+  const img=(f.mime||'').startsWith('image/');
+  return `<div class="r-file" id="rf-${f.id}">
+    ${img?`<img class="r-thumb" data-rimg="${f.id}" alt="${esc(f.name)}">`:`<span class="r-doc">${esc(((f.name||'').split('.').pop()||'파일').toUpperCase().slice(0,4))}</span>`}
+    <div class="r-file-info"><b>${esc(f.name||'파일')}</b><span class="meta">${f.size?rFileKB(f.size)+' · ':''}${f.createdAt?fmtShort(f.createdAt):''}</span></div>
+    <div class="row"><button type="button" class="btn small" data-act="rfile-save" data-id="${f.id}">저장</button><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-rfile:${f.id}">삭제</button></div>
+    ${ui.confirm==='del-rfile:'+f.id?confirmBox('이 파일을 삭제합니다. 되돌릴 수 없습니다.','del-rfile',f.id):''}
+  </div>`;
+}
+function viewRating(p){
+  const d=ratingData(p);
+  const old=(d.when||'').trim()||(d.scores||'').trim();
+  return `
+  <section class="card"><h2 class="h3">척도 정보</h2>
+    <label class="field"><span>척도 이름</span><input id="rt-scale" data-f="rating:scale" value="${esc(d.scale)}" placeholder="예: K-CBCL, 학교 행동평정척도"></label>
+    <fieldset class="field"><legend>척도 종류</legend><div class="chips">${RATING_TYPES.map(v=>chip('rtype',v,d.type===v,'b')).join('')}</div>
+      <p class="hint" id="rtype-tip">${esc(RATING_TYPE_TIP[d.type]||'종류를 고르면 결과를 어떻게 읽을지 안내가 나옵니다.')}</p></fieldset>
+    <label class="field"><span>실시 목적</span><input id="rt-purpose" data-f="rating:purpose" value="${esc(d.purpose)}" placeholder="예: 자리 이탈 외에 다른 문제행동 영역이 있는지 선별"></label>
+  </section>
+  <section class="card"><div class="sec-head"><h2 class="h3">응답자</h2><span class="meta">담임·교과교사·보호자 등 응답자마다 한 줄</span></div>
+    <div class="r-list" id="r-raters">${d.raters.length?d.raters.map((r,i)=>raterRow(d,r,i)).join(''):'<p class="rows-empty">아직 응답자가 없습니다.</p>'}</div>
+    <button type="button" class="btn small" data-act="r-add" data-kind="rater">+ 응답자 추가</button>
+  </section>
+  <section class="card"><div class="sec-head"><h2 class="h3">하위영역별 점수</h2><span class="meta">기준은 검사 지침서의 규준을 따릅니다</span></div>
+    <div class="r-list" id="r-rows">${d.rows.length?d.rows.map(r=>scoreRow(d,r)).join(''):'<p class="rows-empty">아직 점수가 없습니다.</p>'}</div>
+    <button type="button" class="btn small" data-act="r-add" data-kind="row">+ 하위영역 추가</button>
+    <div id="r-compare">${ratingCompare(d)}</div>
+  </section>
+  <section class="card"><h2 class="h3">표적행동과의 연결</h2>
+    <label class="field"><span>이 결과가 표적행동에 대해 말해 주는 것</span><textarea id="rt-target" data-f="rating:target" rows="3" placeholder="예: 주의력 문제 영역이 임상 범위 — 자리 이탈이 과제 집중 시간과 관련 있을 수 있음">${esc(d.target)}</textarea></label>
+    <fieldset class="field"><legend>기능 가설 단서 <small>해당하면 고르세요</small></legend><div class="chips">${FUNCS.map(v=>chip('rfunc',v,d.funcs.includes(v),'b')).join('')}</div></fieldset>
+    <label class="field"><span>단서가 된 문항·영역</span><input id="rt-funcnote" data-f="rating:funcNote" value="${esc(d.funcNote)}" placeholder="예: '과제를 주면 자리를 뜬다' 문항에 두 응답자 모두 '자주'"></label>
+    <p class="hint">기능 가설은 QABF·ABC 관찰과 함께 '자료 종합 · 가설'에서 세웁니다. 여기서는 단서만 적어 둡니다.</p>
+  </section>
+  <section class="card"><h2 class="h3">응답자 간 차이</h2>
+    <label class="field"><span>차이와 가능한 이유</span><textarea id="rt-diff" data-f="rating:diff" rows="3" placeholder="예: 보호자 평정이 교사보다 낮음 — 가정에서는 앉아서 하는 과제가 적음">${esc(d.diff)}</textarea></label>
+  </section>
+  <section class="card"><h2 class="h3">해석 시 주의점 · 메모</h2>
+    <label class="field"><span>제한점과 그 밖의 메모</span><textarea id="rt-cautions" data-f="rating:cautions" rows="4" placeholder="예: 응답자 편향(최근 큰 사건 뒤 작성), 실시 상황(바쁜 시기에 급히 작성), 규준이 이 학생에게 맞는지(연령·장애 특성)">${esc(d.cautions)}</textarea></label>
+  </section>
+  <section class="card"><h2 class="h3">원본 파일 · 재실시</h2>
+    <div class="r-list" id="r-files">${d.files.length?d.files.map(rFileRow).join(''):'<p class="rows-empty">검사지 사진이나 PDF를 붙여 둘 수 있습니다.</p>'}</div>
+    <label class="btn small" style="align-self:flex-start">파일 첨부 (사진·PDF)<input type="file" accept="image/*,application/pdf" data-rfile="1" hidden></label>
+    <p class="hint">파일은 이 브라우저 안에만 저장됩니다. 백업할 때 '녹음 포함'을 고르면 함께 들어갑니다.</p>
+    <div class="two">
+      <label class="field"><span>재실시 예정일 <small>사후 평가</small></span><input type="date" id="rt-retest" data-f="rating:retestDate" value="${esc(d.retestDate)}"></label>
+      <label class="field"><span>재실시 메모</span><input id="rt-retestnote" data-f="rating:retestNote" value="${esc(d.retestNote)}" placeholder="예: 중재 6주 뒤 같은 응답자에게 다시 실시"></label>
+    </div>
+  </section>
+  ${old?`<details class="card later"><summary>예전에 적은 내용<small>전용 화면 이전에 적은 칸</small></summary>
+    <label class="field"><span>실시일 · 응답자</span><textarea id="rt-oldwhen" data-f="rating:when" rows="2">${esc(d.when)}</textarea></label>
+    <label class="field"><span>점수 · 결과</span><textarea id="rt-oldscores" data-f="rating:scores" rows="3">${esc(d.scores)}</textarea></label>
+  </details>`:''}`;
+}
+function refreshRatingCompare(p){const c=$('#r-compare');if(c)c.innerHTML=ratingCompare(ratingData(p));}
+/* 붙인 사진을 미리보기로 보여 준다 (파일은 녹음과 같은 IndexedDB에 저장) */
+async function hydrateRatingFiles(){
+  for(const img of $$('img[data-rimg]')){
+    const id=img.dataset.rimg;let url=urlCache.get(id);
+    if(!url&&audioOK){try{const r=await AudioDB.getBlob(id);if(r){url=URL.createObjectURL(r.blob);urlCache.set(id,url);}}catch(e){}}
+    if(url)img.src=url;else if(img.isConnected)img.replaceWith(Object.assign(document.createElement('span'),{className:'r-doc',textContent:'없음',title:'이 브라우저에 파일이 없습니다'}));
+  }
+}
+
 /* memo procedures */
 function viewMemo(p,key){
   const d=p.procs[key].data;
@@ -1472,7 +1604,7 @@ async function exportProjects(projs,withAudio,filename){
   const audio=[];let missing=0;
   if(withAudio&&audioOK){
     for(const p of projs){
-      for(const id of Object.keys(p.procs.abc.data.audio||{})){
+      for(const id of blobIds(p)){
         try{const r=await AudioDB.getBlob(id);if(r)audio.push({id,projectId:p.id,mime:r.mime,duration:r.duration,createdAt:r.createdAt,data:await blobToB64(r.blob)});else missing++;}catch(e){missing++;}
       }
     }
@@ -1481,7 +1613,10 @@ async function exportProjects(projs,withAudio,filename){
   const ok=await offerFile(filename,new Blob([JSON.stringify(payload)],{type:'application/json'}));
   if(ok){const t=nowISO();projs.forEach(p=>p.lastBackupAt=t);saveNow();render();toast(missing?`백업 파일을 내보냈습니다 (이 브라우저에 없는 녹음 ${missing}개 제외)`:'백업 파일을 내보냈습니다');}
 }
+/* IndexedDB에 넣는 파일 id: ABC 녹음 + 행동평정척도 첨부 파일 */
+function blobIds(p){return Object.keys(p.procs.abc.data.audio||{}).concat(((p.procs.rating&&p.procs.rating.data&&p.procs.rating.data.files)||[]).map(f=>f.id));}
 function remapAudio(p,map){
+  (p.procs.rating.data.files||[]).forEach(f=>{if(map[f.id])f.id=map[f.id];});
   const a=p.procs.abc.data;const na={};
   Object.keys(a.audio).forEach(k=>{na[map[k]||k]=a.audio[k];});a.audio=na;
   a.sheets.forEach(x=>{x.audioIds=x.audioIds.map(y=>map[y]||y);});
@@ -1495,9 +1630,9 @@ async function importBackup(file){
   for(const src of data.projects){
     const p=ensureProject(clone(src));if(p.procs.abc.data.session)p.procs.abc.data.session.running=false;
     const clash=store.projects.some(x=>x.id===p.id);
-    const map={};
-    if(clash){p.id=uid('p');p.code=p.code+' (불러옴)';copies++;Object.keys(p.procs.abc.data.audio).forEach(k=>map[k]=uid('a'));remapAudio(p,map);}
-    for(const oldId of Object.keys(src.procs&&src.procs.abc&&src.procs.abc.data&&src.procs.abc.data.audio||{})){
+    const map={};const srcIds=blobIds(p);
+    if(clash){p.id=uid('p');p.code=p.code+' (불러옴)';copies++;srcIds.forEach(k=>map[k]=uid('a'));remapAudio(p,map);}
+    for(const oldId of srcIds){
       const au=audioById.get(oldId);if(!au||!audioOK)continue;
       try{await AudioDB.put(map[oldId]||oldId,p.id,b64ToBlob(au.data,au.mime),au.duration,au.createdAt);audioIn++;}catch(e){}
     }
@@ -1509,14 +1644,14 @@ async function importBackup(file){
 }
 async function duplicateProject(p){
   const c=ensureProject(clone(p));c.id=uid('p');c.code=p.code+' (복사본)';c.example=false;c.lastBackupAt=null;if(c.procs.abc.data.session)c.procs.abc.data.session.running=false;c.createdAt=c.updatedAt=nowISO();
-  const map={};Object.keys(c.procs.abc.data.audio).forEach(k=>map[k]=uid('a'));remapAudio(c,map);
+  const map={};blobIds(c).forEach(k=>map[k]=uid('a'));remapAudio(c,map);
   for(const oldId of Object.keys(map)){try{const r=await AudioDB.getBlob(oldId);if(r)await AudioDB.put(map[oldId],c.id,r.blob,r.duration,r.createdAt);}catch(e){}}
   store.projects.push(c);saveNow();render();updateUsage();toast('프로젝트를 복제했습니다');
 }
 async function deleteProject(p){
   if(rec.seg&&rec.seg.target.projectId===p.id)stopRecording();
   if(abcData(p).session)abcData(p).session.running=false;
-  for(const id of Object.keys(p.procs.abc.data.audio))dropUrl(id);
+  for(const id of blobIds(p))dropUrl(id);
   try{if(audioOK)await AudioDB.delByProject(p.id);}catch(e){}
   store.projects=store.projects.filter(x=>x.id!==p.id);
   if(ui.projectId===p.id){ui.projectId=null;}
@@ -1713,6 +1848,15 @@ function exampleProject(){
   const at=(off,h,m,s)=>{const d=new Date(base);d.setDate(d.getDate()+off);d.setHours(h,m,s||0,0);return d.toISOString();};
   Object.assign(p.procs.define.data,{name:'자리 이탈',definition:'수업 중 교사의 허락 없이 엉덩이가 의자에서 완전히 떨어져 자리에서 1m 이상 벗어나는 행동',start:'엉덩이가 의자에서 완전히 떨어지는 순간',end:'다시 의자에 앉는 순간',examples:'학습지를 받자 일어나 창가로 걸어감\n활동 중 친구 자리로 가서 서 있음',nonExamples:'교사의 지시로 칠판 앞에 나옴\n의자에 앉은 채 몸을 뒤로 돌림',measures:['빈도','지속시간'],setting:'국어·수학 시간, 학습지 활동',checks:[0,1,2,3,4],stage:'관찰 후 수정',sources:['담임교사 의견','짧게 본 것'],sourceNote:'11/2 담임교사 면담, 국어 시간 10분 관찰',priority:['본인 학습 방해','자주 나타남'],priorityNote:'수업마다 여러 번 나타나 학습지를 끝내지 못함',boundary:'엉덩이만 들썩이고 바로 앉음 → 세지 않음\n의자를 끌고 함께 움직임 → 셈\n허락받고 나갔다가 돌아오지 않음 → 허락 범위를 넘은 때부터 셈',questions:'허락받은 이탈(화장실 등)은 어떻게 볼까?\n쉬는 시간 직전 정리 시간도 포함할까?',episode:'앉은 뒤 5초 안에 다시 일어나면 이어진 1회로 셈',planWhen:'월·수·금 국어·수학 시간',planLength:'40분 (수업 시작부터 끝까지)',planPeriod:'2주 동안 6회 이상',planObserver:'담임교사, 특수교사',planTools:'빈도는 계수기 · ABC 관찰지 함께 작성',planIoa:'관찰 3회 중 1회는 두 사람이 따로 기록해 비교 (80% 이상)',measure:'빈도',unit:'회/회기(40분)',measureWhy:'한 번 일어나면 짧게 끝나서 횟수로 셀 수 있음',revLog:'11/2 면담 후 — 허락받은 이탈은 해당하지 않는 예로 옮김'});
   Object.assign(p.procs.define,{status:'done',completedAt:at(0,9,0),updatedAt:at(0,9,0)});
+  const r1=uid('r'),r2=uid('r');
+  Object.assign(p.procs.rating.data,{scale:'학교 행동평정척도 (예시)',type:'행동 문제 선별',purpose:'자리 이탈 외에 다른 문제행동 영역이 있는지 선별',
+    raters:[{id:r1,name:'담임교사',role:'담임교사',date:ymdLocal(base),period:'3월부터 약 8개월, 주 5일'},{id:r2,name:'보호자',role:'보호자',date:ymdLocal(base),period:'가정, 평일 저녁·주말'}],
+    rows:[{id:uid('r'),domain:'주의력 문제',rater:r1,raw:'14',std:'T 68',level:'임상'},{id:uid('r'),domain:'주의력 문제',rater:r2,raw:'9',std:'T 59',level:'정상'},{id:uid('r'),domain:'공격 행동',rater:r1,raw:'3',std:'T 52',level:'정상'},{id:uid('r'),domain:'공격 행동',rater:r2,raw:'2',std:'T 50',level:'정상'}],
+    target:'두 응답자 모두 공격 행동은 정상 범위. 주의력 문제는 교사 평정에서만 임상 범위 — 자리 이탈이 앉아서 하는 과제 시간에 몰려 있는 것과 맞음',
+    funcs:['과제·요구 피하기'],funcNote:'"과제를 주면 자리를 뜬다" 문항에 교사 \'자주\', 보호자 \'가끔\'',
+    diff:'보호자 평정이 교사보다 낮음 — 가정에서는 앉아서 오래 하는 과제가 적음',
+    cautions:'예시 점수입니다. 실제 해석은 검사 지침서의 규준을 따르세요.',retestNote:'중재 6주 뒤 같은 응답자에게 다시 실시'});
+  Object.assign(p.procs.rating,{status:'progress',updatedAt:at(0,9,20)});
   const vals=[[2,1,2,1,1],[3,3,2,3,2],[0,1,0,0,0],['0','0','X','0','0'],[1,0,1,1,0]];
   const ratings={};vals.forEach((arr,i)=>arr.forEach((v,k)=>{ratings[i+1+k*5]=String(v);}));
   const fid=uid('q');
@@ -1753,8 +1897,8 @@ const actions={
   'undone':()=>setDone(curProject(),ui.proc,false),
   'chip':el=>{
     const p=curProject();const g=el.dataset.g,v=el.dataset.v;
-    const multi={defsrc:()=>[p.procs.define.data.sources,'define'],defpri:()=>[p.procs.define.data.priority,'define'],func:()=>[p.procs.hypo.data.funcs,'hypo']};
-    const single={conf:()=>[p.procs.hypo.data,'confidence','hypo'],measure:()=>[p.procs.define.data,'measure','define'],defstage:()=>[p.procs.define.data,'stage','define']};
+    const multi={defsrc:()=>[p.procs.define.data.sources,'define'],defpri:()=>[p.procs.define.data.priority,'define'],func:()=>[p.procs.hypo.data.funcs,'hypo'],rfunc:()=>[p.procs.rating.data.funcs,'rating']};
+    const single={conf:()=>[p.procs.hypo.data,'confidence','hypo'],measure:()=>[p.procs.define.data,'measure','define'],defstage:()=>[p.procs.define.data,'stage','define'],rtype:()=>[p.procs.rating.data,'type','rating']};
     if(multi[g]){
       const [arr,key]=multi[g]();toggleIn(arr,v);
       const on=arr.includes(v);el.classList.toggle('on',on);el.setAttribute('aria-pressed',String(on));
@@ -1765,7 +1909,32 @@ const actions={
       $$(`[data-act="chip"][data-g="${g}"]`).forEach(b=>{const on=b.dataset.v===obj[field];b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));});
       touch(p,key);
       if(key==='define')refreshDefine(p);
+      if(g==='rtype'){const t=$('#rtype-tip');if(t)t.textContent=RATING_TYPE_TIP[obj[field]]||'종류를 고르면 결과를 어떻게 읽을지 안내가 나옵니다.';}
     }
+  },
+  'r-add':el=>{
+    const p=curProject();const d=ratingData(p);const id=uid('r');
+    if(el.dataset.kind==='rater')d.raters.push({id,name:'',role:'',date:ymdLocal(),period:''});
+    else{const last=d.rows[d.rows.length-1];d.rows.push({id,domain:'',rater:last?last.rater:(d.raters.length===1?d.raters[0].id:''),raw:'',std:'',level:''});}
+    touch(p,'rating');const y=window.scrollY;render();window.scrollTo(0,y);
+    const f=$(el.dataset.kind==='rater'?`#rr-${id}-name`:`#rs-${id}-domain`);if(f){try{f.focus({preventScroll:true});}catch(e){}f.scrollIntoView({block:'center'});}
+  },
+  'del-rrow':el=>{
+    const p=curProject();const d=ratingData(p);const [kind,id]=el.dataset.id.split(':');
+    if(kind==='rater'){d.raters=d.raters.filter(r=>r.id!==id);d.rows.forEach(r=>{if(r.rater===id)r.rater='';});}
+    else d.rows=d.rows.filter(r=>r.id!==id);
+    ui.confirm=null;touch(p,'rating');saveNow();rerenderForConfirm();toast(kind==='rater'?'응답자를 삭제했습니다':'점수 행을 삭제했습니다');
+  },
+  'del-rfile':async el=>{
+    const p=curProject();const d=ratingData(p);const id=el.dataset.id;
+    d.files=d.files.filter(f=>f.id!==id);dropUrl(id);
+    try{if(audioOK)await AudioDB.del(id);}catch(e){}
+    ui.confirm=null;touch(p,'rating');saveNow();rerenderForConfirm();updateUsage();toast('파일을 삭제했습니다');
+  },
+  'rfile-save':async el=>{
+    const p=curProject();const f=ratingData(p).files.find(x=>x.id===el.dataset.id);if(!f)return;
+    try{const r=await AudioDB.getBlob(f.id);if(!r){toast('이 브라우저에 파일이 없습니다');return;}offerFile(f.name||`${safeName(p.code)}_평정척도`,r.blob);}
+    catch(e){toast('파일을 읽지 못했습니다');}
   },
   'def-revlog':()=>{
     const p=curProject();const d=p.procs.define.data;const t=new Date();
@@ -1908,6 +2077,17 @@ function onField(el){
       p.procs.hypo.data[name]=val;touch(p,'hypo');{const pv=$('#hypo-preview');if(pv)pv.innerHTML=hypoSentence(p);}break;
     case 'mf':
       p.procs[ui.proc].data[name]=val;touch(p,ui.proc);break;
+    case 'rating':
+      ratingData(p)[name]=val;touch(p,'rating');break;
+    case 'rrow':{
+      const d=ratingData(p);const [kind,id,field]=name.split(':');
+      const o=(kind==='rater'?d.raters:d.rows).find(x=>x.id===id);if(!o)return;
+      o[field]=val;touch(p,'rating');
+      if(kind==='rater'&&(field==='name'||field==='role')){
+        const i=d.raters.indexOf(o);const label=o.name||o.role||`응답자 ${i+1}`;
+        $$(`select[data-f$=":rater"] option[value="${id}"]`).forEach(op=>{op.textContent=label;});
+      }
+      refreshRatingCompare(p);break;}
   }
 }
 function setPlanTime(el){
@@ -1935,6 +2115,15 @@ document.addEventListener('change',async e=>{
   if(el.matches('[data-f]')&&(el.type==='checkbox'||el.tagName==='SELECT'||el.type==='date'||el.type==='datetime-local'||el.type==='number')){onField(el);return;}
   if(el.matches('[data-plan]')){setPlanTime(el);return;}
   if(el.id==='import-file'&&el.files&&el.files[0]){const f=el.files[0];el.value='';await importBackup(f);return;}
+  if(el.matches('[data-rfile]')&&el.files&&el.files[0]){
+    const file=el.files[0];el.value='';
+    if(!audioOK){toast('이 브라우저에서는 파일을 저장할 수 없습니다');return;}
+    if(file.type&&!file.type.startsWith('image/')&&file.type!=='application/pdf'){toast('사진이나 PDF 파일을 골라 주세요');return;}
+    const p=curProject();const id=uid('f');const created=nowISO();
+    try{await AudioDB.put(id,p.id,file,null,created);}catch(e){toast('파일을 저장하지 못했습니다');return;}
+    ratingData(p).files.push({id,name:file.name||'파일',mime:file.type||'',size:file.size||0,createdAt:created});
+    touch(p,'rating');saveNow();rerenderForConfirm();updateUsage();toast('파일을 붙였습니다');return;
+  }
   if(el.matches('[data-attach]')&&el.files&&el.files[0]){
     const file=el.files[0];el.value='';
     if(!audioOK){toast('이 브라우저에서는 녹음 파일을 저장할 수 없습니다');return;}
@@ -1970,6 +2159,9 @@ function inkTarget(spec){
     case 'row':{const [sid,rid,fd]=name.split(':');const sh=sheetById(p,sid);if(!sh)return null;const r=sh.rows.find(x=>x.id===rid);if(!r)return null;
       return {obj:r,field:fd,save:()=>{sh.updatedAt=nowISO();touch(p,'abc');}};}
     case 'hypo':return {obj:p.procs.hypo.data,field:name,save:()=>touch(p,'hypo')};
+    case 'rating':return {obj:p.procs.rating.data,field:name,save:()=>touch(p,'rating')};
+    case 'rrow':{const [kind,id,fd]=name.split(':');const d=p.procs.rating.data;const o=(kind==='rater'?d.raters:d.rows).find(x=>x.id===id);if(!o)return null;
+      return {obj:o,field:fd,save:()=>touch(p,'rating')};}
     case 'mf':{const key=ui.proc;if(!p.procs[key])return null;return {obj:p.procs[key].data,field:name,save:()=>touch(p,key)};}
   }
   return null;
