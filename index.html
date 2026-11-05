@@ -173,6 +173,14 @@ details.card[open]{gap:14px}
 .done-bar{flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--surface-2)}
 .done-bar p{font-size:.9rem;color:var(--muted);flex:1 1 260px}
 .checklist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+/* 표적행동 정의: 초안 상태·안내·자동 경고 */
+.def-warn{display:block;margin-top:3px;color:var(--warn);font-size:.82rem;font-weight:600}
+.def-warn:empty{display:none}
+.measure-tip{background:var(--sunk);border-radius:10px;padding:10px 12px;font-size:.86rem;color:var(--ink)}
+.measure-tip:empty{display:none}
+.stage-tag{font-size:.7rem;font-weight:700;color:var(--warn);background:var(--warn-soft);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+.three{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+details.card.later summary small{font-weight:400;color:var(--muted);margin-left:6px}
 
 /* QABF */
 .q-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
@@ -440,6 +448,18 @@ const DEFAULT_A=['과제·학습지 제시','지시·요구','활동 전환','�
 const DEFAULT_C=['관심 제공(말·꾸중)','과제 중단·제거','선호물·활동 제공','반응 없음(무시)','신체적 제지·안내','자리 이동','또래 반응'];
 const INTENSITY=['약','중','강'];
 const MEASURES=['빈도','지속시간','지연시간','강도','간격 기록'];
+const DEF_STAGES=['초안','관찰 후 수정','확정'];
+const DEF_STAGE_TIP={'초안':'관찰·면담 전에 세운 정의입니다. 관찰하면서 고쳐 나가세요.','관찰 후 수정':'관찰·면담 결과를 반영해 고치는 중입니다. 고친 내용은 아래 수정 기록에 남기세요.','확정':'기초선 측정에 쓸 정의로 확정했습니다. 이후에는 기초선과 중재 내내 같은 정의를 씁니다.'};
+const DEF_SOURCES=['담임교사 의견','보호자 의견','의뢰서·기록','짧게 본 것','기타'];
+const DEF_PRIORITY=['본인 학습 방해','다른 학생 방해','안전 문제','또래 관계 영향','자주 나타남'];
+const MEASURE_GUIDE={
+  '빈도':{tip:'짧고 시작과 끝이 분명해서 한 번, 두 번 셀 수 있는 행동에 맞습니다.',unit:'예: 회/회기(40분)'},
+  '지속시간':{tip:'한 번 나타나면 오래 이어지는 행동에 맞습니다. 시작·종료 기준이 꼭 있어야 합니다.',unit:'예: 분/회, 총 분/회기'},
+  '지연시간':{tip:'지시나 신호가 있은 뒤 행동이 시작되기까지 걸린 시간을 잴 때 맞습니다.',unit:'예: 초/지시'},
+  '강도':{tip:'세기를 미리 정한 단계(예: 1~3단계)로 판단할 수 있을 때만 씁니다. 자리 이탈처럼 세기가 없는 행동에는 맞지 않습니다.',unit:'예: 1~3단계 평균'},
+  '간격 기록':{tip:'너무 자주 나타나거나 시작·끝을 가리기 어려운 행동에 맞습니다. 정해진 간격마다 나타났는지만 표시합니다.',unit:'예: 나타난 간격 비율(%), 10초 간격'}
+};
+const MIND_WORDS=['화가','화나','짜증','일부러','고의','관심을 끌','관심 끌','하기 싫','싫어서','불안','심심','기분','원해서','하고 싶어서','속상'];
 const DEF_CHECKS=['눈으로 보거나 귀로 들을 수 있는 행동인가','횟수를 세거나 시간을 잴 수 있는가','다른 관찰자도 같은 기준으로 판단할 수 있는가','시작과 끝이 분명한가','\'화가 나서\'처럼 마음 상태를 추측하는 말이 들어 있지 않은가'];
 const FUNCS=['관심 얻기','과제·요구 피하기','물건·활동 얻기','감각 자극 얻기','신체적 불편 줄이기'];
 const CONF=['낮음','보통','높음'];
@@ -462,7 +482,7 @@ function loadStore(){
 }
 function defaultData(key){
   switch(key){
-    case 'define':return {name:'',definition:'',start:'',end:'',examples:'',nonExamples:'',measures:[],setting:'',boundary:'',episode:'',planWhen:'',planLength:'',planPeriod:'',planObserver:'',planTools:'',planIoa:'',checks:[]};
+    case 'define':return {name:'',definition:'',start:'',end:'',examples:'',nonExamples:'',measures:[],setting:'',checks:[],stage:'초안',sources:[],sourceNote:'',priority:[],priorityNote:'',boundary:'',episode:'',questions:'',planWhen:'',planLength:'',planPeriod:'',planObserver:'',planDate:'',planTools:'',planIoa:'',measure:'',unit:'',measureWhy:'',measureFixed:false,ioaDone:false,ioaNote:'',revLog:''};
     case 'qabf':return {forms:[],activeForm:null};
     case 'abc':return {sheets:[],session:null,interval:15,audio:{},plan:{start:'',end:'',fired:''}};
     case 'hypo':return {when:'',behavior:'',funcs:[],funcOther:'',evidence:'',confidence:'',memo:''};
@@ -476,6 +496,9 @@ function ensureProject(p){
     const def=defaultData(x.key);
     s.data=Object.assign(def,s.data||{});
   });
+  const dd=p.procs.define.data;
+  if(!Array.isArray(dd.measures))dd.measures=[];if(!Array.isArray(dd.sources))dd.sources=[];if(!Array.isArray(dd.priority))dd.priority=[];
+  if(!dd.measure&&dd.measures.length)dd.measure=dd.measures[0];/* 예전 '측정 방법'(여러 개)은 첫 번째를 예정 측정 방법으로 */
   const a=p.procs.abc.data;
   a.audio=a.audio||{};a.sheets=Array.isArray(a.sheets)?a.sheets:[];
   if(!(Number(a.interval)>=1))a.interval=15;
@@ -866,50 +889,101 @@ function refreshStatus(p){
 function targetBanner(p){
   const d=p.procs.define.data;
   if(!d.name&&!d.definition)return `<div class="target-banner empty"><span>표적행동이 아직 정의되지 않았습니다.</span><button type="button" class="btn small" data-act="open-proc" data-key="define">표적행동 정의 열기</button></div>`;
-  return `<div class="target-banner"><span class="tb-label">표적행동</span><div style="min-width:0;flex:1"><strong>${esc(d.name||'(이름 없음)')}</strong>${d.definition?`<p>${esc(d.definition)}</p>`:''}</div></div>`;
+  return `<div class="target-banner"><span class="tb-label">표적행동</span><div style="min-width:0;flex:1"><strong>${esc(d.name||'(이름 없음)')}</strong>${d.stage&&d.stage!=='확정'?`<span class="stage-tag">${esc(d.stage)}</span>`:''}${d.definition?`<p>${esc(d.definition)}</p>`:''}</div></div>`;
 }
 
 /* 1. define */
+function measureTip(d){const g=MEASURE_GUIDE[d.measure];return g?esc(g.tip):'';}
+/* 정의 점검 자동 경고: 칸이 비었거나 마음 상태를 추측하는 말이 있으면 알려 준다 */
+function defWarnings(d){
+  const w={};
+  if(!String(d.definition||'').trim())w[0]='조작적 정의가 아직 비어 있습니다.';
+  if(!d.measure)w[1]='예정 측정 방법을 아직 고르지 않았습니다.';
+  if(!String(d.boundary||'').trim())w[2]='경계 사례 규칙이 비어 있으면 관찰자마다 판단이 달라질 수 있습니다.';
+  const miss=[!String(d.start||'').trim()&&'시작 기준',!String(d.end||'').trim()&&'종료 기준'].filter(Boolean);
+  if(miss.length)w[3]=miss.join('과 ')+'이 비어 있습니다.';
+  const txt=[d.name,d.definition,d.start,d.end].join(' ');
+  const hit=MIND_WORDS.filter(x=>txt.includes(x));
+  if(hit.length)w[4]=`마음 상태를 추측하는 말이 있습니다: ${hit.map(x=>'‘'+x+'’').join(', ')}`;
+  return w;
+}
+function refreshDefine(p){
+  const d=p.procs.define.data;const w=defWarnings(d);
+  DEF_CHECKS.forEach((c,i)=>{const el=$('#defwarn-'+i);if(el)el.textContent=w[i]?'⚠ '+w[i]:'';});
+  const c=$('#check-count');if(c){const n=Object.keys(w).length;c.textContent=`${d.checks.length}/${DEF_CHECKS.length} 확인${n?` · 경고 ${n}`:''}`;}
+  const t=$('#measure-tip');if(t)t.innerHTML=measureTip(d);
+  const u=$('#def-unit');if(u){const g=MEASURE_GUIDE[d.measure];u.placeholder=g?g.unit:'측정 방법을 먼저 고르세요';}
+  const st=$('#stage-tip');if(st)st.textContent=DEF_STAGE_TIP[d.stage]||'';
+}
 function viewDefine(p){
-  const d=p.procs.define.data;
+  const d=p.procs.define.data;const w=defWarnings(d);const g=MEASURE_GUIDE[d.measure];const nw=Object.keys(w).length;
   return `
   <section class="card">
+    <div class="sec-head"><h2 class="h3">정의 상태</h2><span class="meta">관찰·면담을 하면서 고쳐 나갑니다</span></div>
+    <div class="chips">${DEF_STAGES.map(x=>chip('defstage',x,d.stage===x,'b')).join('')}</div>
+    <p class="hint" id="stage-tip">${esc(DEF_STAGE_TIP[d.stage]||'')}</p>
+  </section>
+  <section class="card">
+    <h2 class="h3">행동 정의</h2>
     <label class="field"><span>행동 이름 <small>짧게</small></span><input id="def-name" data-f="define:name" value="${esc(d.name)}" placeholder="예: 자리 이탈"></label>
     <label class="field"><span>조작적 정의</span><textarea id="def-definition" data-f="define:definition" rows="3" placeholder="예: 수업 중 교사의 허락 없이 엉덩이가 의자에서 떨어져 자리에서 1m 이상 벗어나는 행동">${esc(d.definition)}</textarea></label>
     <div class="two">
       <label class="field"><span>시작 기준</span><input id="def-start" data-f="define:start" value="${esc(d.start)}" placeholder="예: 엉덩이가 의자에서 완전히 떨어지는 순간"></label>
       <label class="field"><span>종료 기준</span><input id="def-end" data-f="define:end" value="${esc(d.end)}" placeholder="예: 다시 의자에 앉는 순간"></label>
     </div>
-    <div class="two">
-      <label class="field"><span>해당하는 예</span><textarea id="def-ex" data-f="define:examples" rows="3" placeholder="한 줄에 하나씩">${esc(d.examples)}</textarea></label>
-      <label class="field"><span>해당하지 않는 예</span><textarea id="def-nonex" data-f="define:nonExamples" rows="3" placeholder="예: 교사의 지시로 칠판 앞에 나옴">${esc(d.nonExamples)}</textarea></label>
-    </div>
-    <fieldset class="field"><legend>측정 방법</legend><div class="chips">${MEASURES.map(m=>chip('measure',m,d.measures.includes(m),'b')).join('')}</div></fieldset>
-    <label class="field"><span>주로 나타나는 상황</span><input id="def-setting" data-f="define:setting" value="${esc(d.setting)}" placeholder="예: 국어·수학 시간, 학습지 활동"></label>
-  </section>
-  <section class="card">
-    <div class="sec-head"><h2 class="h3">경계 사례 규칙</h2></div>
-    <p class="hint">해당하는 예·해당하지 않는 예만으로 판단이 갈리는 애매한 경우를 어떻게 셀지 미리 정해 둡니다. 관찰자끼리 같은 규칙으로 판단할 수 있게 합니다.</p>
-    <label class="field"><span>애매한 경우 판정 규칙 <small>한 줄에 하나씩 · 상황 → 판정</small></span><textarea id="def-boundary" data-f="define:boundary" rows="4" placeholder="예: 엉덩이는 떨어졌지만 1m 안에서 바로 앉음 → 세지 않음">${esc(d.boundary)}</textarea></label>
+    <label class="field"><span>경계 사례 판단 규칙 <small>애매한 경우 셀지 말지</small></span><textarea id="def-boundary" data-f="define:boundary" rows="3" placeholder="한 줄에 하나씩. 예: 엉덩이만 들썩이고 바로 앉음 → 세지 않음&#10;의자를 끌고 함께 움직임 → 셈&#10;허락받고 나갔다가 돌아오지 않음 → 허락 범위를 넘은 때부터 셈">${esc(d.boundary)}</textarea></label>
     <label class="field"><span>1회로 묶는 기준</span><input id="def-episode" data-f="define:episode" value="${esc(d.episode)}" placeholder="예: 앉은 뒤 5초 안에 다시 일어나면 이어진 1회로 셈"></label>
+    <p class="hint">해당하는 예와 해당하지 않는 예는 처음에 1~2개만 적고, 관찰하면서 보충하세요.</p>
+    <div class="two">
+      <label class="field"><span>해당하는 예</span><textarea id="def-ex" data-f="define:examples" rows="2" placeholder="한 줄에 하나씩">${esc(d.examples)}</textarea></label>
+      <label class="field"><span>해당하지 않는 예</span><textarea id="def-nonex" data-f="define:nonExamples" rows="2" placeholder="예: 교사의 지시로 칠판 앞에 나옴">${esc(d.nonExamples)}</textarea></label>
+    </div>
   </section>
   <section class="card">
-    <div class="sec-head"><h2 class="h3">관찰 계획</h2></div>
-    <p class="hint">언제, 얼마나, 누가, 무엇으로 관찰할지 정합니다.</p>
-    <div class="two">
-      <label class="field"><span>관찰 시간·장면</span><input id="def-plan-when" data-f="define:planWhen" value="${esc(d.planWhen)}" placeholder="예: 월·수·금 3교시 수학 시간"></label>
-      <label class="field"><span>1회 관찰 길이</span><input id="def-plan-length" data-f="define:planLength" value="${esc(d.planLength)}" placeholder="예: 40분 (수업 시작부터 끝까지)"></label>
-    </div>
-    <div class="two">
-      <label class="field"><span>관찰 기간·횟수</span><input id="def-plan-period" data-f="define:planPeriod" value="${esc(d.planPeriod)}" placeholder="예: 2주 동안 6회 이상"></label>
-      <label class="field"><span>관찰자</span><input id="def-plan-observer" data-f="define:planObserver" value="${esc(d.planObserver)}" placeholder="예: 담임교사, 특수교사"></label>
-    </div>
-    <label class="field"><span>기록 방법·도구</span><input id="def-plan-tools" data-f="define:planTools" value="${esc(d.planTools)}" placeholder="예: 빈도는 계수기, 지속시간은 초시계 · ABC 관찰지 함께 작성"></label>
-    <label class="field"><span>관찰자 간 일치도 확인</span><input id="def-plan-ioa" data-f="define:planIoa" value="${esc(d.planIoa)}" placeholder="예: 관찰 3회 중 1회는 두 사람이 따로 기록해 비교 (80% 이상)"></label>
+    <h2 class="h3">정의의 근거</h2>
+    <fieldset class="field"><legend>정의의 출처 <small>지금 정의는 무엇을 보고 썼나요</small></legend><div class="chips">${DEF_SOURCES.map(x=>chip('defsrc',x,d.sources.includes(x),'b')).join('')}</div></fieldset>
+    <label class="field"><span>출처 메모</span><input id="def-srcnote" data-f="define:sourceNote" value="${esc(d.sourceNote)}" placeholder="예: 11/3 담임교사와 짧은 대화, 의뢰서 내용"></label>
+    <fieldset class="field"><legend>이 행동을 표적으로 고른 이유</legend><div class="chips">${DEF_PRIORITY.map(x=>chip('defpri',x,d.priority.includes(x),'b')).join('')}</div></fieldset>
+    <label class="field"><span>이유 메모</span><input id="def-prinote" data-f="define:priorityNote" value="${esc(d.priorityNote)}" placeholder="예: 수업마다 여러 번 나타나 본인 학습 시간이 줄어듦"></label>
   </section>
   <section class="card">
-    <div class="sec-head"><h2 class="h3">정의 점검</h2><span class="meta" id="check-count">${d.checks.length}/${DEF_CHECKS.length} 확인</span></div>
-    <ul class="checklist">${DEF_CHECKS.map((c,i)=>`<li><label class="check"><input type="checkbox" id="defchk-${i}" data-f="defcheck:${i}" ${d.checks.includes(i)?'checked':''}> <span>${esc(c)}</span></label></li>`).join('')}</ul>
+    <h2 class="h3">관찰 준비</h2>
+    <label class="field"><span>관찰·면담에서 확인할 질문</span><textarea id="def-questions" data-f="define:questions" rows="3" placeholder="한 줄에 하나씩. 예: 1m 기준이 이 교실 배치에 맞나?&#10;허락받은 이탈은 어떻게 볼까?">${esc(d.questions)}</textarea></label>
+    <fieldset class="field"><legend>관찰 계획 (예정)</legend>
+      <div class="three">
+        <label class="field"><span>언제 · 어떤 수업</span><input id="def-pwhen" data-f="define:planWhen" value="${esc(d.planWhen)}" placeholder="예: 월·수 3교시 국어"></label>
+        <label class="field"><span>1회 관찰 길이</span><input id="def-plen" data-f="define:planLength" value="${esc(d.planLength)}" placeholder="예: 40분 (수업 시작부터 끝까지)"></label>
+        <label class="field"><span>관찰 기간·횟수</span><input id="def-pperiod" data-f="define:planPeriod" value="${esc(d.planPeriod)}" placeholder="예: 2주 동안 6회 이상"></label>
+        <label class="field"><span>누가 기록</span><input id="def-pwho" data-f="define:planObserver" value="${esc(d.planObserver)}" placeholder="예: 담임교사, 특수교사"></label>
+        <label class="field"><span>첫 관찰 예정일</span><input type="date" id="def-pdate" data-f="define:planDate" value="${esc(d.planDate)}"></label>
+      </div>
+      <label class="field"><span>기록 방법·도구</span><input id="def-ptools" data-f="define:planTools" value="${esc(d.planTools)}" placeholder="예: 빈도는 계수기 · ABC 관찰지 함께 작성"></label>
+    </fieldset>
+    <fieldset class="field"><legend>측정 방법 (예정 1개)</legend><div class="chips">${MEASURES.map(m=>chip('measure',m,d.measure===m,'b')).join('')}</div></fieldset>
+    <p class="measure-tip" id="measure-tip">${measureTip(d)}</p>
+    <div class="two">
+      <label class="field"><span>측정 단위</span><input id="def-unit" data-f="define:unit" value="${esc(d.unit)}" placeholder="${esc(g?g.unit:'측정 방법을 먼저 고르세요')}"></label>
+      <label class="field"><span>이 방법을 고른 이유</span><input id="def-mwhy" data-f="define:measureWhy" value="${esc(d.measureWhy)}" placeholder="예: 한 번 일어나면 짧게 끝나서 횟수로 셀 수 있음"></label>
+    </div>
+    <label class="check"><input type="checkbox" id="def-mfixed" data-f="defbool:measureFixed" ${d.measureFixed?'checked':''}> <span>관찰해 보고 이 측정 방법으로 확정했다</span></label>
+    <fieldset class="field"><legend>관찰자 간 일치도 (IOA)</legend>
+      <label class="field"><span>확인 계획</span><input id="def-plan-ioa" data-f="define:planIoa" value="${esc(d.planIoa)}" placeholder="예: 관찰 3회 중 1회는 두 사람이 따로 기록해 비교 (80% 이상)"></label>
+      <label class="check"><input type="checkbox" id="def-ioa" data-f="defbool:ioaDone" ${d.ioaDone?'checked':''}> <span>다른 관찰자와 같은 시간을 함께 기록해 비교해 봤다</span></label>
+      <label class="field"><span>일치도 메모</span><input id="def-ioanote" data-f="define:ioaNote" value="${esc(d.ioaNote)}" placeholder="예: 11/14 국어, 보조교사와 함께 기록, 일치도 90%"></label>
+    </fieldset>
+  </section>
+  <details class="card later">
+    <summary>관찰한 뒤에 채울 내용<small>주로 나타나는 상황</small></summary>
+    <p class="hint">관찰 전에는 추측일 뿐입니다. ABC 관찰이나 면담을 한 뒤에 채우세요.</p>
+    <label class="field"><span>주로 나타나는 상황</span><input id="def-setting" data-f="define:setting" value="${esc(d.setting)}" placeholder="예: 국어·수학 시간, 학습지 활동"></label>
+  </details>
+  <section class="card">
+    <div class="sec-head"><h2 class="h3">정의 점검</h2><span class="meta" id="check-count">${d.checks.length}/${DEF_CHECKS.length} 확인${nw?` · 경고 ${nw}`:''}</span></div>
+    <ul class="checklist">${DEF_CHECKS.map((c,i)=>`<li><label class="check"><input type="checkbox" id="defchk-${i}" data-f="defcheck:${i}" ${d.checks.includes(i)?'checked':''}> <span>${esc(c)}<span class="def-warn" id="defwarn-${i}">${w[i]?'⚠ '+esc(w[i]):''}</span></span></label></li>`).join('')}</ul>
+  </section>
+  <section class="card">
+    <div class="sec-head"><h2 class="h3">수정 기록</h2><button type="button" class="btn small" data-act="def-revlog">오늘 날짜로 한 줄 추가</button></div>
+    <label class="field"><span>무엇을 왜 고쳤나</span><textarea id="def-revlog" data-f="define:revLog" rows="3" placeholder="예: 11/12 1차 관찰 후 — '1m 이상'을 '자기 모둠 구역 밖'으로 바꿈 (교실이 좁아 1m를 재기 어려움)">${esc(d.revLog)}</textarea></label>
   </section>`;
 }
 
@@ -1637,7 +1711,7 @@ function exampleProject(){
   const p=newProject('예시-01','예시 자료입니다. 둘러본 뒤 삭제하세요.');p.example=true;
   const base=new Date();base.setDate(base.getDate()-2);
   const at=(off,h,m,s)=>{const d=new Date(base);d.setDate(d.getDate()+off);d.setHours(h,m,s||0,0);return d.toISOString();};
-  Object.assign(p.procs.define.data,{name:'자리 이탈',definition:'수업 중 교사의 허락 없이 엉덩이가 의자에서 완전히 떨어져 자리에서 1m 이상 벗어나는 행동',start:'엉덩이가 의자에서 완전히 떨어지는 순간',end:'다시 의자에 앉는 순간',examples:'학습지를 받자 일어나 창가로 걸어감\n활동 중 친구 자리로 가서 서 있음',nonExamples:'교사의 지시로 칠판 앞에 나옴\n의자에 앉은 채 몸을 뒤로 돌림',measures:['빈도','지속시간'],setting:'국어·수학 시간, 학습지 활동',boundary:'엉덩이는 떨어졌지만 1m 안에서 바로 앉음 → 세지 않음\n허락을 받고 일어났지만 허락한 곳이 아닌 곳으로 감 → 셈\n떨어진 물건을 줍느라 잠깐 일어남 → 세지 않음',episode:'앉은 뒤 5초 안에 다시 일어나면 이어진 1회로 셈',planWhen:'월·수·금 국어·수학 시간',planLength:'40분 (수업 시작부터 끝까지)',planPeriod:'2주 동안 6회 이상',planObserver:'담임교사, 특수교사',planTools:'빈도는 계수기, 지속시간은 초시계 · ABC 관찰지 함께 작성',planIoa:'관찰 3회 중 1회는 두 사람이 따로 기록해 비교 (80% 이상)',checks:[0,1,2,3,4]});
+  Object.assign(p.procs.define.data,{name:'자리 이탈',definition:'수업 중 교사의 허락 없이 엉덩이가 의자에서 완전히 떨어져 자리에서 1m 이상 벗어나는 행동',start:'엉덩이가 의자에서 완전히 떨어지는 순간',end:'다시 의자에 앉는 순간',examples:'학습지를 받자 일어나 창가로 걸어감\n활동 중 친구 자리로 가서 서 있음',nonExamples:'교사의 지시로 칠판 앞에 나옴\n의자에 앉은 채 몸을 뒤로 돌림',measures:['빈도','지속시간'],setting:'국어·수학 시간, 학습지 활동',checks:[0,1,2,3,4],stage:'관찰 후 수정',sources:['담임교사 의견','짧게 본 것'],sourceNote:'11/2 담임교사 면담, 국어 시간 10분 관찰',priority:['본인 학습 방해','자주 나타남'],priorityNote:'수업마다 여러 번 나타나 학습지를 끝내지 못함',boundary:'엉덩이만 들썩이고 바로 앉음 → 세지 않음\n의자를 끌고 함께 움직임 → 셈\n허락받고 나갔다가 돌아오지 않음 → 허락 범위를 넘은 때부터 셈',questions:'허락받은 이탈(화장실 등)은 어떻게 볼까?\n쉬는 시간 직전 정리 시간도 포함할까?',episode:'앉은 뒤 5초 안에 다시 일어나면 이어진 1회로 셈',planWhen:'월·수·금 국어·수학 시간',planLength:'40분 (수업 시작부터 끝까지)',planPeriod:'2주 동안 6회 이상',planObserver:'담임교사, 특수교사',planTools:'빈도는 계수기 · ABC 관찰지 함께 작성',planIoa:'관찰 3회 중 1회는 두 사람이 따로 기록해 비교 (80% 이상)',measure:'빈도',unit:'회/회기(40분)',measureWhy:'한 번 일어나면 짧게 끝나서 횟수로 셀 수 있음',revLog:'11/2 면담 후 — 허락받은 이탈은 해당하지 않는 예로 옮김'});
   Object.assign(p.procs.define,{status:'done',completedAt:at(0,9,0),updatedAt:at(0,9,0)});
   const vals=[[2,1,2,1,1],[3,3,2,3,2],[0,1,0,0,0],['0','0','X','0','0'],[1,0,1,1,0]];
   const ratings={};vals.forEach((arr,i)=>arr.forEach((v,k)=>{ratings[i+1+k*5]=String(v);}));
@@ -1679,8 +1753,8 @@ const actions={
   'undone':()=>setDone(curProject(),ui.proc,false),
   'chip':el=>{
     const p=curProject();const g=el.dataset.g,v=el.dataset.v;
-    const multi={measure:()=>[p.procs.define.data.measures,'define'],func:()=>[p.procs.hypo.data.funcs,'hypo']};
-    const single={conf:()=>[p.procs.hypo.data,'confidence','hypo']};
+    const multi={defsrc:()=>[p.procs.define.data.sources,'define'],defpri:()=>[p.procs.define.data.priority,'define'],func:()=>[p.procs.hypo.data.funcs,'hypo']};
+    const single={conf:()=>[p.procs.hypo.data,'confidence','hypo'],measure:()=>[p.procs.define.data,'measure','define'],defstage:()=>[p.procs.define.data,'stage','define']};
     if(multi[g]){
       const [arr,key]=multi[g]();toggleIn(arr,v);
       const on=arr.includes(v);el.classList.toggle('on',on);el.setAttribute('aria-pressed',String(on));
@@ -1690,7 +1764,15 @@ const actions={
       const [obj,field,key]=single[g]();obj[field]=obj[field]===v?'':v;
       $$(`[data-act="chip"][data-g="${g}"]`).forEach(b=>{const on=b.dataset.v===obj[field];b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));});
       touch(p,key);
+      if(key==='define')refreshDefine(p);
     }
+  },
+  'def-revlog':()=>{
+    const p=curProject();const d=p.procs.define.data;const t=new Date();
+    const line=`${t.getMonth()+1}/${t.getDate()} `;
+    d.revLog=d.revLog&&!d.revLog.endsWith('\n')?d.revLog+'\n'+line:(d.revLog||'')+line;
+    touch(p,'define');
+    const el=$('#def-revlog');if(el){el.value=d.revLog;el.focus();el.setSelectionRange(el.value.length,el.value.length);}
   },
   'qadd':()=>{
     const p=curProject();const q=p.procs.qabf.data;
@@ -1790,11 +1872,13 @@ function onField(el){
       if(name==='code'){const t=$('#proj-title');if(t)t.textContent=val||'(코드 없음)';}
       break;
     case 'define':
-      p.procs.define.data[name]=val;touch(p,'define');break;
+      p.procs.define.data[name]=val;touch(p,'define');refreshDefine(p);break;
+    case 'defbool':
+      p.procs.define.data[name]=el.checked;touch(p,'define');break;
     case 'defcheck':{
       const n=Number(name);const arr=p.procs.define.data.checks;const has=arr.includes(n);
       if(el.checked&&!has)arr.push(n);if(!el.checked&&has)arr.splice(arr.indexOf(n),1);
-      touch(p,'define');const c=$('#check-count');if(c)c.textContent=`${arr.length}/${DEF_CHECKS.length} 확인`;break;}
+      touch(p,'define');refreshDefine(p);break;}
     case 'qform':{
       const f=activeForm(p);if(!f)return;f[name]=val;f.updatedAt=nowISO();touch(p,'qabf');
       if(name==='rater'||name==='role'||name==='date'){const tab=$(`#q-tabs [data-id="${f.id}"]`);if(tab)tab.innerHTML=`${esc(f.rater||'응답자 미입력')}<small>${esc([f.role,f.date?f.date.slice(5).replace('-','/'):''].filter(Boolean).join(' · ')||' ')}</small>`;}
