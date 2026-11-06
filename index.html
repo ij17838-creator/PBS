@@ -190,6 +190,32 @@ details.card.later summary small{font-weight:400;color:var(--muted);margin-left:
 .r-grid.score{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
 .r-grid.score .wide2{grid-column:span 2}
 .r-x{display:flex;align-items:flex-end;justify-content:flex-end;align-self:end;min-height:44px}
+.bl-measure{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0}
+.bl-val-in{display:flex;gap:6px;align-items:center}
+.bl-val-in input{flex:1 1 60px;min-width:0}
+.bl-val-in .btn{flex-shrink:0;min-width:44px;padding:0 10px}
+.bl-chart{width:100%;height:auto;display:block;background:var(--surface-2);border-radius:10px}
+.bl-grid{stroke:var(--line);stroke-width:1}
+.bl-tick{fill:var(--muted);font-size:11px;font-family:var(--font-body)}
+.bl-lab{fill:var(--muted);font-size:11px;font-weight:600;font-family:var(--font-body)}
+.bl-band{fill:var(--accent-soft);opacity:.7}
+.bl-mean{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:6 4}
+.bl-goal{stroke:var(--ink);stroke-width:1.5;stroke-dasharray:2 4}
+.bl-phase{stroke:var(--line-strong);stroke-width:2;stroke-dasharray:5 3}
+.bl-line{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round}
+.bl-dot{fill:var(--accent);stroke:var(--surface-2);stroke-width:2}
+.bl-dot.b{fill:var(--surface-2);stroke:var(--accent);stroke-width:2.5}
+.bl-hit{fill:transparent}
+.bl-pt:hover .bl-dot{r:6}
+.bl-stats{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.88rem;margin-top:10px}
+.bl-stats b{font-family:var(--font-mono)}
+.bl-judge{margin:10px 0 0;padding:10px 12px;border-radius:10px;font-size:.9rem;background:var(--sunk)}
+.bl-judge.pill-warn{background:var(--warn-soft);color:var(--warn)}
+.bl-judge.pill-ok{background:var(--ok-soft);color:var(--ok)}
+.bl-cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 16px;margin:0}
+.bl-cmp div{background:var(--surface-2);border-radius:10px;padding:10px 12px}
+.bl-cmp dt{font-size:.8rem;color:var(--muted)}
+.bl-cmp dd{margin:0;font-weight:600}
 .r-file{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--surface-2)}
 .r-thumb{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:var(--sunk)}
 .r-doc{width:64px;height:64px;display:grid;place-items:center;border-radius:8px;background:var(--sunk);font-family:var(--font-mono);font-weight:600;font-size:.8rem;color:var(--muted)}
@@ -502,13 +528,14 @@ function toggleIn(arr,v){const i=arr.indexOf(v);if(i>=0)arr.splice(i,1);else arr
 /* ---------- constants ---------- */
 const PROCS=[
   {key:'define',no:1,title:'표적행동 정의',desc:'관찰·측정 가능한 조작적 정의',lede:'다른 관찰자가 읽어도 같은 행동을 같은 기준으로 셀 수 있게 정의합니다. 여기서 정한 행동 이름과 정의는 다른 절차 화면 위쪽에 자동으로 표시됩니다.'},
-  {key:'qabf',no:2,title:'QABF',desc:'행동 기능 질문지 (간접 평가)',lede:'교사·보호자 등 응답자마다 응답지를 하나씩 만듭니다. 25문항에 0~3점 또는 X(해당 없음)로 답하면 5개 하위척도 점수가 자동으로 계산됩니다.'},
-  {key:'rating',no:3,title:'행동평정척도',desc:'행동 심각도와 기초선',lede:'사용한 척도의 종류, 응답자, 하위영역별 점수를 기록하고 표적행동과 연결해 해석합니다. 사후 평가 때 다시 실시하면 중재 전후를 비교할 수 있습니다.'},
-  {key:'abc',no:4,title:'ABC 관찰 · 일화기록',desc:'선행사건–행동–후속결과, 녹음',lede:'A-B-C 관찰지 양식에 기록합니다. 관찰을 시작하면 설정한 간격(기본 15분)마다 새 관찰지가 이어지고, 녹음은 관찰지마다 따로 저장됩니다.'},
-  {key:'hypo',no:5,title:'자료 종합 · 가설',desc:'QABF와 ABC를 비교해 가설 세우기',lede:'QABF와 ABC 관찰 결과를 나란히 보고 행동의 기능에 대한 가설 문장을 씁니다. 아직 없는 자료는 \'아직 없음\'으로 표시됩니다.'},
-  {key:'plan',no:6,title:'중재 계획',desc:'선행사건·대체행동·후속결과',basic:true,lede:'가설에 맞춰 중재 계획을 적습니다. 전용 입력 화면은 다음 버전에서 추가됩니다.'},
-  {key:'intervene',no:7,title:'중재 실행 기록',desc:'기초선과 같은 방법으로 측정',basic:true,lede:'중재를 실행하면서 기초선과 같은 방법으로 자료를 모읍니다. 그래프가 있는 전용 화면은 다음 버전에서 추가됩니다.'},
-  {key:'evaluate',no:8,title:'평가 · 수정',desc:'변화 확인, 유지·수정·중단 결정',basic:true,lede:'기초선과 비교해 변화를 확인하고 다음 결정을 기록합니다. 전용 입력 화면은 다음 버전에서 추가됩니다.'}
+  {key:'baseline',no:2,title:'기초선 측정',desc:'회기별 기록·그래프, 안정성 확인',lede:'중재 전, 정의에서 정한 측정 방법으로 회기마다 값을 적습니다. 그래프와 안정성 안내를 보고 기초선을 확정하면 중재 실행 기록·평가에서 그대로 비교합니다.'},
+  {key:'qabf',no:3,title:'QABF',desc:'행동 기능 질문지 (간접 평가)',lede:'교사·보호자 등 응답자마다 응답지를 하나씩 만듭니다. 25문항에 0~3점 또는 X(해당 없음)로 답하면 5개 하위척도 점수가 자동으로 계산됩니다.'},
+  {key:'rating',no:4,title:'행동평정척도',desc:'행동 심각도와 기초선',lede:'사용한 척도의 종류, 응답자, 하위영역별 점수를 기록하고 표적행동과 연결해 해석합니다. 사후 평가 때 다시 실시하면 중재 전후를 비교할 수 있습니다.'},
+  {key:'abc',no:5,title:'ABC 관찰 · 일화기록',desc:'선행사건–행동–후속결과, 녹음',lede:'A-B-C 관찰지 양식에 기록합니다. 관찰을 시작하면 설정한 간격(기본 15분)마다 새 관찰지가 이어지고, 녹음은 관찰지마다 따로 저장됩니다.'},
+  {key:'hypo',no:6,title:'자료 종합 · 가설',desc:'QABF와 ABC를 비교해 가설 세우기',lede:'QABF와 ABC 관찰 결과를 나란히 보고 행동의 기능에 대한 가설 문장을 씁니다. 아직 없는 자료는 \'아직 없음\'으로 표시됩니다.'},
+  {key:'plan',no:7,title:'중재 계획',desc:'선행사건·대체행동·후속결과',basic:true,lede:'가설에 맞춰 중재 계획을 적습니다. 전용 입력 화면은 다음 버전에서 추가됩니다.'},
+  {key:'intervene',no:8,title:'중재 실행 기록',desc:'기초선과 같은 방법으로 측정',lede:'중재를 실행하면서 기초선과 같은 방법으로 회기마다 값을 적습니다. 그래프에 기초선(A)과 중재(B)가 이어서 표시됩니다.'},
+  {key:'evaluate',no:9,title:'평가 · 수정',desc:'변화 확인, 유지·수정·중단 결정',basic:true,lede:'기초선과 중재기 기록을 자동으로 비교해 보여 줍니다. 변화를 확인하고 다음 결정을 기록하세요.'}
 ];
 const PROC=Object.fromEntries(PROCS.map(p=>[p.key,p]));
 const MEMO_FIELDS={
@@ -575,6 +602,8 @@ function defaultData(key){
     case 'hypo':return {when:'',behavior:'',funcs:[],funcOther:'',evidence:'',confidence:'',memo:'',setting:'',cons:'',verify:[],verifyNote:'',more:[]};
     /* scale·when·scores·memo는 예전 '기본 메모' 칸. when·scores는 예전에 적은 내용으로 보여 주고, memo는 주의점 칸으로 옮긴다 */
     case 'rating':return {scale:'',when:'',scores:'',memo:'',type:'',purpose:'',raters:[],rows:[],target:'',funcs:[],funcNote:'',diff:'',cautions:'',retestDate:'',retestNote:'',files:[]};
+    case 'baseline':return {sessions:[],dir:'',goal:'',goalNote:'',fixed:false,fixedAt:'',fixedN:'',fixedMean:'',note:''};
+    case 'intervene':return {log:'',fidelity:'',sessions:[]};
     default:{const o={};(MEMO_FIELDS[key]||[]).forEach(f=>o[f[0]]='');return o;}
   }
 }
@@ -590,6 +619,8 @@ function ensureProject(p){
   if(!dd.measure&&dd.measures.length)dd.measure=dd.measures[0];/* 예전 '측정 방법'(여러 개)은 첫 번째를 예정 측정 방법으로 */
   const hd=p.procs.hypo.data;
   if(!Array.isArray(hd.funcs))hd.funcs=[];if(!Array.isArray(hd.verify))hd.verify=[];if(!Array.isArray(hd.more))hd.more=[];hd.more.forEach(hyFix);
+  const bd=p.procs.baseline.data,ivd=p.procs.intervene.data;
+  [bd,ivd].forEach(o=>{if(!Array.isArray(o.sessions))o.sessions=[];o.sessions.forEach(blFix);});
   const rd=p.procs.rating.data;
   ['raters','rows','funcs','files'].forEach(k=>{if(!Array.isArray(rd[k]))rd[k]=[];});
   if(rd.memo&&rd.memo.trim()){rd.cautions=rd.cautions&&rd.cautions.trim()?rd.cautions+'\n'+rd.memo:rd.memo;rd.memo='';}/* 예전 '메모'는 주의점·메모 칸으로 합친다 */
@@ -907,7 +938,7 @@ function projCard(p){
     <header class="proj-top"><h3 class="mono">${esc(p.code||'(코드 없음)')}</h3>${p.example?'<span class="pill muted">예시</span>':''}${p.shared?'<span class="pill">공유</span>':''}</header>
     <p class="proj-target">${name?'표적행동 · '+esc(name):'<span class="muted">표적행동 미정</span>'}</p>
     ${p.memo?`<p class="proj-memo">${esc(p.memo)}</p>`:''}
-    <div class="dots" role="img" aria-label="8개 절차 중 ${done}개 완료">${PROCS.map(x=>`<span class="dot s-${p.procs[x.key].status}" title="${esc(x.title)}: ${statusInfo(p.procs[x.key]).label}"></span>`).join('')}</div>
+    <div class="dots" role="img" aria-label="${PROCS.length}개 절차 중 ${done}개 완료">${PROCS.map(x=>`<span class="dot s-${p.procs[x.key].status}" title="${esc(x.title)}: ${statusInfo(p.procs[x.key]).label}"></span>`).join('')}</div>
     <p class="meta">완료 ${done}/8 · 최근 수정 ${p.updatedAt?fmtShort(p.updatedAt):'-'}<br>마지막 백업 ${p.lastBackupAt?relDays(p.lastBackupAt):'아직 없음'}</p>
     <div class="card-actions">
       <button type="button" class="btn primary small" data-act="open-proj" data-id="${p.id}">열기</button>
@@ -965,6 +996,9 @@ function viewProc(p,key){
     case 'abc':body=viewAbc(p);break;
     case 'hypo':body=viewHypo(p);break;
     case 'rating':body=viewRating(p);break;
+    case 'baseline':body=viewBaseline(p);break;
+    case 'intervene':body=viewIntervene(p);break;
+    case 'evaluate':body=viewEvaluate(p);break;
     default:body=viewMemo(p,key);
   }
   return `
@@ -1454,6 +1488,189 @@ function hypoSentence(p,h){
   }
   const miss=[];if(!b)miss.push('표적행동 이름');if(!lead)miss.push('상황');if(!c)miss.push('결과');if(!fs.length&&!fo)miss.push('추정 기능');
   return out.join(' ')+(miss.length?`<small class="hy-miss">더 채울 칸: ${miss.join(', ')}</small>`:'');
+}
+
+/* 2. baseline (기초선 측정)
+   회기 기록은 id 목록: 기초선 = baseline.data.sessions, 중재 = intervene.data.sessions (항목: date·time·mins·setting·value·observer·note).
+   입력칸 data-f: 기초선 칸 'base:칸', 회기 'ses:bl|iv:id:칸'. 측정 방법·단위는 표적행동 정의에서 가져온다. */
+const BL_MIN=3,BL_GOOD=5,BL_BAND=0.25;/* 최소·권장 회기 수, 안정 범위(중앙값 ±25%) */
+const BL_DIRS=['줄이기','늘리기'];
+function blNew(prev){return {id:uid('bs'),date:ymdLocal(),time:'',mins:prev?prev.mins:'',setting:prev?prev.setting:'',value:'',observer:prev?prev.observer:'',note:''};}
+function blFix(s){const d=blNew();for(const k in d)if(k!=='id'&&s[k]==null)s[k]=d[k];return s;}
+function sesList(p,ph){return ph==='iv'?p.procs.intervene.data.sessions:p.procs.baseline.data.sessions;}
+function sesProc(ph){return ph==='iv'?'intervene':'baseline';}
+function blNum(v){const s=String(v==null?'':v).trim().replace(',','.');if(!s)return null;const n=Number(s);return isFinite(n)?n:null;}
+/* 날짜·시간 순(같으면 입력 순) */
+function blSorted(list){return list.map((s,i)=>[s,i]).sort((a,b)=>(a[0].date||'9999').localeCompare(b[0].date||'9999')||(a[0].time||'').localeCompare(b[0].time||'')||a[1]-b[1]).map(x=>x[0]);}
+function blVals(list){return blSorted(list).map(s=>blNum(s.value)).filter(v=>v!=null);}
+function rnd(n){return Math.round(n*10)/10;}
+function blStats(vals){
+  const n=vals.length;if(!n)return {n:0};
+  const mean=vals.reduce((a,b)=>a+b,0)/n;const so=vals.slice().sort((a,b)=>a-b);
+  const median=n%2?so[(n-1)/2]:(so[n/2-1]+so[n/2])/2;
+  const within=median?vals.filter(v=>Math.abs(v-median)<=median*BL_BAND).length/n:vals.filter(v=>v===0).length/n;
+  let trend='';
+  if(n>=4){const h=Math.floor(n/2);const m1=vals.slice(0,h).reduce((a,b)=>a+b,0)/h;const m2=vals.slice(n-h).reduce((a,b)=>a+b,0)/h;
+    const ref=Math.max(median,mean,1);const rel=(m2-m1)/ref;trend=rel>=BL_BAND?'up':rel<=-BL_BAND?'down':'flat';}
+  return {n,mean,median,min:so[0],max:so[n-1],within,trend};
+}
+function blDir(p){return p.procs.baseline.data.dir||'줄이기';}
+/* 기초선 판단: 회기 수 → 추세 → 변동 순으로 하나만 크게 알린다 */
+function blJudge(p){
+  const st=blStats(blVals(p.procs.baseline.data.sessions));const dec=blDir(p)!=='늘리기';
+  if(st.n<BL_MIN)return {cls:'muted',msg:`값이 있는 회기가 ${st.n}개입니다. 기초선은 최소 ${BL_MIN}회기, 가능하면 ${BL_GOOD}회기 이상 측정합니다.`};
+  const better=st.trend===(dec?'down':'up'),worse=st.trend===(dec?'up':'down');
+  if(better)return {cls:'warn',msg:'중재 없이도 나아지는 추세가 보입니다. 추세가 멈출 때까지 기초선을 더 측정하세요.'};
+  if(st.within<0.8)return {cls:'warn',msg:`변동이 큽니다(중앙값 ±25% 안에 ${Math.round(st.within*100)}%). 회기를 더 모으거나, 값이 튄 날의 상황 차이를 메모로 확인하세요.`};
+  if(worse)return {cls:'ok',msg:'점점 나빠지는 추세입니다. 바로 중재를 시작해도 되는 근거가 됩니다.'};
+  if(st.n<BL_GOOD)return {cls:'muted',msg:`지금까지는 안정적입니다. ${BL_GOOD}회기까지 채우면 더 믿을 만합니다.`};
+  return {cls:'ok',msg:'값이 안정적입니다. 기초선을 확정하고 중재를 시작해도 됩니다.'};
+}
+const TREND_TXT={up:'증가',down:'감소',flat:'뚜렷하지 않음','':'4회기부터 판단'};
+function blStatPills(st,unit){
+  if(!st.n)return '';
+  const u=unit?` <small>${esc(unit)}</small>`:'';
+  return `<div class="bl-stats"><span><b>${st.n}</b>회기</span><span>평균 <b>${rnd(st.mean)}</b>${u}</span><span>중앙값 <b>${rnd(st.median)}</b></span><span>범위 <b>${rnd(st.min)}–${rnd(st.max)}</b></span><span>안정 범위 안 <b>${Math.round(st.within*100)}%</b></span><span>추세 <b>${TREND_TXT[st.trend]}</b></span></div>`;
+}
+/* 회기별 꺾은선 그래프(SVG). 기초선(A)과 중재(B)는 선을 잇지 않고 단계 구분선으로 나눈다 */
+function blChart(p,withB){
+  const unit=p.procs.define.data.unit||'';const bd=p.procs.baseline.data;
+  const A=blSorted(bd.sessions).filter(s=>blNum(s.value)!=null);
+  const B=withB?blSorted(p.procs.intervene.data.sessions).filter(s=>blNum(s.value)!=null):[];
+  if(!A.length&&!B.length)return '<p class="rows-empty">값을 적은 회기가 생기면 그래프가 나타납니다.</p>';
+  const all=A.concat(B);const N=all.length;
+  const st=blStats(A.map(s=>blNum(s.value)));const goal=blNum(bd.goal);
+  let top=Math.max(1,...all.map(s=>blNum(s.value)),goal||0);
+  const step=top<=5?1:top<=10?2:top<=25?5:top<=50?10:Math.pow(10,Math.floor(Math.log10(top)))*(top/Math.pow(10,Math.floor(Math.log10(top)))>5?2:1);
+  top=Math.ceil(top/step)*step;
+  const W=640,H=250,L=44,R=16,T=26,Bm=34;const pw=W-L-R,ph=H-T-Bm;
+  const x=i=>L+(N===1?pw/2:pw*(i+0.5)/N),y=v=>T+ph-(v/top)*ph;
+  let g='';
+  for(let v=0;v<=top+1e-9;v+=step)g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" class="bl-grid"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" class="bl-tick">${rnd(v)}</text>`;
+  const ev=Math.max(1,Math.ceil(N/12));
+  all.forEach((s,i)=>{if(i%ev===0||i===N-1)g+=`<text x="${x(i)}" y="${H-Bm+18}" text-anchor="middle" class="bl-tick">${i+1}</text>`;});
+  g+=`<text x="${W-R}" y="${H-4}" text-anchor="end" class="bl-tick">회기</text>`;
+  if(unit)g+=`<text x="${L}" y="14" class="bl-tick">${esc(unit)}</text>`;
+  const ax=A.length?x(A.length-1):L;
+  if(st.n&&!withB&&st.median>0)g+=`<rect x="${L}" width="${pw}" y="${y(Math.min(top,st.median*(1+BL_BAND)))}" height="${Math.max(0,y(Math.max(0,st.median*(1-BL_BAND)))-y(Math.min(top,st.median*(1+BL_BAND))))}" class="bl-band"><title>안정 범위: 중앙값 ±25%</title></rect>`;
+  if(st.n){const xe=withB&&B.length?W-R:(A.length?Math.max(ax+12,W-R):W-R);g+=`<line x1="${L}" x2="${xe}" y1="${y(st.mean)}" y2="${y(st.mean)}" class="bl-mean"/><text x="${xe}" y="${y(st.mean)-6}" text-anchor="end" class="bl-lab">기초선 평균 ${rnd(st.mean)}</text>`;}
+  if(goal!=null){g+=`<line x1="${withB&&A.length&&B.length?(ax+x(A.length))/2:L}" x2="${W-R}" y1="${y(goal)}" y2="${y(goal)}" class="bl-goal"/><text x="${W-R}" y="${y(goal)+15}" text-anchor="end" class="bl-lab">목표 ${rnd(goal)}</text>`;}
+  if(A.length&&B.length){const px=(ax+x(A.length))/2;g+=`<line x1="${px}" x2="${px}" y1="${T-8}" y2="${T+ph}" class="bl-phase"/><text x="${px-6}" y="${T-12}" text-anchor="end" class="bl-lab">기초선(A)</text><text x="${px+6}" y="${T-12}" class="bl-lab">중재(B)</text>`;}
+  const line=(list,off,cls)=>{if(!list.length)return '';const pts=list.map((s,i)=>`${x(i+off)},${y(blNum(s.value))}`).join(' ');
+    return `<polyline points="${pts}" class="bl-line ${cls}"/>`+list.map((s,i)=>`<g class="bl-pt"><circle cx="${x(i+off)}" cy="${y(blNum(s.value))}" r="12" class="bl-hit"/><circle cx="${x(i+off)}" cy="${y(blNum(s.value))}" r="4.5" class="bl-dot ${cls}"/><title>${cls==='b'?'중재':'기초선'} ${i+off+1}회기 · ${esc((s.date||'').slice(5).replace('-','/'))}${s.setting?' · '+esc(s.setting):''}: ${rnd(blNum(s.value))}${unit?' '+esc(unit):''}</title></g>`).join('');};
+  g+=line(A,0,'a')+line(B,A.length,'b');
+  const lab=`회기별 그래프: 기초선 ${A.length}회기${st.n?` 평균 ${rnd(st.mean)}`:''}${B.length?`, 중재 ${B.length}회기`:''}${goal!=null?`, 목표 ${rnd(goal)}`:''}`;
+  return `<svg class="bl-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(lab)}">${g}</svg>`;
+}
+function sesRow(p,ph,s,i){
+  const k=`${ph}:${s.id}`;const freq=p.procs.define.data.measure==='빈도';
+  return `<div class="r-row bl-row" id="ses-${s.id}">
+    <div class="r-row-head"><b>${ph==='iv'?'중재':'기초선'} ${i+1}회기</b><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-ses:${k}">삭제</button></div>
+    <div class="r-grid score">
+      <label class="field"><span>날짜</span><input type="date" id="ses-${s.id}-date" data-f="ses:${k}:date" value="${esc(s.date)}"></label>
+      <label class="field"><span>시작 시각</span><input type="time" id="ses-${s.id}-time" data-f="ses:${k}:time" value="${esc(s.time)}"></label>
+      <label class="field"><span>관찰 시간(분)</span><input id="ses-${s.id}-mins" data-f="ses:${k}:mins" value="${esc(s.mins)}" inputmode="decimal" placeholder="예: 40"></label>
+      <label class="field bl-val"><span>측정값</span><span class="bl-val-in">${freq?`<button type="button" class="btn small" data-act="ses-inc" data-ph="${ph}" data-id="${s.id}" data-d="-1" aria-label="1 빼기">−</button>`:''}<input id="ses-${s.id}-value" data-f="ses:${k}:value" value="${esc(s.value)}" inputmode="decimal" placeholder="${esc(p.procs.define.data.unit||'숫자')}">${freq?`<button type="button" class="btn small" data-act="ses-inc" data-ph="${ph}" data-id="${s.id}" data-d="1" aria-label="1 더하기">＋1</button>`:''}</span></label>
+      <label class="field wide2"><span>상황 · 활동</span><input id="ses-${s.id}-setting" data-f="ses:${k}:setting" value="${esc(s.setting)}" placeholder="예: 국어, 개별 과제"></label>
+      <label class="field"><span>관찰자</span><input id="ses-${s.id}-observer" data-f="ses:${k}:observer" value="${esc(s.observer)}" placeholder="예: 담임"></label>
+      <label class="field wide2"><span>메모</span><input id="ses-${s.id}-note" data-f="ses:${k}:note" value="${esc(s.note)}" placeholder="예: 시험 주간, 결석 후 첫날"></label>
+    </div>
+    ${ui.confirm==='del-ses:'+k?confirmBox('이 회기 기록을 삭제합니다.','del-ses',k):''}
+  </div>`;
+}
+function sesSection(p,ph){
+  const list=blSorted(sesList(p,ph));
+  return `<div class="r-list" id="ses-list-${ph}">${list.length?list.map((s,i)=>sesRow(p,ph,s,i)).join(''):'<p class="rows-empty">아직 회기 기록이 없습니다.</p>'}</div>
+    <button type="button" class="btn small" data-act="ses-add" data-ph="${ph}">+ 회기 추가</button>`;
+}
+function measureLine(p){
+  const d=p.procs.define.data;
+  if(!d.measure)return `<div class="target-banner empty"><span>측정 방법을 아직 정하지 않았습니다. 표적행동 정의에서 예정 측정 방법과 단위를 먼저 고르세요.</span><button type="button" class="btn small" data-act="open-proc" data-key="define">표적행동 정의 열기</button></div>`;
+  const plan=[d.planWhen,d.planLength].filter(x=>String(x||'').trim()).map(esc).join(' · ');
+  return `<p class="bl-measure"><span class="pill">${esc(d.measure)}</span>${d.unit?` 단위 <b>${esc(d.unit)}</b>`:''}${plan?` <span class="muted">· 관찰 계획: ${plan}</span>`:''}${d.measureFixed?'':' <span class="pill warn">측정 방법 미확정</span>'}</p>`;
+}
+function blLive(p){
+  const bd=p.procs.baseline.data;const j=blJudge(p);const st=blStats(blVals(bd.sessions));
+  return `${blChart(p,false)}${blStatPills(st,p.procs.define.data.unit)}<p class="bl-judge pill-${j.cls}">${esc(j.msg)}</p>`;
+}
+function blFixView(p){
+  const bd=p.procs.baseline.data;const st=blStats(blVals(bd.sessions));
+  if(bd.fixed){
+    const changed=String(st.n)!==String(bd.fixedN)||String(st.n?rnd(st.mean):'')!==String(bd.fixedMean);
+    return `<p><span class="pill ok">확정</span> ${bd.fixedAt?fmtShort(bd.fixedAt)+' · ':''}${esc(bd.fixedN)}회기 · 평균 ${esc(bd.fixedMean)}</p>
+      ${changed?`<p class="hint">확정한 뒤 회기 기록이 바뀌었습니다(지금 ${st.n}회기, 평균 ${st.n?rnd(st.mean):'-'}). 중재 비교에는 지금 기록을 씁니다.</p>`:''}
+      <div class="row">${changed?'<button type="button" class="btn small primary" data-act="bl-fix">지금 기록으로 다시 확정</button>':''}<button type="button" class="btn small ghost" data-act="bl-unfix">확정 풀기</button></div>`;
+  }
+  return `<div class="row"><button type="button" class="btn primary" data-act="bl-fix"${st.n<BL_MIN?' disabled':''}>기초선 확정</button><small class="muted">${st.n<BL_MIN?`값이 있는 회기가 ${BL_MIN}개 이상이면 누를 수 있습니다.`:'확정하면 회기 수와 평균이 기록됩니다. 확정 뒤에도 고칠 수 있습니다.'}</small></div>`;
+}
+function viewBaseline(p){
+  const bd=p.procs.baseline.data;
+  return `
+  <section class="card"><h2 class="h3">측정 방법</h2>${measureLine(p)}
+    <p class="hint">기초선과 중재 내내 같은 정의·측정 방법·관찰 상황을 유지해야 비교할 수 있습니다.</p></section>
+  <section class="card"><div class="sec-head"><h2 class="h3">회기별 기록</h2><span class="meta">한 번 관찰할 때마다 한 줄</span></div>
+    ${sesSection(p,'bl')}
+  </section>
+  <section class="card"><div class="sec-head"><h2 class="h3">그래프 · 안정성</h2><span class="meta">음영: 중앙값 ±25% 안정 범위</span></div>
+    <div id="bl-live">${blLive(p)}</div>
+  </section>
+  <section class="card"><h2 class="h3">목표 기준</h2>
+    <fieldset class="field"><legend>목표 방향</legend><div class="chips">${BL_DIRS.map(v=>chip('bldir',v,bd.dir===v,'b')).join('')}</div><p class="hint">문제행동은 보통 '줄이기'입니다. 고르지 않으면 줄이기로 판단합니다.</p></fieldset>
+    <div class="two">
+      <label class="field"><span>목표 값 <small>그래프에 목표선으로 표시</small></span><span class="bl-val-in"><input id="bl-goal" data-f="base:goal" value="${esc(bd.goal)}" inputmode="decimal" placeholder="${esc(p.procs.define.data.unit||'숫자')}"><button type="button" class="btn small" data-act="bl-goal">평균 기준 제안</button></span></label>
+      <label class="field"><span>달성 기준</span><input id="bl-goalnote" data-f="base:goalNote" value="${esc(bd.goalNote)}" placeholder="예: 3회기 연속 목표 값 이하"></label>
+    </div>
+  </section>
+  <section class="card"><h2 class="h3">기초선 확정</h2>
+    <div id="bl-fix">${blFixView(p)}</div>
+    <label class="field"><span>메모</span><textarea id="bl-note" data-f="base:note" rows="3" placeholder="예: 3회기는 행사로 수업 시간이 짧았음">${esc(bd.note)}</textarea></label>
+  </section>`;
+}
+/* 기초선과 중재기 비교 */
+function blCompare(p){
+  const A=blVals(p.procs.baseline.data.sessions),B=blVals(p.procs.intervene.data.sessions);
+  const a=blStats(A),b=blStats(B);const dec=blDir(p)!=='늘리기';const goal=blNum(p.procs.baseline.data.goal);const unit=p.procs.define.data.unit||'';
+  if(!a.n||!b.n)return {html:`<p class="muted">${!a.n?'기초선 회기 기록이 아직 없습니다.':'중재 회기 기록이 아직 없습니다. 중재 실행 기록에서 회기를 추가하세요.'}</p>`,text:''};
+  const ch=a.mean?Math.round((b.mean-a.mean)/a.mean*100):null;
+  const pnd=Math.round(B.filter(v=>dec?v<a.min:v>a.max).length/B.length*100);
+  const last=B.slice(-3);const lm=last.reduce((x,y)=>x+y,0)/last.length;
+  const met=goal!=null?last.every(v=>dec?v<=goal:v>=goal):null;
+  const rows=[['기초선 평균',`${rnd(a.mean)}${unit?' '+unit:''} (${a.n}회기)`],['중재 평균',`${rnd(b.mean)}${unit?' '+unit:''} (${b.n}회기)`],
+    ['변화',ch==null?`${rnd(b.mean-a.mean)} 차이`:`${ch>0?'+':''}${ch}%`],['최근 3회기 평균',`${rnd(lm)}`],
+    ['겹치지 않는 비율(PND)',`${pnd}% — 중재 회기 중 기초선 ${dec?'최솟값보다 낮은':'최댓값보다 높은'} 회기`]];
+  if(goal!=null)rows.push(['목표',`${rnd(goal)} — 최근 ${last.length}회기 ${met?'모두 충족':'모두 충족하지는 못함'}`]);
+  const html=`<dl class="bl-cmp">${rows.map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><p class="hint">PND는 70% 이상이면 효과적, 50~70%는 의문, 50% 미만은 효과 없음으로 흔히 해석합니다.</p>`;
+  const text=`기초선 평균 ${rnd(a.mean)}(${a.n}회기) → 중재 평균 ${rnd(b.mean)}(${b.n}회기)${ch!=null?`, ${ch>0?'+':''}${ch}%`:''}. PND ${pnd}%.${goal!=null?` 목표 ${rnd(goal)}: 최근 ${last.length}회기 ${met?'모두 충족':'일부 미충족'}.`:''}`;
+  return {html,text};
+}
+function memoFields(p,key){const d=p.procs[key].data;return MEMO_FIELDS[key].map(([k,l,ph])=>`<label class="field"><span>${esc(l)}</span><textarea id="mf-${k}" data-f="mf:${k}" rows="${k==='log'?6:3}" placeholder="${esc(ph)}">${esc(d[k])}</textarea></label>`).join('');}
+function ivLive(p){const c=blCompare(p);return `${blChart(p,true)}${c.text?`<p class="bl-judge pill-muted">${esc(c.text)}</p>`:''}`;}
+function viewIntervene(p){
+  const a=blStats(blVals(p.procs.baseline.data.sessions));
+  return `
+  <section class="card"><h2 class="h3">측정 방법</h2>${measureLine(p)}
+    <p class="hint">${a.n?`기초선 ${a.n}회기 · 평균 ${rnd(a.mean)}${p.procs.baseline.data.fixed?' (확정)':' (아직 확정 전)'}. 같은 상황·같은 방법으로 측정하세요.`:'기초선 기록이 아직 없습니다. 기초선을 먼저 측정해야 중재 효과를 비교할 수 있습니다.'}</p></section>
+  <section class="card"><div class="sec-head"><h2 class="h3">중재 회기별 기록</h2><span class="meta">한 번 관찰할 때마다 한 줄</span></div>
+    ${sesSection(p,'iv')}
+  </section>
+  <section class="card"><div class="sec-head"><h2 class="h3">그래프</h2><span class="meta">기초선(A) | 중재(B)</span></div>
+    <div id="iv-live">${ivLive(p)}</div>
+  </section>
+  <section class="card">${memoFields(p,'intervene')}</section>`;
+}
+function viewEvaluate(p){
+  const c=blCompare(p);
+  return `
+  <section class="card"><div class="sec-head"><h2 class="h3">기초선 대비 변화 (자동 계산)</h2>${c.text?'<button type="button" class="btn small" data-act="ev-fill">아래 칸에 넣기</button>':''}</div>
+    ${c.html}
+    ${blChart(p,true)}
+  </section>
+  <section class="card">${memoFields(p,'evaluate')}</section>`;
+}
+function refreshBl(p){
+  const a=$('#bl-live');if(a)a.innerHTML=blLive(p);
+  const f=$('#bl-fix');if(f)f.innerHTML=blFixView(p);
+  const b=$('#iv-live');if(b)b.innerHTML=ivLive(p);
 }
 
 /* 3. rating (행동평정척도) */
@@ -2044,6 +2261,10 @@ function exampleProject(){
   A.session={id:s2,running:false,activeSheetId:A.sheets[2].id};
   Object.assign(p.procs.abc,{status:'progress',updatedAt:at(1,11,15)});
   p.updatedAt=at(1,11,15);
+  {const day=off=>{const d=new Date(base);d.setDate(d.getDate()+off);return ymdLocal(d);};
+   p.procs.baseline.data.sessions=[[-6,4],[-5,5],[-4,3],[-3,4],[-2,5]].map(([o,v])=>({id:uid('bs'),date:day(o),time:'09:00',mins:'40',setting:'국어, 개별 과제',value:String(v),observer:'담임',note:''}));
+   Object.assign(p.procs.baseline.data,{dir:'줄이기',goal:'2',goalNote:'3회기 연속 목표 값 이하'});
+   Object.assign(p.procs.baseline,{status:'progress',updatedAt:at(0,9,10)});}
   return p;
 }
 
@@ -2064,7 +2285,7 @@ const actions={
   'chip':el=>{
     const p=curProject();const g=el.dataset.g,v=el.dataset.v;
     const multi={defsrc:()=>[p.procs.define.data.sources,'define'],defpri:()=>[p.procs.define.data.priority,'define'],rfunc:()=>[p.procs.rating.data.funcs,'rating']};
-    const single={measure:()=>[p.procs.define.data,'measure','define'],defstage:()=>[p.procs.define.data,'stage','define'],rtype:()=>[p.procs.rating.data,'type','rating']};
+    const single={measure:()=>[p.procs.define.data,'measure','define'],defstage:()=>[p.procs.define.data,'stage','define'],rtype:()=>[p.procs.rating.data,'type','rating'],bldir:()=>[p.procs.baseline.data,'dir','baseline']};
     const hm=/^(func|conf|verify)(?::(.+))?$/.exec(g);
     if(hm){/* 가설 칸: func·conf·verify(가설 1) 또는 func:id 등(가설 2부터) */
       const h=hyData(p,hm[2]);if(!h)return;
@@ -2080,6 +2301,7 @@ const actions={
       $$(`[data-act="chip"][data-g="${g}"]`).forEach(b=>{const on=b.dataset.v===obj[field];b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));});
       touch(p,key);
       if(key==='define')refreshDefine(p);
+      if(key==='baseline')refreshBl(p);
       if(g==='rtype'){const t=$('#rtype-tip');if(t)t.textContent=RATING_TYPE_TIP[obj[field]]||'종류를 고르면 결과를 어떻게 읽을지 안내가 나옵니다.';}
     }
   },
@@ -2102,6 +2324,37 @@ const actions={
   'hy-other':el=>{ui.hyOther.add(el.dataset.id);const y=window.scrollY;render();window.scrollTo(0,y);const f=$(el.dataset.id==='m'?'#hy-funcOther':`#hy-${el.dataset.id}-funcOther`);if(f){try{f.focus({preventScroll:true});}catch(e){}}},
   'hy-beh-clear':()=>{const p=curProject();p.procs.hypo.data.behavior='';touch(p,'hypo');const y=window.scrollY;render();window.scrollTo(0,y);},
   'hy-lede':()=>{store.settings.hypoLedeHidden=!store.settings.hypoLedeHidden;scheduleSave();const y=window.scrollY;render();window.scrollTo(0,y);},
+  'ses-add':el=>{
+    const p=curProject();const ph=el.dataset.ph;const list=sesList(p,ph);const prev=blSorted(list).slice(-1)[0]||(ph==='iv'?blSorted(p.procs.baseline.data.sessions).slice(-1)[0]:null);
+    const s=blNew(prev);list.push(s);touch(p,sesProc(ph));saveNow();const y=window.scrollY;render();window.scrollTo(0,y);
+    const f=$(`#ses-${s.id}-value`);if(f){try{f.focus({preventScroll:true});}catch(e){}f.scrollIntoView({block:'center'});}
+  },
+  'del-ses':el=>{
+    const p=curProject();const [ph,id]=el.dataset.id.split(':');const o=ph==='iv'?p.procs.intervene.data:p.procs.baseline.data;
+    o.sessions=o.sessions.filter(x=>x.id!==id);ui.confirm=null;touch(p,sesProc(ph));saveNow();rerenderForConfirm();toast('회기 기록을 삭제했습니다');
+  },
+  'ses-inc':el=>{
+    const p=curProject();const ph=el.dataset.ph;const s=sesList(p,ph).find(x=>x.id===el.dataset.id);if(!s)return;
+    const v=Math.max(0,(blNum(s.value)||0)+Number(el.dataset.d));s.value=String(v);
+    const f=$(`#ses-${s.id}-value`);if(f)f.value=s.value;touch(p,sesProc(ph));refreshBl(p);
+  },
+  'bl-goal':()=>{
+    const p=curProject();const bd=p.procs.baseline.data;const st=blStats(blVals(bd.sessions));
+    if(!st.n){toast('기초선 값이 있어야 제안할 수 있습니다');return;}
+    const inc=blDir(p)==='늘리기';bd.goal=String(rnd(inc?st.mean*1.5:st.mean*0.5));
+    const f=$('#bl-goal');if(f)f.value=bd.goal;touch(p,'baseline');refreshBl(p);
+    toast(inc?'기초선 평균의 1.5배를 넣었습니다. 학생에 맞게 고치세요':'기초선 평균의 절반을 넣었습니다. 학생에 맞게 고치세요');
+  },
+  'bl-fix':()=>{
+    const p=curProject();const bd=p.procs.baseline.data;const st=blStats(blVals(bd.sessions));if(st.n<BL_MIN)return;
+    Object.assign(bd,{fixed:true,fixedAt:nowISO(),fixedN:String(st.n),fixedMean:String(rnd(st.mean))});touch(p,'baseline');saveNow();refreshBl(p);toast('기초선을 확정했습니다');
+  },
+  'bl-unfix':()=>{const p=curProject();p.procs.baseline.data.fixed=false;touch(p,'baseline');saveNow();refreshBl(p);toast('기초선 확정을 풀었습니다');},
+  'ev-fill':()=>{
+    const p=curProject();const t=blCompare(p).text;if(!t)return;const d=p.procs.evaluate.data;const cur=String(d.change||'');
+    if(cur.includes(t)){toast('이미 들어 있습니다');return;}
+    d.change=cur.trim()?cur.replace(/\s+$/,'')+'\n'+t:t;touch(p,'evaluate');saveNow();const y=window.scrollY;render();window.scrollTo(0,y);toast('비교 결과를 넣었습니다');
+  },
   'r-add':el=>{
     const p=curProject();const d=ratingData(p);const id=uid('r');
     if(el.dataset.kind==='rater')d.raters.push({id,name:'',role:'',date:ymdLocal(),period:''});
@@ -2270,6 +2523,13 @@ function onField(el){
       h[field]=val;touch(p,'hypo');const pv=$('#hypo-preview-'+id);if(pv)pv.innerHTML=hypoSentence(p,h);break;}
     case 'mf':
       p.procs[ui.proc].data[name]=val;touch(p,ui.proc);break;
+    case 'base':
+      p.procs.baseline.data[name]=val;touch(p,'baseline');refreshBl(p);break;
+    case 'ses':{
+      const [ph,id,field]=name.split(':');const s=sesList(p,ph).find(x=>x.id===id);if(!s)return;
+      s[field]=val;touch(p,sesProc(ph));
+      if(field==='date'||field==='time'){const y=window.scrollY;render();window.scrollTo(0,y);}else refreshBl(p);
+      break;}
     case 'rating':
       ratingData(p)[name]=val;touch(p,'rating');break;
     case 'rrow':{
@@ -2359,6 +2619,8 @@ function inkTarget(spec){
     case 'rating':return {obj:p.procs.rating.data,field:name,save:()=>touch(p,'rating')};
     case 'rrow':{const [kind,id,fd]=name.split(':');const d=p.procs.rating.data;const o=(kind==='rater'?d.raters:d.rows).find(x=>x.id===id);if(!o)return null;
       return {obj:o,field:fd,save:()=>touch(p,'rating')};}
+    case 'base':return {obj:p.procs.baseline.data,field:name,save:()=>touch(p,'baseline')};
+    case 'ses':{const [ph,id,fd]=name.split(':');const s=sesList(p,ph).find(x=>x.id===id);if(!s)return null;return {obj:s,field:fd,save:()=>touch(p,sesProc(ph))};}
     case 'mf':{const key=ui.proc;if(!p.procs[key])return null;return {obj:p.procs[key].data,field:name,save:()=>touch(p,key)};}
   }
   return null;
