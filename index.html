@@ -1355,7 +1355,7 @@ function timeOnDay(baseISO,v){
 /* 24시간 표기 시각 칸 (브라우저의 오전/오후 표시 대신). sec=true면 초까지 */
 const CLOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
 function t24(attrs,val,sec,label){
-  return `<span class="t24"><input type="tel" inputmode="numeric" autocomplete="off" class="t24-in" data-t24="${sec?'s':'m'}" ${attrs} value="${esc(val||'')}" placeholder="${sec?'--:--:--':'--:--'}" maxlength="11" aria-label="${esc(label)} (24시간)"><button type="button" class="t24-pick" data-act="t24-pick" tabindex="-1" title="시계로 고르기">${CLOCK_SVG}<span>시계</span></button><input type="time" class="t24-native"${sec?' step="1"':''} tabindex="-1" aria-hidden="true"></span>`;
+  return `<span class="t24"><input type="tel" inputmode="numeric" autocomplete="off" class="t24-in" data-t24="${sec?'s':'m'}" ${attrs} value="${esc(val||'')}" placeholder="${sec?'--:--:--':'--:--'}" maxlength="11" aria-label="${esc(label)} (24시간)"><button type="button" class="t24-pick" data-act="t24-pick" tabindex="-1" title="시간 설정">${CLOCK_SVG}<span>시간 설정</span></button><input type="time" class="t24-native"${sec?' step="1"':''} tabindex="-1" aria-hidden="true"></span>`;
 }
 /* "1625", "16:25", "162530", "4:25 오후" 등을 {h,m,s}로 */
 function parseClock24(v){
