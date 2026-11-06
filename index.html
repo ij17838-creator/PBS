@@ -1344,6 +1344,19 @@ function sheetNo(p,sh){return sessionSheets(p,sh.sessionId).indexOf(sh)+1;}
 function rangeText(sh){return `${fmtTime(sh.start)} ~ ${fmtTime(sh.endedAt||sh.end)}`;}
 function msLeft(sh){return Math.max(0,Date.parse(sh.end)-Date.now());}
 function rowFilled(r){return !!(r.time||r.a.trim()||r.b.trim()||r.c.trim());}
+/* 화면·내보내기용: 시각이 있는 행은 시각 순, 시각이 없는 행은 그 뒤에 적은 순서대로 (저장 순서는 그대로 둠) */
+function sortedRows(sh){
+  return sh.rows.map((r,i)=>[r,i]).sort((x,y)=>{const a=x[0].time,b=y[0].time;
+    if(a&&b)return Date.parse(a)-Date.parse(b)||x[1]-y[1];if(a)return -1;if(b)return 1;return x[1]-y[1];}).map(x=>x[0]);
+}
+/* 화면의 행 순서를 시각 순으로 다시 맞춘다 (입력 중인 칸·스크롤 위치는 유지) */
+function reorderRows(sh){
+  const box=$('#rows-'+sh.id);if(!box)return;
+  const want=sortedRows(sh).map(r=>'rw-'+r.id);
+  const have=Array.from(box.children).filter(x=>x.classList.contains('abc-tr')).map(x=>x.id);
+  if(want.join()===have.join())return;
+  keepView(()=>{want.forEach(id=>{const el=document.getElementById(id);if(el)box.appendChild(el);});});
+}
 function allRows(p){const out=[];abcData(p).sheets.forEach(sh=>sh.rows.forEach(r=>{if(rowFilled(r))out.push(r);}));return out;}
 function onAbcPage(p){return !!(p&&ui.view==='proc'&&ui.proc==='abc'&&ui.projectId===p.id);}
 function timeOnDay(baseISO,v){
@@ -1442,7 +1455,7 @@ function sheetView(p,sh){
         <div class="td c"><span class="abc-tag t-c">C</span><span>후속결과<small>consequences</small></span></div>
         <div class="td x"></div>
       </div>
-      <div class="abc-rows" id="rows-${id}">${sh.rows.length?sh.rows.map(r=>rowView(p,sh,r)).join(''):rowsEmpty()}</div>
+      <div class="abc-rows" id="rows-${id}">${sh.rows.length?sortedRows(sh).map(r=>rowView(p,sh,r)).join(''):rowsEmpty()}</div>
     </div>
     <div class="sheet-foot">
       <button type="button" class="btn small" data-act="row-add" data-sid="${id}">+ 빈 행 추가</button>
@@ -2207,7 +2220,7 @@ function exportCSV(p){
   sheets.forEach(sh=>{
     const base=[dayKey(sh.start),rangeText(sh),sh.child,sh.observer,sh.place,sh.situation];
     const tail=[sh.note,sh.interp,sh.audioIds.length];
-    const rs=sh.rows.filter(rowFilled);
+    const rs=sortedRows(sh).filter(rowFilled);
     if(!rs.length)rows.push(base.concat(['','','',''],tail));
     else rs.forEach((r,i)=>rows.push(base.concat([r.time?fmtTime(r.time,true):'',r.a,r.b,r.c],i===0?tail:['','',''])));
   });
@@ -2424,7 +2437,7 @@ function addRow(p,sh,time){
   sh.rows.push(r);sh.updatedAt=nowISO();touch(p,'abc');saveNow();
   if(onAbcPage(p)){
     const box=$('#rows-'+sh.id);
-    if(box){const em=box.querySelector('.rows-empty');if(em)em.remove();box.insertAdjacentHTML('beforeend',rowView(p,sh,r));}
+    if(box){const em=box.querySelector('.rows-empty');if(em)em.remove();box.insertAdjacentHTML('beforeend',rowView(p,sh,r));reorderRows(sh);}
     const h=$('#shh-'+sh.id);if(h)h.innerHTML=sheetHead(p,sh);
     refreshSummary(p);
     const row=$('#rw-'+r.id);const ta=$('#rw-'+r.id+'-a');
@@ -2757,7 +2770,7 @@ function onField(el){
       const r=sh.rows.find(x=>x.id===rid);if(!r)return;
       if(field==='time')r.time=timeOnDay(sh.start,val);else r[field]=val;
       sh.updatedAt=nowISO();touch(p,'abc');
-      if(field==='time'){const h=$('#shh-'+sid);if(h)h.innerHTML=sheetHead(p,sh);}
+      if(field==='time'){const h=$('#shh-'+sid);if(h)h.innerHTML=sheetHead(p,sh);reorderRows(sh);}
       break;}
     case 'abcset':{
       const a=abcData(p);const n=Math.round(Number(val));
