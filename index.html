@@ -383,6 +383,38 @@ td.top{color:var(--accent);font-weight:700}
 html.ink-lock,html.ink-lock *{touch-action:none!important}
 .ink-hint{display:none;margin:0;font-size:.78rem;color:var(--muted);line-height:1.4}
 html.ink-lock .ink-hint{display:block}
+/* 실시간 공유 */
+.sync-state{font-size:.78rem;font-weight:700;white-space:nowrap;padding:3px 9px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.sync-state.ok{background:var(--ok-soft);color:var(--ok)}
+.sync-state.warn{background:var(--warn-soft);color:var(--warn)}
+.sync-state.bad{background:var(--rec-soft);color:var(--rec)}
+.sync-meta{display:inline-flex;flex-wrap:wrap;gap:4px 8px;margin-left:8px;vertical-align:baseline;font-weight:400}
+.sync-mbtn,.sync-cbtn{background:none;border:0;padding:0;font:inherit;font-size:.74rem;color:var(--muted);cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.sync-cbtn{color:var(--warn);font-weight:700;background:var(--warn-soft);border-radius:6px;padding:0 6px;text-decoration:none}
+.sync-id{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sync-id code{background:var(--sunk);border-radius:6px;padding:2px 8px;overflow-wrap:anywhere;min-width:0}
+.sync-login{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end}
+.sync-login .sync-name{flex:1 1 180px}
+.sync-members{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.sync-members li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface-2)}
+.sync-members li > span:first-child{flex:1 1 140px;font-weight:600}
+.sync-members .confirm{flex:1 1 100%}
+.sync-conflicts{border-color:var(--warn);background:var(--warn-soft)}
+.sync-clist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.sync-citem{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:1px solid var(--line-strong);border-radius:10px;padding:10px 12px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}
+.sync-citem:hover{border-color:var(--accent)}
+.sync-dlg{position:fixed;inset:0;z-index:30;background:rgba(10,20,20,.45);display:flex;align-items:flex-start;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) 16px 16px;overflow-y:auto}
+.sync-box{background:var(--surface);color:var(--ink);border-radius:var(--r);padding:18px;width:100%;max-width:760px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow);min-width:0}
+.sync-box h3{font-size:.9rem;margin:0}
+.sync-vs{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.sync-vs > div{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px;min-width:0;background:var(--surface-2)}
+.sync-text{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.92rem;max-height:40vh;overflow-y:auto}
+.sync-hist{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px}
+.sync-hist li{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.sync-hist .sync-text{border-left:3px solid var(--line);padding-left:8px;width:100%}
+.sync-pick{gap:8px}
+.sync-flash{outline:3px solid var(--warn)!important;outline-offset:2px}
+@media (max-width:560px){.sync-state{white-space:normal;text-align:right;max-width:46vw}}
 @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important;scroll-behavior:auto!important} }
 </style>
 
@@ -390,6 +422,7 @@ html.ink-lock .ink-hint{display:block}
   <nav class="crumbs" id="crumbs" aria-label="현재 위치"></nav>
   <div class="top-right">
     <div class="rec-mini" id="rec-mini" hidden><span class="mono" id="rec-mini-time">00:00</span><button class="btn small danger-solid" data-act="rec-stop" type="button">녹음 정지</button></div>
+    <span class="sync-state" id="sync-state" aria-live="polite" hidden></span>
     <span class="save-state" id="save-state" aria-live="polite"></span>
   </div>
 </div></header>
@@ -398,6 +431,7 @@ html.ink-lock .ink-hint{display:block}
   <main id="main"></main>
   <footer class="foot">
     <p>자료는 이 기기의 이 브라우저 안에만 저장되며 다른 곳으로 전송되지 않습니다. 브라우저 기록을 지우면 사라지니 백업 파일을 자주 내보내세요.</p>
+    <p id="sync-foot" hidden>단, '공유 시작'한 프로젝트의 글자 자료는 서버(Firebase)에도 저장되어 함께 쓰는 사람에게 전달됩니다. 녹음·사진·PDF는 이 기기에만 있습니다.</p>
     <p id="usage"></p>
   </footer>
 </div>
@@ -777,6 +811,7 @@ function render(){
   if(ui.view==='proc'&&ui.proc==='rating')hydrateRatingFiles();
   updateRecUI();
   scheduleSave();
+  syncAfterRender();
 }
 function go(view,opts){
   Object.assign(ui,{view},opts||{});
@@ -814,6 +849,7 @@ function viewHome(){
     </form>
     <p class="hint">실명 대신 학생 코드를 쓰세요. 코드는 녹음·백업 파일 이름에도 쓰입니다.</p>
   </section>
+  ${syncJoinCard()}
   <section>
     <div class="sec-head"><h2 class="h3">프로젝트 ${ps.length}개</h2></div>
     ${ps.length?`<div class="proj-grid" style="margin-top:10px">${ps.map(projCard).join('')}</div>`:`<div class="empty" style="margin-top:10px">아직 프로젝트가 없습니다. 위에서 학생 코드를 입력해 첫 프로젝트를 만드세요.</div>`}
@@ -831,7 +867,7 @@ function projCard(p){
   const done=PROCS.filter(x=>p.procs[x.key].status==='done').length;
   const name=p.procs.define.data.name;
   return `<article class="proj-card">
-    <header class="proj-top"><h3 class="mono">${esc(p.code||'(코드 없음)')}</h3>${p.example?'<span class="pill muted">예시</span>':''}</header>
+    <header class="proj-top"><h3 class="mono">${esc(p.code||'(코드 없음)')}</h3>${p.example?'<span class="pill muted">예시</span>':''}${p.shared?'<span class="pill">공유</span>':''}</header>
     <p class="proj-target">${name?'표적행동 · '+esc(name):'<span class="muted">표적행동 미정</span>'}</p>
     ${p.memo?`<p class="proj-memo">${esc(p.memo)}</p>`:''}
     <div class="dots" role="img" aria-label="8개 절차 중 ${done}개 완료">${PROCS.map(x=>`<span class="dot s-${p.procs[x.key].status}" title="${esc(x.title)}: ${statusInfo(p.procs[x.key]).label}"></span>`).join('')}</div>
@@ -853,10 +889,12 @@ function viewProject(p){
     <h1 class="mono" id="proj-title">${esc(p.code||'(코드 없음)')}</h1>
     ${p.memo?`<p class="lede" id="proj-memo-view">${esc(p.memo)}</p>`:''}
   </section>
+  ${syncConflictCard(p)}
   <section>
     <div class="sec-head"><h2 class="h3">관찰 절차</h2><p class="hint">순서와 관계없이 필요한 절차를 골라 여세요. 번호는 권장 순서입니다.</p></div>
     <div class="proc-grid">${PROCS.map(x=>procCard(p,x)).join('')}</div>
   </section>
+  ${syncProjectCard(p)}
   <section class="card tools">
     <div><h2 class="h3">이 프로젝트 백업</h2><p class="hint">마지막 백업: ${p.lastBackupAt?fmtDT(p.lastBackupAt):'아직 없음'}. 녹음을 포함하면 파일이 커집니다.</p></div>
     <div class="tool-row">
@@ -1264,7 +1302,7 @@ async function hydrateAudio(){
     let url=urlCache.get(id);
     if(!url&&audioOK){try{const r=await AudioDB.getBlob(id);if(r){url=URL.createObjectURL(r.blob);urlCache.set(id,url);}}catch(e){}}
     if(url)au.src=url;
-    else if(au.isConnected){const s=document.createElement('span');s.className='missing';s.textContent='이 브라우저에 녹음 파일이 없습니다. 녹음을 뺀 백업을 불러왔거나 다른 기기에서 녹음한 경우입니다.';au.replaceWith(s);}
+    else if(au.isConnected){const s=document.createElement('span');s.className='missing';const cp=curProject();s.textContent=cp&&cp.shared?'다른 기기에 있는 파일입니다. 녹음은 공유되지 않아 녹음한 기기에서만 들을 수 있습니다.':'이 브라우저에 녹음 파일이 없습니다. 녹음을 뺀 백업을 불러왔거나 다른 기기에서 녹음한 경우입니다.';au.replaceWith(s);}
   }
 }
 
@@ -1400,7 +1438,7 @@ async function hydrateRatingFiles(){
   for(const img of $$('img[data-rimg]')){
     const id=img.dataset.rimg;let url=urlCache.get(id);
     if(!url&&audioOK){try{const r=await AudioDB.getBlob(id);if(r){url=URL.createObjectURL(r.blob);urlCache.set(id,url);}}catch(e){}}
-    if(url)img.src=url;else if(img.isConnected)img.replaceWith(Object.assign(document.createElement('span'),{className:'r-doc',textContent:'없음',title:'이 브라우저에 파일이 없습니다'}));
+    if(url)img.src=url;else if(img.isConnected){const cp=curProject();const sh=!!(cp&&cp.shared);img.replaceWith(Object.assign(document.createElement('span'),{className:'r-doc',textContent:sh?'다른 기기':'없음',title:sh?'다른 기기에 있는 파일입니다 (사진·PDF는 공유되지 않음)':'이 브라우저에 파일이 없습니다'}));}
   }
 }
 
@@ -1628,7 +1666,7 @@ async function importBackup(file){
   const audioById=new Map((data.audio||[]).map(x=>[x.id,x]));
   let added=0,copies=0,audioIn=0;
   for(const src of data.projects){
-    const p=ensureProject(clone(src));if(p.procs.abc.data.session)p.procs.abc.data.session.running=false;
+    const p=ensureProject(clone(src));delete p.shared;if(p.procs.abc.data.session)p.procs.abc.data.session.running=false;
     const clash=store.projects.some(x=>x.id===p.id);
     const map={};const srcIds=blobIds(p);
     if(clash){p.id=uid('p');p.code=p.code+' (불러옴)';copies++;srcIds.forEach(k=>map[k]=uid('a'));remapAudio(p,map);}
@@ -1643,7 +1681,7 @@ async function importBackup(file){
   toast(`프로젝트 ${added}개를 불러왔습니다`+(audioIn?` (녹음 ${audioIn}개)`:'')+(copies?` · 이미 있던 ${copies}개는 사본으로 추가`:''));
 }
 async function duplicateProject(p){
-  const c=ensureProject(clone(p));c.id=uid('p');c.code=p.code+' (복사본)';c.example=false;c.lastBackupAt=null;if(c.procs.abc.data.session)c.procs.abc.data.session.running=false;c.createdAt=c.updatedAt=nowISO();
+  const c=ensureProject(clone(p));delete c.shared;c.id=uid('p');c.code=p.code+' (복사본)';c.example=false;c.lastBackupAt=null;if(c.procs.abc.data.session)c.procs.abc.data.session.running=false;c.createdAt=c.updatedAt=nowISO();
   const map={};blobIds(c).forEach(k=>map[k]=uid('a'));remapAudio(c,map);
   for(const oldId of Object.keys(map)){try{const r=await AudioDB.getBlob(oldId);if(r)await AudioDB.put(map[oldId],c.id,r.blob,r.duration,r.createdAt);}catch(e){}}
   store.projects.push(c);saveNow();render();updateUsage();toast('프로젝트를 복제했습니다');
@@ -1653,6 +1691,7 @@ async function deleteProject(p){
   if(abcData(p).session)abcData(p).session.running=false;
   for(const id of blobIds(p))dropUrl(id);
   try{if(audioOK)await AudioDB.delByProject(p.id);}catch(e){}
+  if(store.sync&&p.shared)delete store.sync[p.shared.projectId];
   store.projects=store.projects.filter(x=>x.id!==p.id);
   if(ui.projectId===p.id){ui.projectId=null;}
   ui.confirm=null;saveNow();render();updateUsage();toast('프로젝트를 삭제했습니다');
@@ -2402,6 +2441,660 @@ inkScan();
 let toastTimer=null;
 function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{t.hidden=true;},3200);}
 
+/* ---------- 실시간 공유 (Firebase Firestore) ----------
+   흐름은 한 방향씩: (내 입력 → store → Firestore 쓰기), (Firestore 수신 → merge3 → store → 화면).
+   store.sync[pid] = {base: 마지막으로 서버와 맞춘 프로젝트 자료, revs: {경로: 그때 본 rev}}
+   서버에는 칸 하나 = 문서 하나(cells), id 목록 항목은 items, 덮인 내용은 history, 충돌은 conflicts. */
+const FIREBASE_CONFIG={};/* Firebase 콘솔 → 프로젝트 설정 → 내 앱 → firebaseConfig 값을 그대로 붙여 넣는다. 비어 있으면 공유 기능을 숨긴다 */
+const FIREBASE_VER='12.19.0';
+const SYNC_ON=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.projectId);
+const SYNC_SKIP_TOP=new Set(['id','shared','lastBackupAt','example']);/* 이 기기에만 두는 칸 */
+const NO_HIST=/(^|\/)(updatedAt|ink)(\/|\[|$)|^procs\/abc\/data\/session(\/|$)/;/* 수정 기록·충돌로 남기지 않는 칸 */
+const Sync={ad:null,loading:null,user:null,authKnown:false,online:navigator.onLine,cur:null,ft:null,lastInput:0,dlg:null,stats:{writes:0,flushes:0}};
+
+/* 프로젝트 → {cells: 경로→값, items: 항목경로→{parent,order}}. 경로 예: procs/abc/data/sheets[s1]/rows[w2]/b */
+function syncFlat(p){
+  const cells=new Map(),items=new Map();
+  const walk=(o,path,isItem)=>{
+    for(const k of Object.keys(o)){
+      if(!path&&SYNC_SKIP_TOP.has(k))continue;
+      if(isItem&&k==='id')continue;
+      const v=o[k];if(v===undefined||typeof v==='function')continue;
+      const pa=path?path+'/'+k:k;
+      if(k==='ink'&&isObj(v)){const ks=Object.keys(v);if(!ks.length)cells.set(pa,{});ks.forEach(f=>cells.set(pa+'/'+f,v[f]));continue;}
+      if(isObj(v)){if(Object.keys(v).length)walk(v,pa,false);else cells.set(pa,{});continue;}
+      if(Array.isArray(v)&&v.length&&isIdArr(v)){v.forEach((x,i)=>{const ip=pa+'['+x.id+']';items.set(ip,{parent:pa,order:i});walk(x,ip,true);});continue;}
+      cells.set(pa,v);
+    }
+  };
+  walk(p,'',false);
+  return {cells,items};
+}
+function syncSeg(s){const m=/^(.*)\[([^\]]*)\]$/.exec(s);return m?{k:m[1],id:m[2]}:{k:s};}
+/* syncFlat의 반대. 지워진 항목 아래의 칸은 버린다 */
+function syncUnflat(cells,items){
+  const root={};
+  const step=(cur,sg,mk)=>{
+    if(sg.id==null){if(!isObj(cur[sg.k])){if(!mk)return null;cur[sg.k]={};}return cur[sg.k];}
+    const arr=cur[sg.k];if(!Array.isArray(arr))return null;
+    return arr.find(x=>x.id===sg.id)||null;
+  };
+  const its=Array.from(items.entries()).map(([ip,it])=>({ip,segs:ip.split('/').map(syncSeg),order:Number(it.order)||0}));
+  const lid=x=>String(x.segs[x.segs.length-1].id||'');
+  its.sort((a,b)=>a.segs.length-b.segs.length||a.order-b.order||(lid(a)<lid(b)?-1:lid(a)>lid(b)?1:0));
+  for(const it of its){
+    let cur=root,ok=true;
+    for(let i=0;i<it.segs.length-1;i++){cur=step(cur,it.segs[i],true);if(!cur){ok=false;break;}}
+    if(!ok)continue;
+    const last=it.segs[it.segs.length-1];if(last.id==null)continue;
+    if(!Array.isArray(cur[last.k]))cur[last.k]=[];
+    if(!cur[last.k].some(x=>x.id===last.id))cur[last.k].push({id:last.id});
+  }
+  const cs=Array.from(cells.entries()).map(([pa,v])=>({segs:pa.split('/').map(syncSeg),v}));
+  cs.sort((a,b)=>a.segs.length-b.segs.length);
+  for(const c of cs){
+    let cur=root,ok=true;
+    for(let i=0;i<c.segs.length-1;i++){cur=step(cur,c.segs[i],true);if(!cur){ok=false;break;}}
+    if(!ok)continue;
+    const k=c.segs[c.segs.length-1].k;const v=c.v;
+    if(isObj(v)&&!Object.keys(v).length){if(!isObj(cur[k]))cur[k]={};}
+    else if(Array.isArray(v)&&!v.length){if(!Array.isArray(cur[k]))cur[k]=[];}
+    else cur[k]=isObj(v)||Array.isArray(v)?clone(v):v;
+  }
+  return root;
+}
+function syncItemsLive(path,items){
+  const segs=path.split('/');let acc='';
+  for(let i=0;i<segs.length;i++){acc=acc?acc+'/'+segs[i]:segs[i];if(i<segs.length-1&&/\]$/.test(segs[i])&&!items.has(acc))return false;}
+  return true;
+}
+/* base와 mine을 비교해 바뀐 칸·항목만 고른다 */
+function syncDiff(base,mine){
+  const cells=[],items=[];
+  mine.cells.forEach((v,pa)=>{if(!base.cells.has(pa)||!sameJ(base.cells.get(pa),v))cells.push({path:pa,value:v});});
+  base.cells.forEach((v,pa)=>{if(!mine.cells.has(pa)&&syncItemsLive(pa,mine.items))cells.push({path:pa,deleted:true});});
+  mine.items.forEach((it,pa)=>{const b=base.items.get(pa);if(!b||b.order!==it.order)items.push({path:pa,parent:it.parent,order:it.order});});
+  base.items.forEach((it,pa)=>{if(!mine.items.has(pa)&&syncItemsLive(pa,mine.items))items.push({path:pa,parent:it.parent,order:it.order,deleted:true});});
+  return {cells,items};
+}
+function syncBaseOf(p){const c=clone(p);SYNC_SKIP_TOP.forEach(k=>delete c[k]);return c;}
+function syncState(pid){store.sync=store.sync||{};const s=store.sync[pid]=store.sync[pid]||{base:null,revs:{}};s.revs=s.revs||{};return s;}
+function syncMe(){return Sync.user?{uid:Sync.user.uid,name:String(store.settings.userName||'').trim()||Sync.user.name||'이름 없음'}:null;}
+async function syncInviteKey(pid,code){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pid+':'+code));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function syncParse(json){if(json==null)return null;try{return JSON.parse(json);}catch(e){return null;}}
+/* 화면 칸(data-f) ↔ 자료 경로 */
+function syncPathIndex(p){
+  const m=new Map();
+  const walk=(o,path)=>{m.set(o,path);for(const k of Object.keys(o)){if(!path&&SYNC_SKIP_TOP.has(k))continue;const v=o[k];const pa=path?path+'/'+k:k;
+    if(k==='ink')continue;
+    if(isObj(v))walk(v,pa);else if(Array.isArray(v)&&v.length&&isIdArr(v))v.forEach(x=>walk(x,pa+'['+x.id+']'));}};
+  walk(p,'');return m;
+}
+function syncSpecPath(spec,idx){
+  const t=inkTarget(spec);if(!t||t.flat||t.obj===inkUI.pending)return null;
+  const base=idx.get(t.obj);if(base==null)return null;
+  return (base?base+'/':'')+t.field;
+}
+function syncFocusPath(p){
+  const ae=document.activeElement;let spec=null;
+  if(inkUI.pad&&inkUI.pad.box&&inkUI.pad.box.dataset)spec=inkUI.pad.box.dataset.k;
+  else if(ae&&ae.matches&&ae.matches('[data-f]'))spec=ae.dataset.f;
+  if(!spec||curProject()!==p)return null;
+  try{return syncSpecPath(spec,syncPathIndex(p));}catch(e){return null;}
+}
+
+/* ---- 어댑터: 서버와 말하는 얇은 층. window.__pbsSyncAdapter로 가짜 어댑터를 끼울 수 있다 ---- */
+async function syncAdapter(){
+  if(Sync.ad)return Sync.ad;
+  if(!Sync.loading)Sync.loading=(async()=>{
+    const ad=window.__pbsSyncAdapter||await makeFirestoreAdapter();
+    await ad.init(u=>syncOnAuth(u));
+    Sync.ad=ad;return ad;
+  })().catch(e=>{Sync.loading=null;throw e;});
+  return Sync.loading;
+}
+async function makeFirestoreAdapter(){
+  const base=`https://www.gstatic.com/firebasejs/${FIREBASE_VER}/`;
+  const [A,F,U]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-firestore.js'),import(base+'firebase-auth.js')]);
+  const app=A.initializeApp(FIREBASE_CONFIG);
+  let db;
+  try{db=F.initializeFirestore(app,{localCache:F.persistentLocalCache({tabManager:F.persistentMultipleTabManager()})});}catch(e){db=F.getFirestore(app);}
+  const auth=U.getAuth(app);
+  const emu=window.__pbsEmu;/* 시험용(에뮬레이터)일 때만 */
+  if(emu){F.connectFirestoreEmulator(db,emu.host,emu.fs);U.connectAuthEmulator(auth,`http://${emu.host}:${emu.auth}`,{disableWarnings:true});}
+  const ts=F.serverTimestamp;
+  const iso=t=>t&&t.toDate?t.toDate().toISOString():(typeof t==='string'?t:null);
+  const pd=pid=>F.doc(db,'projects',pid);
+  const sub=(pid,name,id)=>id?F.doc(db,'projects',pid,name,id):F.collection(db,'projects',pid,name);
+  const key=path=>encodeURIComponent(path).replace(/\./g,'%2E').replace(/%/g,'~');
+  const count=n=>{Sync.stats.writes+=n;};
+  const cellDoc=(path,v,rev,me)=>({path,value:JSON.stringify(v),deleted:false,rev,baseRev:0,by:me.uid,byName:me.name,at:ts()});
+  const itemDoc=(it,me)=>({path:it.path,parent:it.parent,order:it.order,deleted:!!it.deleted,by:me.uid,at:ts()});
+  async function batched(ops){/* 한 batch에 450개씩 */
+    for(let i=0;i<ops.length;i+=450){const b=F.writeBatch(db);ops.slice(i,i+450).forEach(o=>b.set(o[0],o[1]));await b.commit();count(Math.min(450,ops.length-i));}
+  }
+  async function getAll(pid){
+    const [c,it]=await Promise.all([F.getDocs(sub(pid,'cells')),F.getDocs(sub(pid,'items'))]);
+    return {cells:c.docs.map(d=>d.data()),items:it.docs.map(d=>d.data())};
+  }
+  return {
+    name:'firestore',
+    async init(onAuth){
+      U.onAuthStateChanged(auth,u=>onAuth(u?{uid:u.uid,name:u.displayName||(u.email||'').split('@')[0]||'',email:u.email||''}:null));
+      try{await U.getRedirectResult(auth);}catch(e){}
+    },
+    async signIn(){
+      if(emu&&emu.user){await U.signInWithCredential(auth,U.GoogleAuthProvider.credential(JSON.stringify(Object.assign({email_verified:true},emu.user))));return;}
+      const pr=new U.GoogleAuthProvider();
+      try{await U.signInWithPopup(auth,pr);}
+      catch(e){if(e&&/popup-blocked|operation-not-supported|popup-closed-by-user/.test(e.code||'')&&e.code!=='auth/popup-closed-by-user'){await U.signInWithRedirect(auth,pr);return;}throw e;}
+    },
+    signOut(){return U.signOut(auth);},
+    async createProject(pid,meta,me,inviteKey,flat){
+      await F.setDoc(pd(pid),{code:meta.code||'',owner:me.uid,createdAt:ts(),updatedAt:ts()});
+      await F.setDoc(sub(pid,'members',me.uid),{name:me.name,role:'owner',joinedAt:ts(),inviteKey});
+      await F.setDoc(F.doc(db,'invites',inviteKey),{projectId:pid,createdBy:me.uid});
+      count(3);
+      const ops=[];
+      flat.cells.forEach((v,path)=>ops.push([sub(pid,'cells',key(path)),cellDoc(path,v,1,me)]));
+      flat.items.forEach((it,path)=>ops.push([sub(pid,'items',key(path)),itemDoc({path,parent:it.parent,order:it.order},me)]));
+      await batched(ops);
+    },
+    async join(pid,inviteKey,me){
+      const inv=await F.getDoc(F.doc(db,'invites',inviteKey));
+      if(!inv.exists()||inv.data().projectId!==pid){const e=new Error('badcode');e.code='badcode';throw e;}
+      const mref=sub(pid,'members',me.uid);
+      const m=await F.getDoc(mref);
+      if(!m.exists()){await F.setDoc(mref,{name:me.name,role:'member',joinedAt:ts(),inviteKey});count(1);}
+      return getAll(pid);
+    },
+    watch(pid,h){
+      const opt={includeMetadataChanges:true};
+      const conv=d=>Object.assign(d.data({serverTimestamps:'estimate'}),{_id:d.id});
+      const ch=(snap)=>snap.docChanges().map(c=>({removed:c.type==='removed',d:conv(c.doc)}));
+      const un=[
+        F.onSnapshot(sub(pid,'cells'),opt,s=>h.cells(ch(s).map(x=>(x.d.at=iso(x.d.at),x)),s.metadata.fromCache),h.error),
+        F.onSnapshot(sub(pid,'items'),opt,s=>h.items(ch(s),s.metadata.fromCache),h.error),
+        F.onSnapshot(F.query(sub(pid,'conflicts'),F.where('resolved','==',false)),s=>h.conflicts(s.docs.map(d=>{const x=conv(d);return Object.assign(x,{id:d.id,at:iso(x.at),theirsAt:iso(x.theirsAt)});})),h.error),
+        F.onSnapshot(sub(pid,'members'),opt,s=>h.members(s.docs.map(d=>{const x=conv(d);return Object.assign(x,{uid:d.id,joinedAt:iso(x.joinedAt)});}),s.metadata.fromCache),h.error)
+      ];
+      return ()=>un.forEach(f=>{try{f();}catch(e){}});
+    },
+    /* 바뀐 칸을 트랜잭션으로 쓴다: 지금 rev가 내가 본 rev(baseRev)와 다르고 다른 사람이 쓴 것이면 충돌로 기록 */
+    async write(pid,writes,items,me){
+      const res=await F.runTransaction(db,async tx=>{
+        const refs=writes.map(w=>sub(pid,'cells',key(w.path)));
+        const curs=await Promise.all(refs.map(r=>tx.get(r)));
+        const out=[];let n=0;
+        writes.forEach((w,i)=>{
+          const c=curs[i].exists()?curs[i].data():null;
+          const curRev=c?Number(c.rev)||0:0;const json=w.deleted?null:JSON.stringify(w.value);const rev=curRev+1;
+          tx.set(refs[i],{path:w.path,value:json,deleted:!!w.deleted,rev,baseRev:w.baseRev||0,by:me.uid,byName:me.name,at:ts()});n++;
+          if(!w.noHist){tx.set(F.doc(sub(pid,'history')),{path:w.path,value:json,prevValue:c?c.value:null,by:me.uid,byName:me.name,at:ts()});n++;}
+          let conflict=false;
+          if(c&&!w.noHist&&!w.deleted&&!c.deleted&&curRev!==(w.baseRev||0)&&c.by!==me.uid&&c.value!==json&&typeof w.value==='string'){
+            const tv=syncParse(c.value);
+            if(typeof tv==='string'&&tv.trim()){conflict=true;n++;
+              tx.set(F.doc(sub(pid,'conflicts')),{path:w.path,mine:json,theirs:c.value,mineBy:me.uid,mineByName:me.name,theirsBy:c.by||'',theirsByName:c.byName||'',theirsAt:c.at||null,at:ts(),resolved:false});}
+          }
+          out.push({path:w.path,rev,conflict});
+        });
+        items.forEach(it=>{tx.set(sub(pid,'items',key(it.path)),itemDoc(it,me));n++;});
+        out.n=n;return out;
+      });
+      count(res.n||0);return res;
+    },
+    async history(pid,path){
+      const s=await F.getDocs(F.query(sub(pid,'history'),F.where('path','==',path)));
+      return s.docs.map(d=>{const x=d.data({serverTimestamps:'estimate'});return {id:d.id,value:x.value,prevValue:x.prevValue,by:x.by,byName:x.byName,at:iso(x.at)};}).sort((a,b)=>(a.at||'').localeCompare(b.at||''));
+    },
+    async resolve(pid,id,me){await F.updateDoc(sub(pid,'conflicts',id),{resolved:true,resolvedBy:me.uid,resolvedAt:ts()});count(1);},
+    async removeMember(pid,uid){await F.deleteDoc(sub(pid,'members',uid));count(1);},
+    async setName(pid,me){await F.updateDoc(sub(pid,'members',me.uid),{name:me.name});count(1);},
+    async changeCode(pid,newKey,me){
+      const mref=sub(pid,'members',me.uid);const m=await F.getDoc(mref);const old=m.exists()?m.data().inviteKey:'';
+      await F.setDoc(F.doc(db,'invites',newKey),{projectId:pid,createdBy:me.uid});
+      await F.updateDoc(mref,{inviteKey:newKey});
+      if(old&&old!==newKey){try{await F.deleteDoc(F.doc(db,'invites',old));}catch(e){}}
+      count(3);
+    }
+  };
+}
+
+/* ---- 로그인 ---- */
+function syncOnAuth(u){
+  Sync.user=u;Sync.authKnown=true;
+  const S=Sync.cur;
+  if(!u&&S&&S.unsub){S.unsub();S.unsub=null;S.gotCells=S.gotItems=false;}
+  if(u&&S&&!S.unsub)syncSubscribe(S);
+  syncRefreshCards();syncStatusUI();
+}
+async function syncEnsureUser(){
+  const ad=await syncAdapter();
+  if(!Sync.user){await ad.signIn();for(let i=0;i<50&&!Sync.user;i++)await new Promise(r=>setTimeout(r,100));}
+  if(!Sync.user)throw new Error('로그인하지 못했습니다');
+  return ad;
+}
+
+/* ---- 지금 열어 둔 공유 프로젝트만 구독 ---- */
+function syncWatch(){
+  if(!SYNC_ON&&!window.__pbsSyncAdapter)return;
+  const p=curProject();const want=p&&p.shared?p.shared.projectId:null;
+  if(Sync.cur&&want&&Sync.cur.pid===want&&Sync.cur.localId===p.id)return;
+  if(Sync.cur){if(Sync.cur.unsub)Sync.cur.unsub();Sync.cur=null;}
+  if(want){
+    const S=Sync.cur={pid:want,localId:p.id,cells:new Map(),items:new Map(),conflicts:[],members:[],gotCells:false,gotItems:false,fromCache:true,unsub:null,error:'',flushing:false,deferred:false,pendingN:0};
+    syncAdapter().then(()=>{if(Sync.cur===S&&Sync.user&&!S.unsub)syncSubscribe(S);syncStatusUI();}).catch(()=>{S.error='load';syncStatusUI();});
+  }
+  syncStatusUI();
+}
+function syncSubscribe(S){
+  S.unsub=Sync.ad.watch(S.pid,{
+    cells:(chs,cache)=>{chs.forEach(c=>{const d=c.d;if(c.removed)S.cells.delete(d.path);else S.cells.set(d.path,{v:syncParse(d.value),raw:d.value,rev:Number(d.rev)||0,by:d.by,byName:d.byName||'',at:d.at,deleted:!!d.deleted});});
+      S.gotCells=true;S.fromCache=cache;syncNet();syncAbsorbSoon(S);},
+    items:(chs,cache)=>{chs.forEach(c=>{const d=c.d;if(c.removed)S.items.delete(d.path);else S.items.set(d.path,{parent:d.parent,order:Number(d.order)||0,deleted:!!d.deleted});});
+      S.gotItems=true;syncAbsorbSoon(S);},
+    conflicts:list=>{S.conflicts=list;syncDecorateSoon();syncRefreshCards();},
+    members:(list,cache)=>{S.members=list;const me=syncMe();
+      if(!cache&&me&&!list.some(m=>m.uid===me.uid))S.error='removed';
+      syncRefreshCards();syncStatusUI();},
+    error:e=>{const c=(e&&e.code)||'';S.error=/permission/.test(c)?'denied':'error';if(S.unsub){S.unsub();S.unsub=null;}syncStatusUI();syncRefreshCards();}
+  });
+}
+function syncAbsorbSoon(S){clearTimeout(S.at);S.at=setTimeout(()=>syncAbsorb(S),30);}
+/* 서버 자료(theirs)를 이 기기 자료(mine)에 합친다. base = 마지막으로 서버와 맞춘 자료 */
+function syncAbsorb(S){
+  if(Sync.cur!==S||!S.gotCells||!S.gotItems)return;
+  const p=projById(S.localId);if(!p||!p.shared)return;
+  if(!S.cells.size&&!S.items.size)return;/* 아직 서버 자료를 못 받음 (오프라인 첫 접속 등) */
+  const st=syncState(S.pid);
+  const tc=new Map(),ti=new Map();
+  S.cells.forEach((c,pa)=>{if(!c.deleted)tc.set(pa,c.v);});
+  S.items.forEach((it,pa)=>{if(!it.deleted)ti.set(pa,{parent:it.parent,order:it.order});});
+  let theirs=ensureProject(syncUnflat(tc,ti));
+  const base=st.base?clone(st.base):{};
+  /* 입력 중인 칸은 바로 덮지 않는다: 그 칸만 base 값으로 두고, 칸을 벗어나면 다시 합친다 */
+  const fp=syncFocusPath(p);S.deferred=false;
+  if(fp&&st.base){
+    const bf=syncFlat(base),tf=syncFlat(theirs);
+    if(!sameJ(bf.cells.get(fp),tf.cells.get(fp))){
+      if(bf.cells.has(fp))tf.cells.set(fp,bf.cells.get(fp));else tf.cells.delete(fp);
+      theirs=ensureProject(syncUnflat(tf.cells,tf.items));S.deferred=true;
+    }
+  }
+  const before=JSON.stringify(p);
+  merge3(base,p,clone(theirs));
+  ensureProject(p);
+  const mf=syncFlat(p);
+  S.cells.forEach((c,pa)=>{
+    if(S.deferred&&pa===fp)return;
+    const same=c.deleted?!mf.cells.has(pa):(mf.cells.has(pa)&&sameJ(mf.cells.get(pa),c.v));
+    if(same&&!((st.revs[pa]||0)>c.rev))st.revs[pa]=c.rev;
+  });
+  st.base=syncBaseOf(theirs);
+  const changed=before!==JSON.stringify(p);
+  if(changed){scheduleSave();if(curProject()===p){applyRemoteView();}}
+  else scheduleSave();
+  syncDecorateSoon();syncStatusUI();
+  syncFlushSoon(changed?200:50);
+}
+document.addEventListener('focusout',()=>{const S=Sync.cur;if(S&&S.deferred)setTimeout(()=>{if(Sync.cur===S&&!syncFocusPath(projById(S.localId)))syncAbsorb(S);},0);syncFlushSoon(0);});
+
+/* ---- 보내기: 바뀐 칸만, 여러 칸은 한 번에 ---- */
+function syncPending(S){
+  const p=projById(S.localId);const st=syncState(S.pid);
+  if(!p||!st.base)return {cells:[],items:[]};
+  return syncDiff(syncFlat(st.base),syncFlat(p));
+}
+function syncFlushSoon(ms){clearTimeout(Sync.ft);Sync.ft=setTimeout(syncFlush,ms);}
+function syncNet(){const S=Sync.cur;Sync.online=navigator.onLine&&!(S&&S.gotCells&&S.fromCache);}
+async function syncFlush(){
+  const S=Sync.cur;if(!S||!Sync.ad||!Sync.user||!S.unsub||!S.gotCells||!S.gotItems||S.error)return;
+  if(S.flushing){S.again=true;return;}
+  const p=projById(S.localId);const st=syncState(S.pid);if(!p||!st.base)return;
+  const d=syncPending(S);S.pendingN=d.cells.length+d.items.length;
+  if(!S.pendingN){syncStatusUI();return;}
+  syncNet();
+  if(!Sync.online||document.visibilityState==='hidden'){syncStatusUI();return;}/* 오프라인이면 모아 두었다가 다시 연결되면 보낸다 */
+  S.flushing=true;syncStatusUI();
+  const me=syncMe();let conflicts=0;
+  try{
+    const writes=d.cells.map(w=>Object.assign(w,{baseRev:st.revs[w.path]||0,noHist:NO_HIST.test(w.path)}));
+    const items=d.items;
+    for(let i=0,j=0;i<writes.length||j<items.length;i+=120,j+=200){
+      const ws=writes.slice(i,i+120),its=items.slice(j,j+200);
+      const res=await Sync.ad.write(S.pid,ws,its,me);Sync.stats.flushes++;
+      const bf=syncFlat(st.base||{});
+      ws.forEach(w=>{if(w.deleted)bf.cells.delete(w.path);else bf.cells.set(w.path,w.value);});
+      its.forEach(it=>{if(it.deleted)bf.items.delete(it.path);else bf.items.set(it.path,{parent:it.parent,order:it.order});});
+      st.base=syncBaseOf(syncUnflat(bf.cells,bf.items));
+      res.forEach(r=>{if(!((st.revs[r.path]||0)>r.rev))st.revs[r.path]=r.rev;if(r.conflict)conflicts++;});
+    }
+    scheduleSave();
+    if(conflicts)toast('다른 사람이 같은 칸을 고쳐 두었습니다. 내 내용이 들어가고, 상대 내용은 칸 옆 "다른 버전"에 남았습니다.');
+  }catch(e){
+    const c=(e&&e.code)||'';
+    if(/permission/.test(c))S.error='denied';
+    else{Sync.online=false;setTimeout(()=>{syncNet();syncFlushSoon(0);},5000);}
+  }finally{
+    S.flushing=false;
+    const d2=syncPending(S);S.pendingN=d2.cells.length+d2.items.length;
+    if(S.again||S.pendingN&&Sync.online&&!S.error){S.again=false;syncFlushSoon(300);}
+    syncStatusUI();
+  }
+}
+/* 글 칸은 입력이 멈추고 1.5초 뒤 또는 칸을 벗어날 때, 선택·체크·버튼은 바로 */
+document.addEventListener('input',e=>{if(!Sync.cur)return;const el=e.target;if(el.matches&&el.matches('textarea,input:not([type]),input[type=text]')){Sync.lastInput=Date.now();syncFlushSoon(1500);}else syncFlushSoon(0);});
+document.addEventListener('change',e=>{if(!Sync.cur)return;const el=e.target;if(!(el.matches&&el.matches('textarea,input:not([type]),input[type=text]')))syncFlushSoon(0);});
+document.addEventListener('click',e=>{if(Sync.cur&&e.target.closest&&e.target.closest('[data-act]'))syncFlushSoon(100);});
+window.addEventListener('online',()=>{syncNet();syncStatusUI();syncFlushSoon(0);});
+window.addEventListener('offline',()=>{Sync.online=false;syncStatusUI();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')syncFlushSoon(0);});
+setInterval(()=>{if(Sync.cur&&Date.now()-Sync.lastInput>1500)syncFlush();},4000);/* 관찰지 자동 추가처럼 입력 없이 바뀐 것도 보낸다 */
+
+/* ---- 화면: 접속 상태 ---- */
+function syncStatusUI(){
+  const el=$('#sync-state');if(!el)return;
+  const S=Sync.cur;
+  if(!S){el.hidden=true;return;}
+  let t,cls='';
+  if(S.error==='removed'||S.error==='denied'){t='공유에서 빠짐 · 동기화 멈춤';cls='bad';}
+  else if(S.error==='load'){t='공유 기능을 불러오지 못함';cls='bad';}
+  else if(Sync.authKnown&&!Sync.user){t='로그인 필요 · 동기화 멈춤';cls='bad';}
+  else if(!S.unsub||!S.gotCells){t='연결 중…';}
+  else if(!Sync.online){t=`오프라인 (보낼 변경 ${S.pendingN}개 대기)`;cls='warn';}
+  else if(S.flushing){t='실시간 연결됨 · 보내는 중';cls='ok';}
+  else{t='실시간 연결됨';cls='ok';}
+  el.hidden=false;el.className='sync-state '+cls;el.textContent=t;
+}
+
+/* ---- 화면: 칸 옆 "마지막 수정"·"다른 버전 n개" ---- */
+let syncDecQueued=false;
+function syncDecorateSoon(){if(syncDecQueued)return;syncDecQueued=true;Promise.resolve().then(()=>{syncDecQueued=false;syncDecorate();});}
+function syncOther(c,curJson){/* 충돌 기록에서 지금 칸 값과 다른 쪽 */
+  if(c.theirs!==curJson)return {json:c.theirs,by:c.theirsByName||'다른 사람',at:c.theirsAt};
+  return {json:c.mine,by:c.mineByName||'다른 사람',at:c.at};
+}
+function syncConfFor(path){const S=Sync.cur;return S?S.conflicts.filter(c=>c.path===path):[];}
+function syncDecorate(){
+  const S=Sync.cur;const p=curProject();
+  const ok=S&&p&&S.localId===p.id&&S.gotCells;
+  if(!ok){$$('.sync-meta').forEach(x=>x.remove());return;}
+  const idx=syncPathIndex(p);
+  $$('#main [data-f]').forEach(el=>{
+    let path=null;try{path=syncSpecPath(el.dataset.f,idx);}catch(e){}
+    const holder=el.closest('.td')?el.closest('.td').querySelector('.cell-label'):(el.closest('.field')?el.closest('.field').querySelector(':scope > span, :scope > legend'):null);
+    if(!holder)return;
+    let m=holder.querySelector(':scope > .sync-meta');
+    const c=path&&S.cells.get(path);const nc=path?syncConfFor(path).length:0;
+    const sig=c?[path,c.byName,c.at,nc].join('|'):(nc?path+'|'+nc:'');
+    if(!sig){if(m)m.remove();return;}
+    if(m&&m.dataset.sig===sig)return;
+    if(!m){m=document.createElement('span');m.className='sync-meta';holder.appendChild(m);}
+    m.dataset.sig=sig;
+    m.innerHTML=(c&&c.by?`<button type="button" class="sync-mbtn" data-act="sync-hist" data-path="${esc(path)}" title="수정 기록 보기">마지막 수정: ${esc(c.byName||'이름 없음')}${c.at?' · '+fmtShort(c.at):''}</button>`:'')
+      +(nc?`<button type="button" class="sync-cbtn" data-act="sync-conf" data-path="${esc(path)}">다른 버전 ${nc}개</button>`:'');
+  });
+}
+let syncDecObsQ=false;
+new MutationObserver(()=>{if(!Sync.cur||syncDecObsQ)return;syncDecObsQ=true;Promise.resolve().then(()=>{syncDecObsQ=false;syncDecorate();});}).observe(document.getElementById('main'),{childList:true,subtree:true});
+
+/* ---- 자료 경로로 값 바꾸기 (충돌 고르기·이전 버전 다시 넣기) ---- */
+function syncSetValue(p,path,value){
+  const inv=new Map();syncPathIndex(p).forEach((pa,o)=>inv.set(pa,o));
+  const i=path.lastIndexOf('/');const parent=i<0?'':path.slice(0,i);const field=path.slice(i+1);
+  const obj=inv.get(parent);if(!obj)return false;
+  obj[field]=value;
+  const segs=path.split('/');
+  if(segs[0]==='procs'&&p.procs[segs[1]])touch(p,segs[1]);else{p.updatedAt=nowISO();}
+  saveNow();
+  const y=window.scrollY;render();window.scrollTo(0,y);
+  syncFlushSoon(0);
+  return true;
+}
+function syncCurJson(p,path){const f=syncFlat(p);return f.cells.has(path)?JSON.stringify(f.cells.get(path)):null;}
+function syncText(json){const v=syncParse(json);return v==null?'':typeof v==='string'?v:JSON.stringify(v);}
+function syncSentences(t){return String(t||'').split(/\n+|(?<=[.!?。])\s+/).map(s=>s.trim()).filter(Boolean);}
+
+/* ---- 대화 상자: 다른 버전 · 수정 기록 ---- */
+function syncDlgShow(html){
+  let d=$('#sync-dlg');
+  if(!d){d=document.createElement('div');d.id='sync-dlg';d.className='sync-dlg';document.body.appendChild(d);
+    d.addEventListener('click',e=>{if(e.target===d)syncDlgClose();});}
+  d.innerHTML=`<div class="sync-box" role="dialog" aria-modal="true" aria-labelledby="sync-dlg-h">${html}</div>`;d.hidden=false;
+  const f=d.querySelector('h2');if(f){f.tabIndex=-1;f.focus();}
+}
+function syncDlgClose(){const d=$('#sync-dlg');if(d){d.hidden=true;d.innerHTML='';}Sync.dlg=null;}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&Sync.dlg)syncDlgClose();});
+function syncLabel(p,path){
+  const segs=path.split('/');const key=segs[0]==='procs'?segs[1]:null;
+  const proc=key&&PROC[key]?PROC[key].title:'프로젝트 정보';
+  let name=segs[segs.length-1];
+  if(key&&PROC[key]){
+    const sv={proc:ui.proc,projectId:ui.projectId,view:ui.view};
+    try{
+      ui.proc=key;ui.projectId=p.id;ui.view='proc';
+      const box=document.createElement('div');box.innerHTML=viewProc(p,key);
+      const idx=syncPathIndex(p);
+      for(const el of box.querySelectorAll('[data-f]')){
+        if(syncSpecPath(el.dataset.f,idx)!==path)continue;
+        const h=el.closest('.td')?el.closest('.td').querySelector('.cell-label'):(el.closest('.field')?el.closest('.field').querySelector(':scope > span, :scope > legend'):null);
+        const t=(h?h.textContent:el.getAttribute('aria-label')||'').replace(/\s+/g,' ').trim();
+        if(t){name=t;break;}
+      }
+    }catch(e){}
+    finally{Object.assign(ui,sv);}
+  }else if(path==='code')name='학생 코드';else if(path==='memo')name='메모';
+  return {proc,name};
+}
+function syncConfView(path){
+  const p=curProject();const S=Sync.cur;if(!p||!S)return;
+  const list=syncConfFor(path);
+  if(!list.length){syncDlgClose();toast('남은 다른 버전이 없습니다');return;}
+  const c=list[0];const cur=syncCurJson(p,path);const o=syncOther(c,cur);
+  const meta=S.cells.get(path);const lb=syncLabel(p,path);
+  Sync.dlg={kind:'conf',path,id:c.id,other:o.json,pick:false};
+  syncDlgShow(`<h2 class="h3" id="sync-dlg-h">다른 버전 ${list.length}개 · ${esc(lb.name)}</h2>
+    <p class="hint">${esc(lb.proc)} · 같은 칸을 두 사람이 다르게 고쳤습니다. 나중에 저장된 내용이 칸에 들어가 있습니다.</p>
+    <div class="sync-vs">
+      <div><h3>지금 칸 내용</h3><p class="meta">${esc(meta&&meta.byName||'')}${meta&&meta.at?' · '+fmtShort(meta.at):''}</p><div class="sync-text">${esc(syncText(cur))||'<span class="muted">(비어 있음)</span>'}</div></div>
+      <div><h3>다른 버전</h3><p class="meta">${esc(o.by)}${o.at?' · '+fmtShort(o.at):''}</p><div class="sync-text" id="sync-other">${esc(syncText(o.json))}</div></div>
+    </div>
+    <div class="row">
+      <button type="button" class="btn primary small" data-act="sync-take">이 버전으로 바꾸기</button>
+      <button type="button" class="btn small" data-act="sync-append">내 내용 뒤에 붙이기</button>
+      <button type="button" class="btn small" data-act="sync-pick">일부만 가져오기</button>
+    </div>
+    <div id="sync-pickbox"></div>
+    <div class="row end"><button type="button" class="btn small ghost" data-act="sync-keep">지금 내용 그대로 두기</button><button type="button" class="btn small" data-act="sync-close">닫기</button></div>`);
+}
+async function syncResolveCur(msg){
+  const S=Sync.cur;const D=Sync.dlg;if(!S||!D)return;
+  try{await Sync.ad.resolve(S.pid,D.id,syncMe());}catch(e){toast('충돌 기록을 정리하지 못했습니다. 연결을 확인하세요.');return;}
+  S.conflicts=S.conflicts.filter(c=>c.id!==D.id);
+  toast(msg);
+  if(syncConfFor(D.path).length)syncConfView(D.path);else syncDlgClose();
+  syncDecorateSoon();syncRefreshCards();
+}
+async function syncHistView(path){
+  const p=curProject();const S=Sync.cur;if(!p||!S)return;
+  const lb=syncLabel(p,path);
+  Sync.dlg={kind:'hist',path,list:null};
+  syncDlgShow(`<h2 class="h3" id="sync-dlg-h">수정 기록 · ${esc(lb.name)}</h2><p class="hint">불러오는 중…</p>`);
+  let list;
+  try{list=await Sync.ad.history(S.pid,path);}catch(e){if(Sync.dlg&&Sync.dlg.path===path)syncDlgShow(`<h2 class="h3" id="sync-dlg-h">수정 기록</h2><p class="hint">수정 기록을 불러오지 못했습니다. 인터넷 연결을 확인하세요.</p><div class="row end"><button type="button" class="btn small" data-act="sync-close">닫기</button></div>`);return;}
+  if(!Sync.dlg||Sync.dlg.path!==path)return;
+  Sync.dlg.list=list;const cur=syncCurJson(p,path);
+  syncDlgShow(`<h2 class="h3" id="sync-dlg-h">수정 기록 · ${esc(lb.name)}</h2>
+    <p class="hint">${esc(lb.proc)} · 오래된 것부터 시간순입니다. 예전 내용을 다시 넣으면 그것도 새 기록으로 남습니다.</p>
+    ${list.length?`<ol class="sync-hist">${list.map((h,i)=>`<li><p class="meta">${esc(h.byName||'')} · ${h.at?fmtShort(h.at):''}${h.value===cur?' · <b>지금 내용</b>':''}</p><div class="sync-text">${esc(syncText(h.value))||'<span class="muted">(비어 있음)</span>'}</div>${h.value!==cur?`<button type="button" class="btn small" data-act="sync-restore" data-i="${i}">이 버전 다시 넣기</button>`:''}</li>`).join('')}</ol>`:'<p class="muted">공유한 뒤로 이 칸을 고친 기록이 없습니다.</p>'}
+    <div class="row end"><button type="button" class="btn small" data-act="sync-close">닫기</button></div>`);
+}
+
+/* ---- 화면: 프로젝트·홈 카드 ---- */
+function syncLoginLine(){
+  if(!Sync.user)return `<div class="row"><button type="button" class="btn small" data-act="sync-login">구글로 로그인</button><span class="hint">공유 프로젝트를 쓰려면 로그인해야 합니다.</span></div>`;
+  return `<div class="sync-login"><span class="meta">로그인: ${esc(Sync.user.email||Sync.user.name)}</span>
+    <label class="field sync-name"><span>표시 이름 <small>다른 사람에게 보이는 이름</small></span><input id="sync-name" autocomplete="off" maxlength="30" value="${esc(syncMe().name)}"></label>
+    <button type="button" class="btn small ghost" data-act="sync-logout">로그아웃</button></div>`;
+}
+function syncProjectCard(p){
+  if(!SYNC_ON&&!window.__pbsSyncAdapter)return '';
+  return `<section class="card" id="sync-card">${syncProjectCardInner(p)}</section>`;
+}
+function syncProjectCardInner(p){
+  const sh=p.shared;
+  if(!sh)return `<h2 class="h3">여러 기기에서 함께 쓰기</h2>
+    <p class="hint">공유를 시작하면 이 프로젝트의 글자 자료가 서버(Firebase)에 올라가고, 공유 ID와 공유 코드를 아는 사람이 같은 프로젝트를 받아 함께 고칠 수 있습니다. 녹음·사진·PDF 파일은 올라가지 않습니다. 실명 등 개인정보를 적지 않았는지 먼저 확인하세요.</p>
+    ${syncLoginLine()}
+    <div class="new-form"><label class="field"><span>공유 코드 <small>6자 이상, 함께 쓸 사람에게만 알려 주세요</small></span><input id="sync-code-new" autocomplete="off" maxlength="60"></label><button type="button" class="btn primary" data-act="sync-start">공유 시작</button></div>`;
+  const S=Sync.cur&&Sync.cur.localId===p.id?Sync.cur:null;const me=Sync.user;
+  const owner=sh.role==='owner';
+  const mem=S?S.members.slice().sort((a,b)=>(a.role==='owner'?-1:0)-(b.role==='owner'?-1:0)):[];
+  return `<div class="sec-head"><h2 class="h3">여러 기기에서 함께 쓰기</h2><span class="pill">${owner?'소유자':'멤버'}</span></div>
+    <div class="sync-id"><span class="meta">공유 ID</span><code class="mono" id="sync-pid">${esc(sh.projectId)}</code><button type="button" class="btn small" data-act="sync-copy">복사</button></div>
+    ${sh.code?`<p class="meta">공유 코드: <span class="mono">${esc(sh.code)}</span> · ${fmtShort(sh.since)}부터 공유</p>`:''}
+    <p class="hint">함께 쓸 사람은 첫 화면의 '공유 코드로 프로젝트 받기'에 공유 ID와 공유 코드를 넣습니다. 녹음·사진·PDF는 이 기기에만 있습니다.</p>
+    ${syncLoginLine()}
+    ${S&&(S.error==='removed'||S.error==='denied')?`<p class="banner warn">이 프로젝트의 공유 멤버가 아니어서 동기화를 멈췄습니다. 이 기기의 사본은 그대로 남아 있습니다.</p>`:''}
+    ${mem.length?`<div><h3 class="sub-label">멤버 ${mem.length}명</h3><ul class="sync-members">${mem.map(m=>`<li><span>${esc(m.name||'이름 없음')}${m.role==='owner'?' <small>소유자</small>':''}${me&&m.uid===me.uid?' <small>(나)</small>':''}</span><span class="meta">${m.joinedAt?fmtShort(m.joinedAt):''}</span>${owner&&me&&m.uid!==me.uid?`<button type="button" class="btn small ghost danger" data-act="ask" data-key="sync-kick:${esc(m.uid)}">내보내기</button>`:''}
+      ${ui.confirm==='sync-kick:'+m.uid?confirmBox(`<b>${esc(m.name||'이 멤버')}</b>님을 공유에서 내보냅니다. 내보낸 뒤에는 공유 코드도 바꾸세요.`,'sync-kick',m.uid):''}</li>`).join('')}</ul></div>`:''}
+    ${owner?`<div class="new-form"><label class="field"><span>공유 코드 바꾸기 <small>이미 들어온 멤버는 그대로</small></span><input id="sync-code-change" autocomplete="off" maxlength="60"></label><button type="button" class="btn" data-act="sync-recode">바꾸기</button></div>`:''}`;
+}
+function syncConflictCard(p){
+  const S=Sync.cur&&Sync.cur.localId===p.id?Sync.cur:null;
+  if(!S||!S.conflicts.length)return `<div id="sync-conflicts" hidden></div>`;
+  const list=S.conflicts.slice().sort((a,b)=>(b.at||'').localeCompare(a.at||''));
+  return `<section class="card sync-conflicts" id="sync-conflicts"><h2 class="h3">확인할 충돌 ${list.length}개</h2>
+    <p class="hint">같은 칸을 두 사람이 다르게 고친 곳입니다. 눌러서 그 칸으로 가 내용을 고르세요.</p>
+    <ul class="sync-clist">${list.map(c=>{const lb=syncLabel(p,c.path);const o=syncOther(c,syncCurJson(p,c.path));
+      return `<li><button type="button" class="sync-citem" data-act="sync-goto" data-path="${esc(c.path)}"><b>${esc(lb.proc)} · ${esc(lb.name)}</b><span class="meta">${esc(o.by)} · ${o.at?fmtShort(o.at):''}</span></button></li>`;}).join('')}</ul></section>`;
+}
+function syncJoinCard(){
+  if(!SYNC_ON&&!window.__pbsSyncAdapter)return '';
+  return `<section class="card" id="sync-join"><h2 class="h3">공유 코드로 프로젝트 받기</h2>
+    <p class="hint">다른 사람이 '공유 시작'한 프로젝트를 이 기기로 받아 함께 고칩니다. 받은 프로젝트는 새 프로젝트로 추가됩니다.</p>
+    <div id="sync-join-login">${Sync.user?`<p class="meta">로그인: ${esc(Sync.user.email||Sync.user.name)}</p>`:''}</div>
+    <div class="new-form">
+      <label class="field"><span>공유 ID</span><input id="sync-join-id" autocomplete="off" maxlength="80"></label>
+      <label class="field"><span>공유 코드</span><input id="sync-join-code" autocomplete="off" maxlength="60"></label>
+      <button type="button" class="btn primary" data-act="sync-join">받기</button>
+    </div></section>`;
+}
+function syncRefreshCards(){
+  const p=curProject();
+  if(ui.view==='project'&&p){
+    const c=$('#sync-card');if(c&&!(document.activeElement&&c.contains(document.activeElement)&&document.activeElement.matches('input')))c.innerHTML=syncProjectCardInner(p);
+    const k=$('#sync-conflicts');if(k)k.outerHTML=syncConflictCard(p);
+  }
+  if(ui.view==='home'){const j=$('#sync-join-login');if(j)j.innerHTML=Sync.user?`<p class="meta">로그인: ${esc(Sync.user.email||Sync.user.name)}</p>`:'';}
+}
+function syncAfterRender(){syncWatch();syncDecorateSoon();syncStatusUI();}
+function syncErrMsg(e){
+  const c=(e&&e.code)||'';
+  if(c==='badcode')return '공유 ID 또는 공유 코드가 맞지 않습니다';
+  if(/permission/.test(c))return '권한이 없습니다. 공유 ID·코드를 확인하세요';
+  if(/unavailable|network/.test(c))return '서버에 연결하지 못했습니다. 인터넷 연결을 확인하세요';
+  if(/popup-closed|cancelled-popup/.test(c))return '로그인 창이 닫혔습니다';
+  return '문제가 생겼습니다: '+((e&&e.message)||e);
+}
+
+/* ---- 버튼 ---- */
+Object.assign(actions,{
+  'sync-login':async()=>{try{await syncEnsureUser();toast('로그인했습니다');syncRefreshCards();}catch(e){toast(syncErrMsg(e));}},
+  'sync-logout':async()=>{try{await Sync.ad.signOut();toast('로그아웃했습니다. 공유 프로젝트는 이 기기에 남고 동기화만 멈춥니다.');}catch(e){toast(syncErrMsg(e));}},
+  'sync-start':async el=>{
+    const p=curProject();const inp=$('#sync-code-new');const code=(inp&&inp.value||'').trim();
+    if(code.length<6){toast('공유 코드를 6자 이상으로 정하세요');if(inp)inp.focus();return;}
+    el.disabled=true;
+    try{
+      const ad=await syncEnsureUser();const me=syncMe();
+      const key=await syncInviteKey(p.id,code);const flat=syncFlat(p);
+      toast('서버에 올리는 중…');
+      await ad.createProject(p.id,{code:p.code},me,key,flat);
+      p.shared={projectId:p.id,role:'owner',since:nowISO(),code};
+      const st=syncState(p.id);st.base=syncBaseOf(p);st.revs={};flat.cells.forEach((v,pa)=>{st.revs[pa]=1;});
+      saveNow();render();toast('공유를 시작했습니다. 공유 ID와 공유 코드를 함께 쓸 사람에게 알려 주세요.');
+    }catch(e){console.error(e);toast(syncErrMsg(e));el.disabled=false;}
+  },
+  'sync-join':async el=>{
+    const id=($('#sync-join-id').value||'').trim();const code=($('#sync-join-code').value||'').trim();
+    if(!id||!code){toast('공유 ID와 공유 코드를 모두 입력하세요');return;}
+    const have=projById(id);
+    if(have&&have.shared){go('project',{projectId:id,proc:null});toast('이미 이 기기에 있는 공유 프로젝트입니다');return;}
+    if(have){toast('같은 ID의 프로젝트가 이 기기에 이미 있습니다 (공유를 시작한 기기입니다)');return;}
+    el.disabled=true;
+    try{
+      const ad=await syncEnsureUser();const me=syncMe();
+      const key=await syncInviteKey(id,code);
+      const r=await ad.join(id,key,me);
+      const tc=new Map(),ti=new Map(),revs={};
+      r.cells.forEach(c=>{if(!c.deleted){tc.set(c.path,syncParse(c.value));}revs[c.path]=Number(c.rev)||0;});
+      r.items.forEach(it=>{if(!it.deleted)ti.set(it.path,{parent:it.parent,order:Number(it.order)||0});});
+      const p=ensureProject(syncUnflat(tc,ti));
+      p.id=id;p.lastBackupAt=null;p.example=false;p.shared={projectId:id,role:'member',since:nowISO(),code};
+      const st=syncState(id);st.base=syncBaseOf(p);st.revs=revs;
+      store.projects.push(p);saveNow();go('project',{projectId:id,proc:null});
+      toast('공유 프로젝트를 받았습니다. 이제 함께 고친 내용이 실시간으로 반영됩니다.');
+    }catch(e){if(e&&e.code!=='badcode')console.error(e);toast(syncErrMsg(e));}
+    finally{el.disabled=false;}
+  },
+  'sync-copy':async()=>{
+    const p=curProject();const t=p&&p.shared?p.shared.projectId:'';
+    try{await navigator.clipboard.writeText(t);toast('공유 ID를 복사했습니다');}
+    catch(e){const c=$('#sync-pid');if(c){const r=document.createRange();r.selectNodeContents(c);const s=getSelection();s.removeAllRanges();s.addRange(r);}toast('공유 ID를 선택했습니다. 길게 눌러 복사하세요');}
+  },
+  'sync-kick':async el=>{
+    const S=Sync.cur;if(!S)return;
+    try{await Sync.ad.removeMember(S.pid,el.dataset.id);ui.confirm=null;rerenderForConfirm();toast('멤버를 내보냈습니다. 공유 코드도 바꾸는 것이 좋습니다.');}
+    catch(e){toast(syncErrMsg(e));}
+  },
+  'sync-recode':async el=>{
+    const p=curProject();const S=Sync.cur;const inp=$('#sync-code-change');const code=(inp&&inp.value||'').trim();
+    if(!S||!p.shared){toast('연결된 뒤에 다시 시도하세요');return;}
+    if(code.length<6){toast('공유 코드를 6자 이상으로 정하세요');return;}
+    el.disabled=true;
+    try{await Sync.ad.changeCode(S.pid,await syncInviteKey(S.pid,code),syncMe());p.shared.code=code;saveNow();syncRefreshCards();toast('공유 코드를 바꿨습니다. 예전 코드로는 더 받을 수 없습니다.');}
+    catch(e){toast(syncErrMsg(e));el.disabled=false;}
+  },
+  'sync-hist':el=>syncHistView(el.dataset.path),
+  'sync-conf':el=>syncConfView(el.dataset.path),
+  'sync-close':()=>syncDlgClose(),
+  'sync-take':()=>{const D=Sync.dlg;const p=curProject();if(!D||!p)return;syncSetValue(p,D.path,syncParse(D.other));syncResolveCur('다른 버전으로 바꿨습니다');},
+  'sync-append':()=>{const D=Sync.dlg;const p=curProject();if(!D||!p)return;
+    const cur=syncText(syncCurJson(p,D.path));const o=syncText(D.other);
+    syncSetValue(p,D.path,cur?cur+'\n──────────\n'+o:o);syncResolveCur('두 내용을 이어 붙였습니다. 필요 없는 부분은 지우세요.');},
+  'sync-pick':()=>{const D=Sync.dlg;if(!D)return;const ss=syncSentences(syncText(D.other));const box=$('#sync-pickbox');if(!box)return;
+    box.innerHTML=`<fieldset class="field sync-pick"><legend>가져올 문장을 고르세요</legend>${ss.map((s,i)=>`<label class="check"><input type="checkbox" data-pick="${i}"> <span>${esc(s)}</span></label>`).join('')}</fieldset><div class="row"><button type="button" class="btn primary small" data-act="sync-pick-do">고른 문장을 내 칸 끝에 넣기</button></div>`;
+    D.sent=ss;},
+  'sync-pick-do':()=>{const D=Sync.dlg;const p=curProject();if(!D||!p||!D.sent)return;
+    const ch=$$('#sync-pickbox [data-pick]').filter(x=>x.checked).map(x=>D.sent[Number(x.dataset.pick)]);
+    if(!ch.length){toast('가져올 문장을 하나 이상 고르세요');return;}
+    const cur=syncText(syncCurJson(p,D.path));
+    syncSetValue(p,D.path,cur?cur+(cur.endsWith('\n')?'':'\n')+ch.join(' '):ch.join(' '));syncResolveCur(`문장 ${ch.length}개를 가져왔습니다`);},
+  'sync-keep':()=>syncResolveCur('지금 내용을 그대로 두었습니다'),
+  'sync-restore':el=>{const D=Sync.dlg;const p=curProject();if(!D||!D.list||!p)return;const h=D.list[Number(el.dataset.i)];if(!h)return;
+    syncSetValue(p,D.path,syncParse(h.value));syncDlgClose();toast('이전 버전을 다시 넣었습니다');},
+  'sync-goto':el=>{
+    const p=curProject();const path=el.dataset.path;const segs=path.split('/');
+    (path.match(/sheets\[([^\]]+)\]/g)||[]).forEach(s=>ui.openSheets.add(s.slice(7,-1)));
+    if(segs[0]==='procs'&&PROC[segs[1]])go('proc',{proc:segs[1]});
+    const idx=syncPathIndex(p);
+    const t=$$('#main [data-f]').find(x=>{try{return syncSpecPath(x.dataset.f,idx)===path;}catch(e){return false;}});
+    if(t){const d=t.closest('details');if(d)d.open=true;t.scrollIntoView({block:'center'});t.classList.add('sync-flash');setTimeout(()=>t.classList.remove('sync-flash'),2400);}
+    syncConfView(path);
+  }
+});
+document.addEventListener('input',e=>{
+  if(e.target.id!=='sync-name')return;
+  store.settings.userName=e.target.value;scheduleSave();
+  clearTimeout(Sync.nt);Sync.nt=setTimeout(()=>{const S=Sync.cur;const me=syncMe();if(S&&S.unsub&&me)Sync.ad.setName(S.pid,me).catch(()=>{});},1500);
+});
+if(window.__pbsEmu)window.__pbsSync={Sync,syncFlat,syncUnflat,syncDiff,store:()=>store};
+
 /* ---------- boot ---------- */
 if(firstRun&&!store.projects.length){store.projects.push(exampleProject());}
 AudioDB.open().then(()=>{audioOK=true;}).catch(()=>{audioOK=false;});
@@ -2410,6 +3103,7 @@ render();
 updateUsage();
 if(storageOK)setSaveState('');
 tick();setInterval(tick,1000);
+if(SYNC_ON){const sf=$('#sync-foot');if(sf)sf.hidden=false;if(store.projects.some(p=>p.shared))syncAdapter().catch(()=>{});}
 (function(){const tb=$('.topbar');const set=()=>document.documentElement.style.setProperty('--tb',tb.offsetHeight+'px');set();try{new ResizeObserver(set).observe(tb);}catch(e){window.addEventListener('resize',set);}})();
 })();
 </script>

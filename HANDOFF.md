@@ -4,6 +4,46 @@
 
 ---
 
+## 2026-11-06 · Firebase(Firestore)로 여러 기기 실시간 공유
+
+### 한 일
+- `FIREBASE_CONFIG`가 비면 지금과 같음(버튼 숨김, SDK 안 불러옴).
+- 프로젝트 화면 '여러 기기에서 함께 쓰기': 구글 로그인, 공유 시작(코드 6자 이상), 공유 ID 복사, 표시 이름, 멤버 목록, 소유자 내보내기·코드 바꾸기.
+- 홈 '공유 코드로 프로젝트 받기'(공유 ID + 코드).
+- 열어 둔 공유 프로젝트만 구독, 바뀐 칸만 전송(글 칸 1.5초·칸 벗어날 때, 선택은 바로). 입력 중인 칸은 벗어난 뒤 반영.
+- 충돌: 나중 저장 우선, 칸 옆 '다른 버전 n개'(버튼 3개 + '그대로 두기'), 프로젝트 화면 '확인할 충돌 n개'.
+- 칸 옆 '마지막 수정: 이름 · 시각' → 수정 기록('이 버전 다시 넣기').
+- 화면 위 접속 상태 표시.
+- 녹음·사진·PDF는 안 올림('다른 기기에 있는 파일' 표시). 하단 안내문 한 줄 추가.
+- `firestore.rules`, `docs/firebase-setup.md` 추가.
+
+### 데이터
+- `p.shared={projectId(=p.id),role:'owner'|'member',since,code}`, `store.sync[pid]={base,revs}`, `settings.userName`.
+- Firestore: `projects/{pid}` 아래 `members`·`cells`(칸 1개=문서 1개, value는 JSON 문자열)·`items`·`history`·`conflicts`, `invites/{SHA-256(pid:코드)}`. 필드는 `docs/firebase-setup.md`·코드 주석 참고.
+- 경로는 id 기반(`procs/abc/data/sheets[s1]/rows[w2]/b`). 복제·불러온 사본은 `shared`를 지움.
+
+### 확인한 것
+- 에뮬레이터(Firestore+Auth) + Playwright 두 브라우저 43개 통과: 공유·받기, 틀린 코드 거절, 자동 반영, 입력 중 칸 보호, 디바운스·한 칸 쓰기 4회, 오프라인→재연결 전송, 서로 추가한 항목 둘 다 남음, 충돌 버튼 3개·목록·수정 기록, 내보내기, 375px, 콘솔 오류 없음.
+- 규칙 시험 33개 통과(멤버 아님·코드 모름·history 수정·사칭 → 거부).
+- 설정 비었을 때: 공유 UI 숨김, SDK 요청 없음, 기존 탭 병합 그대로.
+- 시험하지 못한 것: 실제 Firebase·구글 팝업 로그인, 실기기, 큰 프로젝트의 무료 한도.
+
+### 알려진 한계
+- 쓰기는 트랜잭션이라 Firestore 대기열 대신 `base`와의 차이를 남겼다가 재연결 때 보냄.
+- 충돌 기록은 글자 칸만.
+- 입력칸 포커스 중에는 화면 다시 그리기를 미룸(기존과 같음).
+- `base`가 프로젝트 사본이라 localStorage 사용량이 늘어남.
+- 관찰 세션(`abc.session`)도 공유되어 다른 기기도 진행 중으로 보임.
+- 서버 쪽 프로젝트 삭제·본인 탈퇴 버튼 없음.
+
+### 코드 위치 (index.html)
+- `/* ---------- 실시간 공유 (Firebase Firestore) ---------- */`: `FIREBASE_CONFIG`, `FIREBASE_VER`, `syncFlat`·`syncUnflat`·`syncDiff`, `makeFirestoreAdapter`(어댑터, `window.__pbsSyncAdapter`로 교체 가능), `syncWatch`·`syncAbsorb`·`syncFlush`, `syncDecorate`, `syncConfView`·`syncHistView`, `syncProjectCard`·`syncConflictCard`·`syncJoinCard`, actions `sync-*`
+- `render()` 끝 `syncAfterRender()`, CSS `/* 실시간 공유 */`
+
+### 다음에 할 일
+- 사용자: `docs/firebase-setup.md`대로 설정 후 `firebaseConfig` 전달 → `FIREBASE_CONFIG`에 넣어 배포 → 문서 끝 '확인 순서'로 두 기기 확인.
+- 서버에 학생 자료가 올라가므로 개인정보 동의 확인.
+
 ## 2026-11-05 · 여러 사람 동시 사용·기기 간 반영 점검 (분석만, 코드 변경 없음)
 
 ### 한 일

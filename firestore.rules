@@ -1,0 +1,90 @@
+rules_version = '2';
+// PBS 행동 관찰 기록장: 실시간 공유 보안 규칙
+// Firebase 콘솔 → Firestore Database → 규칙 탭에 이 파일 내용을 그대로 붙여 넣고 '게시'를 누르세요.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function projectPath(pid) { return /databases/$(database)/documents/projects/$(pid); }
+    function isMember(pid) {
+      return signedIn() && exists(/databases/$(database)/documents/projects/$(pid)/members/$(me()));
+    }
+    function isOwner(pid) {
+      return signedIn() && exists(projectPath(pid)) && get(projectPath(pid)).data.owner == me();
+    }
+    // 바꾼 칸이 지정한 것뿐인지
+    function onlyChanges(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    // 공유 코드 확인용 문서: 문서 이름 = SHA-256(projectId + ':' + 공유코드)
+    // 코드를 아는 사람만 이름을 알 수 있으므로 get만 허용하고 목록 보기(list)는 막는다.
+    match /invites/{key} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['projectId', 'createdBy'])
+        && request.resource.data.createdBy == me()
+        && isOwner(request.resource.data.projectId);
+      allow delete: if signedIn() && isOwner(resource.data.projectId);
+      allow update: if false;
+    }
+
+    match /projects/{pid} {
+      allow get: if isMember(pid);
+      allow list: if false;
+      allow create: if signedIn() && request.resource.data.owner == me();
+      allow update: if isOwner(pid) && request.resource.data.owner == resource.data.owner;
+      allow delete: if false;
+
+      match /members/{uid} {
+        allow get: if signedIn() && (uid == me() || isMember(pid));
+        allow list: if isMember(pid);
+        // 본인만, 소유자 등록(프로젝트 owner일 때) 또는 공유 코드 확인을 통과했을 때
+        allow create: if signedIn() && uid == me()
+          && request.resource.data.role in ['owner', 'member']
+          && (
+            (request.resource.data.role == 'owner' && get(projectPath(pid)).data.owner == me())
+            || (request.resource.data.role == 'member'
+                && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteKey)).data.projectId == pid)
+          );
+        // 역할 변경 등은 소유자만. 본인은 표시 이름만 바꿀 수 있다.
+        allow update: if isOwner(pid) || (uid == me() && isMember(pid) && onlyChanges(['name']));
+        // 내보내기는 소유자만, 본인 탈퇴는 허용
+        allow delete: if isOwner(pid) || (signedIn() && uid == me());
+      }
+
+      // 칸 하나 = 문서 하나
+      match /cells/{key} {
+        allow read: if isMember(pid);
+        allow create, update: if isMember(pid) && request.resource.data.by == me();
+        allow delete: if false;
+      }
+
+      // id가 있는 목록 항목(관찰지·행·응답자 등): 추가·순서·삭제(deleted:true)
+      match /items/{key} {
+        allow read: if isMember(pid);
+        allow create, update: if isMember(pid) && request.resource.data.by == me();
+        allow delete: if false;
+      }
+
+      // 수정 기록: 추가만, 고치거나 지울 수 없다
+      match /history/{id} {
+        allow read: if isMember(pid);
+        allow create: if isMember(pid) && request.resource.data.by == me();
+        allow update, delete: if false;
+      }
+
+      // 충돌 기록: 쓴 사람(mine)이 만들고, 멤버 누구나 '확인함'으로 표시만 할 수 있다
+      match /conflicts/{id} {
+        allow read: if isMember(pid);
+        allow create: if isMember(pid) && request.resource.data.mineBy == me();
+        allow update: if isMember(pid) && onlyChanges(['resolved', 'resolvedBy', 'resolvedAt'])
+          && request.resource.data.resolvedBy == me();
+        allow delete: if false;
+      }
+    }
+    // 위에 없는 경로는 모두 거부 (기본값)
+  }
+}
