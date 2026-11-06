@@ -4,6 +4,37 @@
 
 ---
 
+## 2026-11-06 · 손글씨·키보드 입력 구조 개선 (모드 버튼, 보며 쓰기 창, 이어 쓰기, 손글씨 기기 전용)
+
+### 한 일
+- 위쪽 막대에 입력 방식 버튼 하나(키보드 모드 ↔ 손글씨 모드). 칸마다 있던 '✍ 손글씨' 버튼 없앰. 고른 모드는 기기에 기억.
+- 손글씨 모드: 칸마다 '여기에 손글씨로 쓰기' 자리, 글이 빈 칸은 숨김, 칸을 눌러도 키보드 안 뜨고 손글씨가 열림.
+- 키보드 모드: 손글씨가 있는 칸만 그림이 보이고, 그 칸(또는 그림)을 누르면 화면 위에 '손글씨 보며 쓰기' 창이 따로 뜸(왼쪽 손글씨, 오른쪽 쓰는 칸, 다른 칸 자리 안 밀림, 키보드 위 보이는 영역에 맞춤). 완료를 눌러야 칸에 들어감.
+- 손글씨 칸 아래 손잡이를 끌어 높이를 늘이고 줄임(쓴 글씨가 잘리지 않는 만큼까지).
+- 끊김 대비: 손글씨 칸·보며 쓰기 창·글 칸에 쓰는 중이면 자리를 기기에 적어 두고, 다시 열면 그 화면·그 칸에서 이어서 엶. 끊긴 동안은 서버로 안 보냄(칸을 벗어나거나 완료해야 보냄).
+- 손글씨는 서버로 보내지 않음. 예전 판이 서버에 올린 손글씨 칸은 공유 프로젝트를 열면 서버에서 지움.
+
+### 데이터
+- localStorage `pbs-input-mode`('ink'|'kb'), `pbs-resume`({kind:'ink'|'kb'|'field', spec, text?, sel?, view, projectId, proc}). 손글씨 저장 형식(.ink)은 그대로.
+
+### 확인한 것
+- Playwright(1280×800, 800×1280, 375 폭): 모드 전환, 손글씨 열기·그리기·완료, 손잡이로 높이 조절, 보며 쓰기 창 열기·완료, 창 쓰는 중 새로고침 → 쓰던 글로 다시 열림, 글 칸 쓰는 중 새로고침 → 그 칸에 커서, 손글씨 칸 열린 채 새로고침 → 다시 열림, 페이지 오류 없음.
+- 가짜 서버 어댑터: 서버에서 다른 칸이 바뀌어도 이 기기 손글씨 유지, 보내는 칸에 손글씨 없음, 예전 손글씨 칸 삭제 1회.
+- 시험하지 못한 것: 실제 갤럭시 탭·S펜(키보드가 뜰 때 창 위치, 다른 앱 전환 시 끊김 판단), 실제 Firebase.
+
+### 알려진 한계
+- 다른 앱으로 넘어갈 때를 `document.hasFocus`·`visibilityState`로 판단해서 기기에 따라 '칸 벗어남'으로 잘못 볼 수 있음.
+- 손글씨는 다른 기기에서 안 보임(의도). 예전 판으로 연 기기는 서버 삭제를 받으면 그 기기 손글씨가 지워질 수 있음 → 모든 기기 새로고침 필요.
+- 보며 쓰기 창이 열려 있으면 위쪽 막대(모드 버튼)를 가림.
+
+### 코드 위치 (index.html)
+- `inputModeSet`, `inputModeUI`, `inkInner`, `inkHost`, `inkHostMark`, `inkGripBind`, `kbOpen`, `kbPos`, `kbApply`, `kbClose`, `resumeSet/Get/Clear`, `resumeBoot`, `pageActive`
+- 동기화: `syncFlat`(ink 건너뜀), `inkStrip`, `inkDetach`, `INK_PATH`, `syncAbsorb`, `syncPending`, `syncEditing`, `Sync.inkGone`
+- CSS: `.mode-btn`, `.ink-empty`, `.ink-grip`, `.kb-float`, `html.in-ink`
+
+### 다음에 할 일
+- 사용자: 갤럭시 탭에서 모드 전환, 보며 쓰기 창(가로·세로, 키보드 올라온 상태), 쓰다가 다른 앱 갔다 오기·탭 닫았다 열기 확인.
+
 ## 2026-11-06 · 공유: 입력 '완료' 전에는 서버로 보내지 않기 (사용량 줄이기)
 
 ### 한 일
@@ -43,68 +74,3 @@
 
 ### 다음에 할 일
 - 사용자: 콘솔에서 Firestore 위치 확인, 규칙 탭에 `firestore.rules` 게시, 승인된 도메인에 `ij17838-creator.github.io` 추가 후 `docs/firebase-setup.md` 끝 '확인 순서'로 두 기기 확인.
-
-## 2026-11-06 · Firebase(Firestore)로 여러 기기 실시간 공유
-
-### 한 일
-- `FIREBASE_CONFIG`가 비면 지금과 같음(버튼 숨김, SDK 안 불러옴).
-- 프로젝트 화면 '여러 기기에서 함께 쓰기': 구글 로그인, 공유 시작(코드 6자 이상), 공유 ID 복사, 표시 이름, 멤버 목록, 소유자 내보내기·코드 바꾸기.
-- 홈 '공유 코드로 프로젝트 받기'(공유 ID + 코드).
-- 열어 둔 공유 프로젝트만 구독, 바뀐 칸만 전송(글 칸 1.5초·칸 벗어날 때, 선택은 바로). 입력 중인 칸은 벗어난 뒤 반영.
-- 충돌: 나중 저장 우선, 칸 옆 '다른 버전 n개'(버튼 3개 + '그대로 두기'), 프로젝트 화면 '확인할 충돌 n개'.
-- 칸 옆 '마지막 수정: 이름 · 시각' → 수정 기록('이 버전 다시 넣기').
-- 화면 위 접속 상태 표시.
-- 녹음·사진·PDF는 안 올림('다른 기기에 있는 파일' 표시). 하단 안내문 한 줄 추가.
-- `firestore.rules`, `docs/firebase-setup.md` 추가.
-
-### 데이터
-- `p.shared={projectId(=p.id),role:'owner'|'member',since,code}`, `store.sync[pid]={base,revs}`, `settings.userName`.
-- Firestore: `projects/{pid}` 아래 `members`·`cells`(칸 1개=문서 1개, value는 JSON 문자열)·`items`·`history`·`conflicts`, `invites/{SHA-256(pid:코드)}`. 필드는 `docs/firebase-setup.md`·코드 주석 참고.
-- 경로는 id 기반(`procs/abc/data/sheets[s1]/rows[w2]/b`). 복제·불러온 사본은 `shared`를 지움.
-
-### 확인한 것
-- 에뮬레이터(Firestore+Auth) + Playwright 두 브라우저 43개 통과: 공유·받기, 틀린 코드 거절, 자동 반영, 입력 중 칸 보호, 디바운스·한 칸 쓰기 4회, 오프라인→재연결 전송, 서로 추가한 항목 둘 다 남음, 충돌 버튼 3개·목록·수정 기록, 내보내기, 375px, 콘솔 오류 없음.
-- 규칙 시험 33개 통과(멤버 아님·코드 모름·history 수정·사칭 → 거부).
-- 설정 비었을 때: 공유 UI 숨김, SDK 요청 없음, 기존 탭 병합 그대로.
-- 시험하지 못한 것: 실제 Firebase·구글 팝업 로그인, 실기기, 큰 프로젝트의 무료 한도.
-
-### 알려진 한계
-- 쓰기는 트랜잭션이라 Firestore 대기열 대신 `base`와의 차이를 남겼다가 재연결 때 보냄.
-- 충돌 기록은 글자 칸만.
-- 입력칸 포커스 중에는 화면 다시 그리기를 미룸(기존과 같음).
-- `base`가 프로젝트 사본이라 localStorage 사용량이 늘어남.
-- 관찰 세션(`abc.session`)도 공유되어 다른 기기도 진행 중으로 보임.
-- 서버 쪽 프로젝트 삭제·본인 탈퇴 버튼 없음.
-
-### 코드 위치 (index.html)
-- `/* ---------- 실시간 공유 (Firebase Firestore) ---------- */`: `FIREBASE_CONFIG`, `FIREBASE_VER`, `syncFlat`·`syncUnflat`·`syncDiff`, `makeFirestoreAdapter`(어댑터, `window.__pbsSyncAdapter`로 교체 가능), `syncWatch`·`syncAbsorb`·`syncFlush`, `syncDecorate`, `syncConfView`·`syncHistView`, `syncProjectCard`·`syncConflictCard`·`syncJoinCard`, actions `sync-*`
-- `render()` 끝 `syncAfterRender()`, CSS `/* 실시간 공유 */`
-
-### 다음에 할 일
-- 사용자: `docs/firebase-setup.md`대로 설정 후 `firebaseConfig` 전달 → `FIREBASE_CONFIG`에 넣어 배포 → 문서 끝 '확인 순서'로 두 기기 확인.
-- 서버에 학생 자료가 올라가므로 개인정보 동의 확인.
-
-## 2026-11-05 · 여러 사람 동시 사용·기기 간 반영 점검 (분석만, 코드 변경 없음)
-
-### 한 일
-- 저장 구조를 점검하고 사용자 질문 두 가지에 답했습니다.
-- 결론: 모든 자료는 각 기기 브라우저의 localStorage(`pbs-observe:v1`)와 IndexedDB(`pbs-observe-audio`)에만 저장. 서버·로그인·네트워크 전송 없음.
-  1) 여러 사람이 써도 오류는 안 남. 다만 사람마다 각자 따로 복사본을 갖는 구조라 "한 프로젝트에 함께 접속"은 아님.
-  2) 다른 기기 실시간 반영은 안 됨. 같은 기기·같은 브라우저의 다른 탭끼리만 반영(2026-11-03 항목 참고).
-- 다른 기기로 옮기는 방법은 백업 파일 내보내기·불러오기뿐이고, 같은 프로젝트를 불러오면 합쳐지지 않고 "(불러옴)" 사본이 생김.
-
-### 확인한 것
-- 코드 읽기만 함: `loadStore`, `saveNow`, `merge3`, `absorbRemote`, `storage` 이벤트, `importBackup`, 화면 하단 안내 문구.
-- 시험하지 못한 것: 실제 두 기기 동시 사용.
-
-### 알려진 한계
-- 기기 간 공유를 하려면 서버(예: Firebase Firestore, Supabase)와 로그인이 필요. 학생 행동 자료라 접근 권한·개인정보 동의를 함께 정해야 함.
-- 기존 `merge3`(3자 병합)는 서버 동기화 때도 충돌 처리에 다시 쓸 수 있음.
-
-### 코드 위치 (index.html)
-- `/* ---------- storage ---------- */`의 `LS_KEY`, `loadStore`, `saveNow`, `merge3`, `absorbRemote`, `AudioDB`, `importBackup`
-
-### 다음에 할 일
-- 사용자가 공유 기능을 원하면: 서비스 선택(Firebase/Supabase), 로그인 방식, 프로젝트별 공유 대상, 녹음·첨부 파일까지 올릴지 결정 후 구현.
-- 공유 전 임시 방법이 필요하면 백업 불러오기 시 같은 프로젝트를 사본 대신 `merge3`로 합치는 기능 검토.
-

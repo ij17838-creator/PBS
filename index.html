@@ -383,6 +383,30 @@ td.top{color:var(--accent);font-weight:700}
 html.ink-lock,html.ink-lock *{touch-action:none!important}
 .ink-hint{display:none;margin:0;font-size:.78rem;color:var(--muted);line-height:1.4}
 html.ink-lock .ink-hint{display:block}
+/* 손글씨 칸 높이 조절 손잡이 */
+.ink-grip{display:flex;align-items:center;justify-content:center;height:22px;margin-top:-4px;border-radius:8px;cursor:ns-resize;touch-action:none;user-select:none;color:var(--muted);font-size:.72rem;gap:6px}
+.ink-grip::before{content:"";width:48px;height:5px;border-radius:3px;background:var(--line-strong)}
+.ink-grip:hover::before,.ink-grip.on::before{background:var(--accent)}
+/* 입력 방식: 버튼 하나로 손글씨 ↔ 키보드 */
+.mode-btn{min-height:36px;padding:0 12px;font-size:.86rem}
+.mode-btn .mode-k{font-weight:700;color:var(--accent)}
+.ink:empty{display:none}
+.ink-empty{display:flex;align-items:center;width:100%;min-height:44px;padding:8px 12px;border:1px dashed var(--line-strong);border-radius:10px;background:var(--surface-2);color:var(--muted);font:inherit;font-size:.85rem;cursor:pointer;text-align:left}
+.ink-empty.tall{min-height:96px;align-items:flex-start}
+.ink-empty:hover{border-color:var(--accent);color:var(--accent)}
+html.in-ink .ink-host.ink-blank{display:none}
+html.in-ink .ink-host{caret-color:transparent}
+.ink-view.kb-src{outline:3px solid var(--accent);outline-offset:2px}
+/* 키보드 모드: 손글씨를 보면서 쓰는 창(화면 위에 따로 뜸, 다른 칸 자리에 영향 없음) */
+.kb-float{position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:30;width:min(960px,calc(100vw - 16px));display:flex;flex-direction:column;gap:8px;background:var(--surface);color:var(--ink);border:2px solid var(--accent);border-radius:var(--r);box-shadow:var(--shadow);padding:10px;min-width:0}
+.kb-head{display:flex;align-items:center;gap:8px;font-size:.85rem;font-weight:600;min-width:0}
+.kb-head .kb-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kb-body{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-height:0;flex:1}
+.kb-ink{border:1px solid var(--line);border-radius:10px;background:var(--surface-2);overflow:auto;min-height:0;color:var(--ink)}
+.kb-ink svg{display:block;width:100%;height:auto}
+.kb-text{min-height:120px!important;height:100%;resize:none}
+.kb-btns{display:flex;gap:8px;justify-content:flex-end}
+@media (max-width:620px){.kb-body{grid-template-columns:1fr}}
 /* 실시간 공유 */
 .sync-state{font-size:.78rem;font-weight:700;white-space:nowrap;padding:3px 9px;border-radius:999px;background:var(--sunk);color:var(--muted)}
 .sync-state.ok{background:var(--ok-soft);color:var(--ok)}
@@ -421,6 +445,7 @@ html.ink-lock .ink-hint{display:block}
 <header class="topbar"><div class="wrap topbar-in">
   <nav class="crumbs" id="crumbs" aria-label="현재 위치"></nav>
   <div class="top-right">
+    <button type="button" class="btn mode-btn" id="input-mode" data-act="input-mode" title="손글씨 모드와 키보드 모드를 바꿉니다"></button>
     <div class="rec-mini" id="rec-mini" hidden><span class="mono" id="rec-mini-time">00:00</span><button class="btn small danger-solid" data-act="rec-stop" type="button">녹음 정지</button></div>
     <span class="sync-state" id="sync-state" aria-live="polite" hidden></span>
     <span class="save-state" id="save-state" aria-live="polite"></span>
@@ -431,7 +456,7 @@ html.ink-lock .ink-hint{display:block}
   <main id="main"></main>
   <footer class="foot">
     <p>자료는 이 기기의 이 브라우저 안에만 저장되며 다른 곳으로 전송되지 않습니다. 브라우저 기록을 지우면 사라지니 백업 파일을 자주 내보내세요.</p>
-    <p id="sync-foot" hidden>단, '공유 시작'한 프로젝트의 글자 자료는 서버(Firebase)에도 저장되어 함께 쓰는 사람에게 전달됩니다. 녹음·사진·PDF는 이 기기에만 있습니다.</p>
+    <p id="sync-foot" hidden>단, '공유 시작'한 프로젝트의 글자 자료는 서버(Firebase)에도 저장되어 함께 쓰는 사람에게 전달됩니다. 녹음·사진·PDF·손글씨는 이 기기에만 있습니다.</p>
     <p id="usage"></p>
   </footer>
 </div>
@@ -2182,7 +2207,10 @@ const INK_SEL='textarea[data-f],input[data-f]:not([type]),input[data-f][type=tex
 const INK_MODE_KEY='pbs-ink-mode';
 function inkModeGet(){try{return localStorage.getItem(INK_MODE_KEY)||'';}catch(e){return '';}}
 function inkModeSet(v){try{localStorage.setItem(INK_MODE_KEY,v);}catch(e){}}
-const inkUI={pad:null,penSeen:inkModeGet()==='pen',penDown:false,pending:{}};
+const INPUT_MODE_KEY='pbs-input-mode';/* 'ink'(손글씨) | 'kb'(키보드, 기본) */
+function inputModeGet(){try{return localStorage.getItem(INPUT_MODE_KEY)==='ink'?'ink':'kb';}catch(e){return 'kb';}}
+const inkUI={pad:null,penSeen:inkModeGet()==='pen',penDown:false,pending:{},mode:inputModeGet(),kb:null};
+document.documentElement.classList.toggle('in-ink',inkUI.mode==='ink');
 function inkSpec(el){return el.dataset.f||(el.id==='new-code'?'new:code':el.id==='new-memo'?'new:memo':'');}
 /* 칸 이름(data-f)으로 손글씨를 담을 객체와 필드를 찾는다 */
 function inkTarget(spec){
@@ -2221,17 +2249,37 @@ function inkPath(st){
 function inkSvg(ink){
   return `<svg viewBox="0 0 ${ink.w} ${ink.h}" preserveAspectRatio="xMinYMin meet" aria-hidden="true">${ink.s.map(st=>`<path d="${inkPath(st)}" fill="none" stroke="currentColor" stroke-width="${st[0]}" stroke-linecap="round" stroke-linejoin="round"/>`).join('')}</svg>`;
 }
+/* 손글씨 모드: 손글씨가 있으면 그림(눌러서 고치기), 없으면 빈 손글씨 자리.
+   키보드 모드: 손글씨가 있는 칸만 그림(눌러서 보며 쓰기), 없으면 비워 둔다(칸마다 손글씨 버튼 없음). */
 function inkInner(spec){
   const t=inkTarget(spec);const ink=t&&inkGet(t);
+  if(inkUI.mode!=='ink')return ink?`<button type="button" class="ink-view" data-act="kb-open" title="눌러서 손글씨를 보며 키보드로 쓰기" aria-label="손글씨 (눌러서 보며 키보드로 쓰기)">${inkSvg(ink)}</button>`:'';
+  const host=inkHost(spec);const tall=!!(host&&host.tagName==='TEXTAREA');
   return ink
     ?`<button type="button" class="ink-view" data-act="ink-open" title="눌러서 손글씨 고치기" aria-label="손글씨 (눌러서 고치기)">${inkSvg(ink)}</button>`
-    :`<button type="button" class="ink-btn" data-act="ink-open" aria-label="손글씨로 쓰기">✍ 손글씨</button>`;
+    :`<button type="button" class="ink-empty${tall?' tall':''}" data-act="ink-open" aria-label="손글씨로 쓰기">✍ 여기에 손글씨로 쓰기</button>`;
+}
+/* 칸 이름으로 화면의 입력칸 찾기 */
+function inkHost(spec){
+  if(spec==='new:code')return document.getElementById('new-code');
+  if(spec==='new:memo')return document.getElementById('new-memo');
+  return Array.from(document.querySelectorAll(INK_SEL)).find(el=>el.dataset.f===spec)||null;
+}
+function inkHostMark(el,spec){
+  const t=inkTarget(spec);
+  el.classList.add('ink-host');
+  el.classList.toggle('ink-has',!!(t&&inkGet(t)));
+  el.classList.toggle('ink-blank',!String(el.value||'').trim());
+  /* 손글씨 모드에서는 칸을 눌러도 키보드가 뜨지 않게 한다 (원래 inputmode는 data-im에 두었다가 되돌린다) */
+  if(inkUI.mode==='ink'){if(el.dataset.im==null)el.dataset.im=el.getAttribute('inputmode')||'';el.setAttribute('inputmode','none');}
+  else if(el.dataset.im!=null){if(el.dataset.im)el.setAttribute('inputmode',el.dataset.im);else el.removeAttribute('inputmode');delete el.dataset.im;}
 }
 /* 화면이 그려질 때마다 입력칸 바로 뒤에 손글씨 자리를 붙인다 */
 function inkScan(){
   document.querySelectorAll(INK_SEL).forEach(el=>{
     const spec=inkSpec(el);if(!spec)return;
     const nx=el.nextElementSibling;
+    if(!el.classList.contains('ink-host'))inkHostMark(el,spec);
     if(nx&&nx.classList.contains('ink')&&nx.dataset.k===spec)return;
     const box=document.createElement('div');box.className='ink';box.dataset.k=spec;
     box.innerHTML=inkInner(spec);el.insertAdjacentElement('afterend',box);
@@ -2244,7 +2292,8 @@ document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.in
 function inkClose(){
   const pad=inkUI.pad;inkUI.pad=null;if(!pad)return;
   const box=pad.box.isConnected?pad.box:null;
-  if(box)box.innerHTML=inkInner(box.dataset.k);
+  if(box){box.innerHTML=inkInner(box.dataset.k);const h=inkHost(box.dataset.k);if(h)inkHostMark(h,box.dataset.k);}
+  resumeClear('ink');
   inkSyncLock();
 }
 function inkSave(pad){
@@ -2257,6 +2306,7 @@ function inkOpen(box){
   const single=!/^textarea$/i.test((box.previousElementSibling||{}).tagName||'');
   box.innerHTML=`<div class="ink-pad${inkUI.penSeen?' pen-only':''}">
     <canvas aria-label="손글씨 입력 칸"></canvas>
+    <div class="ink-grip" role="separator" aria-orientation="horizontal" aria-label="손글씨 칸 높이 조절 (끌어서 늘이기·줄이기)" title="끌어서 칸 높이 조절"></div>
     <div class="ink-tools">
       <button type="button" data-ink="pen" class="on">펜</button>
       <button type="button" data-ink="eraser">지우개</button>
@@ -2277,6 +2327,8 @@ function inkOpen(box){
   inkUI.pad=pad;
   inkResize(pad);
   inkBind(pad,box);
+  inkGripBind(pad,box);
+  resumeSet({kind:'ink',spec});
   inkSyncLock();
 }
 function inkResize(pad){
@@ -2377,7 +2429,7 @@ function inkPenDetected(){
   inkSyncLock();
 }
 const inkTouch={pts:new Map(),g:null,toolTap:false};
-function inkToolTarget(t){return !!(t&&t.closest&&inkUI.pad&&t.closest('.ink-tools')&&inkUI.pad.box.contains(t));}
+function inkToolTarget(t){return !!(t&&t.closest&&inkUI.pad&&t.closest('.ink-tools,.ink-grip')&&inkUI.pad.box.contains(t));}
 function inkAvg(){let x=0,y=0;inkTouch.pts.forEach(p=>{x+=p.x;y+=p.y;});const n=inkTouch.pts.size||1;return [x/n,y/n];}
 document.addEventListener('pointerdown',e=>{
   if(e.pointerType==='pen'){inkUI.penDown=true;inkTouch.g=null;if(inkUI.pad&&inkUI.pad.box.isConnected)inkPenDetected();return;}
@@ -2426,6 +2478,185 @@ document.addEventListener('click',e=>{
   e.preventDefault();e.stopPropagation();
 },true);
 actions['ink-open']=el=>{const box=el.closest('.ink');if(box)inkOpen(box);};
+/* ---- 손글씨 칸 높이: 아래 손잡이를 끌어서 늘이거나 줄인다 (쓴 글씨가 잘리지 않는 만큼까지 줄어듦) ---- */
+function inkGripBind(pad,box){
+  const g=box.querySelector('.ink-grip');if(!g)return;
+  let st=null;
+  const minH=()=>{let m=0;pad.strokes.forEach(s=>{for(let i=2;i<s.length;i+=2)m=Math.max(m,s[i]+s[0]);});return Math.max(60,Math.ceil(m+8));};
+  g.addEventListener('pointerdown',e=>{
+    e.preventDefault();e.stopPropagation();
+    try{g.setPointerCapture(e.pointerId);}catch(err){}
+    st={id:e.pointerId,y:e.clientY,h:pad.h,min:minH()};g.classList.add('on');
+  });
+  g.addEventListener('pointermove',e=>{
+    if(!st||e.pointerId!==st.id)return;e.preventDefault();
+    const h=Math.round(Math.min(3000,Math.max(st.min,st.h+e.clientY-st.y)));
+    if(h!==pad.h){pad.h=h;inkResize(pad);}
+  });
+  const end=e=>{if(!st||e.pointerId!==st.id)return;st=null;g.classList.remove('on');inkSave(pad);};
+  g.addEventListener('pointerup',end);g.addEventListener('pointercancel',end);
+  g.addEventListener('keydown',e=>{
+    if(e.key!=='ArrowUp'&&e.key!=='ArrowDown')return;e.preventDefault();
+    pad.h=Math.max(minH(),Math.min(3000,pad.h+(e.key==='ArrowDown'?40:-40)));inkResize(pad);inkSave(pad);
+  });
+  g.tabIndex=0;
+}
+
+/* ---- 끊긴 곳에서 다시 시작: 입력 중(손글씨 칸·보며 쓰기 창·글 칸)이면 그 자리를 이 기기에만 적어 둔다 ----
+   resume = {kind:'ink'|'kb'|'field', spec, text?(보며 쓰기 창의 쓰던 글), sel?, view, projectId, proc, at}
+   'kb' 글은 완료를 누르기 전까지 자료(store)에 넣지 않으므로 서버로도 가지 않는다.
+   'field'(키보드로 바로 쓰는 칸)는 이 기록이 남아 있는 동안 서버로 보내지 않는다(syncEditing). */
+const RESUME_KEY='pbs-resume';
+function resumeGet(){try{const v=JSON.parse(localStorage.getItem(RESUME_KEY)||'null');return v&&v.spec?v:null;}catch(e){return null;}}
+function resumeSet(o){try{localStorage.setItem(RESUME_KEY,JSON.stringify(Object.assign({view:ui.view,projectId:ui.projectId,proc:ui.proc,at:nowISO()},o)));}catch(e){}}
+function resumeClear(kind){const r=resumeGet();if(!r||(kind&&r.kind!==kind))return;try{localStorage.removeItem(RESUME_KEY);}catch(e){}}
+/* 화면을 떠난 게 아니라(다른 앱으로 전환·화면 꺼짐) 정말 칸을 벗어났을 때만 true */
+function pageActive(){return document.visibilityState==='visible'&&(!document.hasFocus||document.hasFocus());}
+function resumeBoot(){
+  const r=resumeGet();if(!r)return;
+  if(r.projectId&&!projById(r.projectId)){resumeClear();return;}
+  if(r.view!==ui.view||r.projectId!==ui.projectId||r.proc!==ui.proc){Object.assign(ui,{view:r.view,projectId:r.projectId,proc:r.proc});render();}
+  const t=inkTarget(r.spec);if(!t){resumeClear();return;}
+  inkScan();
+  const host=inkHost(r.spec);
+  if(host){const d=host.closest('details');if(d&&!d.open)d.open=true;}
+  if(r.kind==='kb'){kbOpen(r.spec,r.text);toast('쓰다 만 글을 이어서 엽니다');return;}
+  if(!host){resumeClear();return;}
+  host.scrollIntoView({block:'center'});
+  if(r.kind==='ink'){
+    if(inkUI.mode!=='ink')inputModeSet('ink');
+    const box=host.nextElementSibling;if(box&&box.classList.contains('ink')){inkOpen(box);toast('쓰다 만 손글씨 칸을 이어서 엽니다');}
+    return;
+  }
+  /* 'field': 칸에 다시 커서를 둔다. 이 칸을 벗어날 때(완료) 서버로 보낸다 */
+  try{host.focus({preventScroll:true});const n=String(host.value||'').length;const at=Math.min(r.sel==null?n:r.sel,n);host.setSelectionRange(at,at);}catch(e){}
+  toast('쓰다 만 칸을 이어서 엽니다. 칸을 벗어나면 저장·전송됩니다');
+}
+/* 키보드로 바로 쓰는 글 칸: 들어가면 기록, 정말 벗어나면 지운다 */
+document.addEventListener('focusin',e=>{
+  const el=e.target;if(!(el&&el.matches&&el.matches(INK_SEL)))return;
+  const spec=inkSpec(el);if(!spec||inkUI.mode==='ink'||el.classList.contains('ink-has'))return;
+  if(spec.startsWith('new:'))return;
+  resumeSet({kind:'field',spec,sel:el.selectionStart});
+},true);
+document.addEventListener('input',e=>{
+  const el=e.target;if(!(el&&el.matches&&el.matches(INK_SEL)))return;
+  const r=resumeGet();if(r&&r.kind==='field'&&r.spec===inkSpec(el))resumeSet({kind:'field',spec:r.spec,sel:el.selectionStart});
+},true);
+document.addEventListener('focusout',e=>{
+  const el=e.target;if(!(el&&el.matches&&el.matches(INK_SEL)))return;
+  const spec=inkSpec(el);
+  setTimeout(()=>{
+    if(!pageActive())return;/* 다른 앱으로 넘어가며 생긴 blur: 기록을 남겨 둔다 */
+    const r=resumeGet();if(!r||r.kind!=='field'||r.spec!==spec)return;
+    if(document.activeElement===el)return;
+    resumeClear('field');if(Sync.cur)syncFlushSoon(0);
+  },150);
+},true);
+window.addEventListener('focus',()=>{
+  /* 다른 앱에서 돌아왔는데 이미 그 칸을 벗어나 있으면 완료로 본다 */
+  setTimeout(()=>{const r=resumeGet();if(!r||r.kind!=='field'||!pageActive())return;const h=inkHost(r.spec);
+    if(!h||document.activeElement!==h){resumeClear('field');if(Sync.cur)syncFlushSoon(0);}},300);
+});
+
+/* ---- 입력 방식 버튼: 손글씨 모드 ↔ 키보드 모드 ---- */
+function inputModeUI(){
+  const b=$('#input-mode');if(!b)return;
+  const ink=inkUI.mode==='ink';
+  b.innerHTML=ink?'손글씨 모드 · <span class="mode-k">키보드로</span>':'키보드 모드 · <span class="mode-k">손글씨로</span>';
+  b.setAttribute('aria-label',ink?'지금 손글씨 모드입니다. 누르면 키보드 모드로 바꿉니다':'지금 키보드 모드입니다. 누르면 손글씨 모드로 바꿉니다');
+}
+function inputModeSet(m){
+  if(inkUI.pad){inkSave(inkUI.pad);inkClose();}
+  if(inkUI.kb)kbApply();
+  inkUI.mode=m==='ink'?'ink':'kb';
+  try{localStorage.setItem(INPUT_MODE_KEY,inkUI.mode);}catch(e){}
+  document.documentElement.classList.toggle('in-ink',inkUI.mode==='ink');
+  const ae=document.activeElement;if(inkUI.mode==='ink'&&ae&&ae.matches&&ae.matches(INK_SEL))ae.blur();
+  document.querySelectorAll(INK_SEL).forEach(el=>{const sp=inkSpec(el);if(sp)inkHostMark(el,sp);});
+  document.querySelectorAll('.ink').forEach(box=>{box.innerHTML=inkInner(box.dataset.k);});
+  inputModeUI();
+}
+actions['input-mode']=()=>{inputModeSet(inkUI.mode==='ink'?'kb':'ink');toast(inkUI.mode==='ink'?'손글씨 모드: 칸을 누르면 손글씨로 씁니다':'키보드 모드: 손글씨가 있는 칸을 누르면 손글씨를 보면서 쓸 수 있습니다');};
+/* 칸을 누르면: 손글씨 모드 → 그 칸 손글씨 열기 / 키보드 모드 + 손글씨 있는 칸 → 보며 쓰기 창 */
+document.addEventListener('focusin',e=>{
+  const el=e.target;if(!(el&&el.matches&&el.matches(INK_SEL)))return;
+  const spec=inkSpec(el);if(!spec)return;
+  const box=el.nextElementSibling&&el.nextElementSibling.classList.contains('ink')?el.nextElementSibling:null;
+  if(inkUI.mode==='ink'){
+    el.blur();
+    if(box&&!(inkUI.pad&&inkUI.pad.box===box))inkOpen(box);
+    return;
+  }
+  const t=inkTarget(spec);
+  if(t&&inkGet(t)&&!spec.startsWith('new:')){el.blur();kbOpen(spec);}
+},true);
+
+/* ---- 키보드 모드: 손글씨를 보면서 쓰는 창 ----
+   화면 위쪽에 따로 떠서(다른 칸·목록 자리를 밀지 않음) 왼쪽에 손글씨, 오른쪽에 쓰는 칸.
+   키보드가 올라오면 보이는 영역(visualViewport) 안에 맞춘다. 완료를 눌러야 칸에 들어간다. */
+function kbLabel(host){
+  if(!host)return '';
+  const h=host.closest('.td')?host.closest('.td').querySelector('.cell-label'):(host.closest('.field')?host.closest('.field').querySelector(':scope > span, :scope > legend'):null);
+  return ((h?h.textContent:'')||host.getAttribute('aria-label')||host.getAttribute('placeholder')||'').replace(/\s+/g,' ').trim();
+}
+function kbValue(spec,t){
+  const host=inkHost(spec);if(host)return host.value||'';
+  const v=t&&t.obj&&t.obj[t.field];return typeof v==='string'?v:'';
+}
+function kbOpen(spec,text){
+  if(inkUI.pad){inkSave(inkUI.pad);inkClose();}
+  if(inkUI.kb)kbApply();
+  const t=inkTarget(spec);if(!t)return;
+  const ink=inkGet(t);const host=inkHost(spec);
+  const orig=kbValue(spec,t);const val=text!=null?text:orig;
+  const single=!!(host&&host.tagName!=='TEXTAREA');
+  const d=document.createElement('div');d.className='kb-float';d.id='kb-float';
+  d.setAttribute('role','dialog');d.setAttribute('aria-label','손글씨 보며 키보드로 쓰기');
+  d.innerHTML=`<div class="kb-head"><span class="kb-name">손글씨 보며 쓰기 · ${esc(kbLabel(host)||'손글씨 옮겨 쓰기')}</span></div>
+    <div class="kb-body"><div class="kb-ink" aria-label="이 칸의 손글씨">${ink?inkSvg(ink):'<p class="hint" style="padding:10px">손글씨가 없습니다</p>'}</div>
+    <textarea class="kb-text" aria-label="키보드로 쓰기"${single?' rows="3"':''}>${esc(val)}</textarea></div>
+    <div class="kb-btns"><button type="button" class="btn small" data-kb="cancel">취소</button><button type="button" class="btn small primary" data-kb="done">완료</button></div>`;
+  document.body.appendChild(d);
+  const ta=d.querySelector('textarea');
+  const src=host&&host.nextElementSibling&&host.nextElementSibling.querySelector('.ink-view');if(src)src.classList.add('kb-src');
+  inkUI.kb={spec,t,el:d,ta,orig,single,src};
+  ta.addEventListener('input',()=>resumeSet({kind:'kb',spec,text:ta.value}));
+  ta.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();kbClose();}});
+  d.addEventListener('click',e=>{const b=e.target.closest('[data-kb]');if(!b)return;e.preventDefault();if(b.dataset.kb==='done')kbApply();else kbClose();});
+  resumeSet({kind:'kb',spec,text:val});
+  kbPos();
+  try{ta.focus({preventScroll:true});ta.setSelectionRange(ta.value.length,ta.value.length);}catch(e){}
+}
+function kbPos(){
+  const k=inkUI.kb;if(!k)return;
+  const vv=window.visualViewport;
+  const top=(vv?vv.offsetTop:0)+8,h=(vv?vv.height:window.innerHeight)-16;
+  k.el.style.top=top+'px';k.el.style.maxHeight=Math.max(160,h)+'px';
+  k.el.querySelector('.kb-body').style.height=Math.max(120,Math.min(420,h-100))+'px';
+}
+if(window.visualViewport){visualViewport.addEventListener('resize',kbPos);visualViewport.addEventListener('scroll',kbPos);}
+window.addEventListener('resize',kbPos);
+function kbClose(){
+  const k=inkUI.kb;inkUI.kb=null;if(!k)return;
+  if(k.src)k.src.classList.remove('kb-src');
+  k.el.remove();resumeClear('kb');
+}
+function kbApply(){
+  const k=inkUI.kb;if(!k)return;
+  let v=k.ta.value;if(k.single)v=v.replace(/\s*\n+\s*/g,' ');
+  const host=inkHost(k.spec);
+  if(v!==k.orig||(host&&host.value!==v)){
+    if(host){host.value=v;host.dispatchEvent(new Event('input',{bubbles:true}));host.dispatchEvent(new Event('change',{bubbles:true}));inkHostMark(host,k.spec);}
+    else if(k.t&&k.t.obj&&!k.t.flat&&k.t.obj!==inkUI.pending){k.t.obj[k.t.field]=v;k.t.save();}
+    else if(k.spec.startsWith('qitem:')){store.settings.qabfItems[k.spec.slice(6)]=v;scheduleSave();}
+  }
+  kbClose();
+  if(Sync.cur)syncFlushSoon(50);
+}
+actions['kb-open']=el=>{const box=el.closest('.ink');if(box)kbOpen(box.dataset.k);};
+inputModeUI();
+
 /* 새 프로젝트 칸에 쓴 손글씨는 프로젝트가 만들어질 때 그 프로젝트의 학생 코드·메모 칸으로 옮긴다 */
 document.addEventListener('submit',e=>{
   if(!e.target||e.target.id!=='new-form')return;
@@ -2450,7 +2681,7 @@ const FIREBASE_VER='12.19.0';
 const SYNC_ON=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.projectId);
 const SYNC_SKIP_TOP=new Set(['id','shared','lastBackupAt','example']);/* 이 기기에만 두는 칸 */
 const NO_HIST=/(^|\/)(updatedAt|ink)(\/|\[|$)|^procs\/abc\/data\/session(\/|$)/;/* 수정 기록·충돌로 남기지 않는 칸 */
-const Sync={ad:null,loading:null,user:null,authKnown:false,online:navigator.onLine,cur:null,ft:null,lastInput:0,dlg:null,stats:{writes:0,flushes:0}};
+const Sync={ad:null,loading:null,user:null,authKnown:false,online:navigator.onLine,cur:null,ft:null,lastInput:0,dlg:null,stats:{writes:0,flushes:0},inkGone:new Set()};
 
 /* 프로젝트 → {cells: 경로→값, items: 항목경로→{parent,order}}. 경로 예: procs/abc/data/sheets[s1]/rows[w2]/b */
 function syncFlat(p){
@@ -2461,7 +2692,7 @@ function syncFlat(p){
       if(isItem&&k==='id')continue;
       const v=o[k];if(v===undefined||typeof v==='function')continue;
       const pa=path?path+'/'+k:k;
-      if(k==='ink'&&isObj(v)){const ks=Object.keys(v);if(!ks.length)cells.set(pa,{});ks.forEach(f=>cells.set(pa+'/'+f,v[f]));continue;}
+      if(k==='ink')continue;/* 손글씨는 이 기기에만 둔다(서버로 보내지 않음) */
       if(isObj(v)){if(Object.keys(v).length)walk(v,pa,false);else cells.set(pa,{});continue;}
       if(Array.isArray(v)&&v.length&&isIdArr(v)){v.forEach((x,i)=>{const ip=pa+'['+x.id+']';items.set(ip,{parent:pa,order:i});walk(x,ip,true);});continue;}
       cells.set(pa,v);
@@ -2517,7 +2748,20 @@ function syncDiff(base,mine){
   base.items.forEach((it,pa)=>{if(!mine.items.has(pa)&&syncItemsLive(pa,mine.items))items.push({path:pa,parent:it.parent,order:it.order,deleted:true});});
   return {cells,items};
 }
-function syncBaseOf(p){const c=clone(p);SYNC_SKIP_TOP.forEach(k=>delete c[k]);return c;}
+function syncBaseOf(p){const c=clone(p);SYNC_SKIP_TOP.forEach(k=>delete c[k]);inkStrip(c);return c;}
+/* 손글씨(.ink) 칸을 모두 뺀다 */
+const INK_PATH=/(^|\/)ink(\/|$)/;
+function inkStrip(o){
+  if(Array.isArray(o)){o.forEach(inkStrip);return o;}
+  if(isObj(o)){delete o.ink;Object.keys(o).forEach(k=>inkStrip(o[k]));}
+  return o;
+}
+/* 합치기 전에 이 기기 손글씨를 떼어 두었다가 같은 객체에 다시 붙인다(서버 자료에는 손글씨가 없으므로) */
+function inkDetach(p){
+  const out=[];
+  const walk=o=>{if(Array.isArray(o)){o.forEach(walk);return;}if(!isObj(o))return;if('ink' in o){out.push([o,o.ink]);delete o.ink;}Object.keys(o).forEach(k=>walk(o[k]));};
+  walk(p);return out;
+}
 function syncState(pid){store.sync=store.sync||{};const s=store.sync[pid]=store.sync[pid]||{base:null,revs:{}};s.revs=s.revs||{};return s;}
 function syncMe(){return Sync.user?{uid:Sync.user.uid,name:String(store.settings.userName||'').trim()||Sync.user.name||'이름 없음'}:null;}
 async function syncInviteKey(pid,code){
@@ -2712,10 +2956,10 @@ function syncAbsorb(S){
   if(!S.cells.size&&!S.items.size)return;/* 아직 서버 자료를 못 받음 (오프라인 첫 접속 등) */
   const st=syncState(S.pid);
   const tc=new Map(),ti=new Map();
-  S.cells.forEach((c,pa)=>{if(!c.deleted)tc.set(pa,c.v);});
+  S.cells.forEach((c,pa)=>{if(!c.deleted&&!INK_PATH.test(pa))tc.set(pa,c.v);});
   S.items.forEach((it,pa)=>{if(!it.deleted)ti.set(pa,{parent:it.parent,order:it.order});});
   let theirs=ensureProject(syncUnflat(tc,ti));
-  const base=st.base?clone(st.base):{};
+  const base=inkStrip(st.base?clone(st.base):{});
   /* 입력 중인 칸은 바로 덮지 않는다: 그 칸만 base 값으로 두고, 칸을 벗어나면 다시 합친다 */
   const fp=syncFocusPath(p);S.deferred=false;
   if(fp&&st.base){
@@ -2725,9 +2969,13 @@ function syncAbsorb(S){
       theirs=ensureProject(syncUnflat(tf.cells,tf.items));S.deferred=true;
     }
   }
-  const before=JSON.stringify(p);
+  const noInk=(k,v)=>k==='ink'?undefined:v;
+  const before=JSON.stringify(p,noInk);
+  const inks=inkDetach(p);
   merge3(base,p,clone(theirs));
+  inks.forEach(([o,v])=>{o.ink=v;});/* ensureProject가 객체를 새로 만들기 전에 다시 붙인다 */
   ensureProject(p);
+  const changed=before!==JSON.stringify(p,noInk);
   const mf=syncFlat(p);
   S.cells.forEach((c,pa)=>{
     if(S.deferred&&pa===fp)return;
@@ -2735,7 +2983,6 @@ function syncAbsorb(S){
     if(same&&!((st.revs[pa]||0)>c.rev))st.revs[pa]=c.rev;
   });
   st.base=syncBaseOf(theirs);
-  const changed=before!==JSON.stringify(p);
   if(changed){scheduleSave();if(curProject()===p){applyRemoteView();}}
   else scheduleSave();
   syncDecorateSoon();syncStatusUI();
@@ -2747,12 +2994,16 @@ document.addEventListener('focusout',()=>{const S=Sync.cur;if(S&&S.deferred)setT
 function syncPending(S){
   const p=projById(S.localId);const st=syncState(S.pid);
   if(!p||!st.base)return {cells:[],items:[]};
-  return syncDiff(syncFlat(st.base),syncFlat(p));
+  const d=syncDiff(syncFlat(st.base),syncFlat(p));
+  /* 예전 판이 서버에 올린 손글씨는 지운다(손글씨는 이 기기에만) */
+  S.cells.forEach((c,pa)=>{if(!c.deleted&&INK_PATH.test(pa)&&!Sync.inkGone.has(pa)&&!d.cells.some(w=>w.path===pa))d.cells.push({path:pa,deleted:true});});
+  return d;
 }
 function syncFlushSoon(ms,force){clearTimeout(Sync.ft);Sync.ft=setTimeout(()=>syncFlush(force),ms);}
 /* 글 칸에 키보드로 쓰는 중이거나 손글씨 칸이 열려 있으면 '입력 중': 완료(칸 벗어나기·손글씨 완료·키보드 완료)를 누를 때까지 서버로 보내지 않는다 */
 function syncEditing(){
-  if(inkUI.pad)return true;
+  if(inkUI.kb)return true;/* 손글씨 보며 쓰기 창이 열려 있음 */
+  const r=resumeGet();if(r&&r.kind==='field')return true;/* 글 칸에 쓰다가 끊김: 칸을 벗어날 때까지 기다림 */
   const ae=document.activeElement;
   return !!(ae&&ae.matches&&ae.matches('textarea,input:not([type]),input[type=text]'));
 }
@@ -2775,7 +3026,7 @@ async function syncFlush(force){
       const ws=writes.slice(i,i+120),its=items.slice(j,j+200);
       const res=await Sync.ad.write(S.pid,ws,its,me);Sync.stats.flushes++;
       const bf=syncFlat(st.base||{});
-      ws.forEach(w=>{if(w.deleted)bf.cells.delete(w.path);else bf.cells.set(w.path,w.value);});
+      ws.forEach(w=>{if(w.deleted)bf.cells.delete(w.path);else bf.cells.set(w.path,w.value);if(w.deleted&&INK_PATH.test(w.path))Sync.inkGone.add(w.path);});
       its.forEach(it=>{if(it.deleted)bf.items.delete(it.path);else bf.items.set(it.path,{parent:it.parent,order:it.order});});
       st.base=syncBaseOf(syncUnflat(bf.cells,bf.items));
       res.forEach(r=>{if(!((st.revs[r.path]||0)>r.rev))st.revs[r.path]=r.rev;if(r.conflict)conflicts++;});
@@ -2797,7 +3048,7 @@ async function syncFlush(force){
 document.addEventListener('input',e=>{if(!Sync.cur)return;const el=e.target;if(!(el.matches&&el.matches('textarea,input:not([type]),input[type=text]')))syncFlushSoon(0);});
 document.addEventListener('click',e=>{if(Sync.cur&&e.target.closest&&e.target.closest('[data-ink="done"]'))syncFlushSoon(50);});
 document.addEventListener('keydown',e=>{if(Sync.cur&&e.key==='Enter'&&e.target.matches&&e.target.matches('input:not([type]),input[type=text]'))syncFlushSoon(50,true);});/* 한 줄 칸에서 키보드 '완료'(Enter) */
-(function(){const vv=window.visualViewport;if(!vv)return;let h=vv.height;vv.addEventListener('resize',()=>{if(Sync.cur&&vv.height-h>120&&!inkUI.pad)syncFlushSoon(50,true);h=vv.height;});})();/* 키보드를 내리면(키보드 '완료') 보낸다 */
+(function(){const vv=window.visualViewport;if(!vv)return;let h=vv.height;vv.addEventListener('resize',()=>{if(Sync.cur&&vv.height-h>120&&!inkUI.kb)setTimeout(()=>{if(pageActive())syncFlushSoon(0,true);},400);h=vv.height;});})();/* 키보드를 내리면(키보드 '완료') 보낸다 */
 document.addEventListener('change',e=>{if(!Sync.cur)return;const el=e.target;if(!(el.matches&&el.matches('textarea,input:not([type]),input[type=text]')))syncFlushSoon(0);});
 document.addEventListener('click',e=>{if(Sync.cur&&e.target.closest&&e.target.closest('[data-act]'))syncFlushSoon(100);});
 window.addEventListener('online',()=>{syncNet();syncStatusUI();syncFlushSoon(0);});
@@ -2968,7 +3219,7 @@ function syncProjectCardInner(p){
   return `<div class="sec-head"><h2 class="h3">여러 기기에서 함께 쓰기</h2><span class="pill">${owner?'소유자':'멤버'}</span></div>
     <div class="sync-id"><span class="meta">공유 ID</span><code class="mono" id="sync-pid">${esc(sh.projectId)}</code><button type="button" class="btn small" data-act="sync-copy">복사</button></div>
     ${sh.code?`<p class="meta">공유 코드: <span class="mono">${esc(sh.code)}</span> · ${fmtShort(sh.since)}부터 공유</p>`:''}
-    <p class="hint">함께 쓸 사람은 첫 화면의 '공유 코드로 프로젝트 받기'에 공유 ID와 공유 코드를 넣습니다. 녹음·사진·PDF는 이 기기에만 있습니다.</p>
+    <p class="hint">함께 쓸 사람은 첫 화면의 '공유 코드로 프로젝트 받기'에 공유 ID와 공유 코드를 넣습니다. 녹음·사진·PDF·손글씨는 이 기기에만 있습니다.</p>
     ${syncLoginLine()}
     ${S&&(S.error==='removed'||S.error==='denied')?`<p class="banner warn">이 프로젝트의 공유 멤버가 아니어서 동기화를 멈췄습니다. 이 기기의 사본은 그대로 남아 있습니다.</p>`:''}
     ${mem.length?`<div><h3 class="sub-label">멤버 ${mem.length}명</h3><ul class="sync-members">${mem.map(m=>`<li><span>${esc(m.name||'이름 없음')}${m.role==='owner'?' <small>소유자</small>':''}${me&&m.uid===me.uid?' <small>(나)</small>':''}</span><span class="meta">${m.joinedAt?fmtShort(m.joinedAt):''}</span>${owner&&me&&m.uid!==me.uid?`<button type="button" class="btn small ghost danger" data-act="ask" data-key="sync-kick:${esc(m.uid)}">내보내기</button>`:''}
@@ -3104,13 +3355,14 @@ document.addEventListener('input',e=>{
   store.settings.userName=e.target.value;scheduleSave();
   clearTimeout(Sync.nt);Sync.nt=setTimeout(()=>{const S=Sync.cur;const me=syncMe();if(S&&S.unsub&&me)Sync.ad.setName(S.pid,me).catch(()=>{});},1500);
 });
-if(window.__pbsEmu)window.__pbsSync={Sync,syncFlat,syncUnflat,syncDiff,store:()=>store};
+if(window.__pbsEmu)window.__pbsSync={Sync,syncFlat,syncUnflat,syncDiff,syncPending,syncFlush,store:()=>store};
 
 /* ---------- boot ---------- */
 if(firstRun&&!store.projects.length){store.projects.push(exampleProject());}
 AudioDB.open().then(()=>{audioOK=true;}).catch(()=>{audioOK=false;});
 updateStorageBanner();
 render();
+resumeBoot();
 updateUsage();
 if(storageOK)setSaveState('');
 tick();setInterval(tick,1000);
