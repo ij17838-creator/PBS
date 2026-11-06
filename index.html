@@ -337,6 +337,11 @@ td.top{color:var(--accent);font-weight:700}
 .lede-toggle{margin-left:4px;vertical-align:baseline}
 .sum-box{background:var(--surface-2);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px}
 .sum-box h3{font-size:.92rem}
+.pf-privacy{background:var(--warn-soft)}
+.pf-privacy p{margin:0;font-size:.9rem}
+.pf-code{margin:0}
+.pf-ref .row{display:flex;flex-wrap:wrap;gap:8px}
+.pf-ref .sum-box p{margin:0;font-size:.92rem}
 .sum-box ul{margin:0;padding-left:18px;font-size:.9rem}
 
 /* observation sheets (A-B-C 관찰지) */
@@ -527,15 +532,16 @@ function toggleIn(arr,v){const i=arr.indexOf(v);if(i>=0)arr.splice(i,1);else arr
 
 /* ---------- constants ---------- */
 const PROCS=[
-  {key:'define',no:1,title:'표적행동 정의',desc:'관찰·측정 가능한 조작적 정의',lede:'다른 관찰자가 읽어도 같은 행동을 같은 기준으로 셀 수 있게 정의합니다. 여기서 정한 행동 이름과 정의는 다른 절차 화면 위쪽에 자동으로 표시됩니다.'},
-  {key:'baseline',no:2,title:'기초선 측정',desc:'회기별 기록·그래프, 안정성 확인',lede:'중재 전, 정의에서 정한 측정 방법으로 회기마다 값을 적습니다. 그래프와 안정성 안내를 보고 기초선을 확정하면 중재 실행 기록·평가에서 그대로 비교합니다.'},
-  {key:'qabf',no:3,title:'QABF',desc:'행동 기능 질문지 (간접 평가)',lede:'교사·보호자 등 응답자마다 응답지를 하나씩 만듭니다. 25문항에 0~3점 또는 X(해당 없음)로 답하면 5개 하위척도 점수가 자동으로 계산됩니다.'},
-  {key:'rating',no:4,title:'행동평정척도',desc:'행동 심각도와 기초선',lede:'사용한 척도의 종류, 응답자, 하위영역별 점수를 기록하고 표적행동과 연결해 해석합니다. 사후 평가 때 다시 실시하면 중재 전후를 비교할 수 있습니다.'},
-  {key:'abc',no:5,title:'ABC 관찰 · 일화기록',desc:'선행사건–행동–후속결과, 녹음',lede:'A-B-C 관찰지 양식에 기록합니다. 관찰을 시작하면 설정한 간격(기본 15분)마다 새 관찰지가 이어지고, 녹음은 관찰지마다 따로 저장됩니다.'},
-  {key:'hypo',no:6,title:'자료 종합 · 가설',desc:'QABF와 ABC를 비교해 가설 세우기',lede:'QABF와 ABC 관찰 결과를 나란히 보고 행동의 기능에 대한 가설 문장을 씁니다. 아직 없는 자료는 \'아직 없음\'으로 표시됩니다.'},
-  {key:'plan',no:7,title:'중재 계획',desc:'선행사건·대체행동·후속결과',basic:true,lede:'가설에 맞춰 중재 계획을 적습니다. 전용 입력 화면은 다음 버전에서 추가됩니다.'},
-  {key:'intervene',no:8,title:'중재 실행 기록',desc:'기초선과 같은 방법으로 측정',lede:'중재를 실행하면서 기초선과 같은 방법으로 회기마다 값을 적습니다. 그래프에 기초선(A)과 중재(B)가 이어서 표시됩니다.'},
-  {key:'evaluate',no:9,title:'평가 · 수정',desc:'변화 확인, 유지·수정·중단 결정',basic:true,lede:'기초선과 중재기 기록을 자동으로 비교해 보여 줍니다. 변화를 확인하고 다음 결정을 기록하세요.'}
+  {key:'profile',no:1,title:'학생 기본 정보',desc:'강점·선호·어려움·지원 이력',lede:'학생의 특징, 강점과 선호, 어려움, 지금까지의 지원을 정리합니다. 모르는 칸은 비워 두고 알게 되면 채우세요. 강점·선호·싫어하는 것은 가설과 중재 계획 화면에서 참고할 수 있게 함께 보여 줍니다.'},
+  {key:'define',no:2,title:'표적행동 정의',desc:'관찰·측정 가능한 조작적 정의',lede:'다른 관찰자가 읽어도 같은 행동을 같은 기준으로 셀 수 있게 정의합니다. 여기서 정한 행동 이름과 정의는 다른 절차 화면 위쪽에 자동으로 표시됩니다.'},
+  {key:'baseline',no:3,title:'기초선 측정',desc:'회기별 기록·그래프, 안정성 확인',lede:'중재 전, 정의에서 정한 측정 방법으로 회기마다 값을 적습니다. 그래프와 안정성 안내를 보고 기초선을 확정하면 중재 실행 기록·평가에서 그대로 비교합니다.'},
+  {key:'qabf',no:4,title:'QABF',desc:'행동 기능 질문지 (간접 평가)',lede:'교사·보호자 등 응답자마다 응답지를 하나씩 만듭니다. 25문항에 0~3점 또는 X(해당 없음)로 답하면 5개 하위척도 점수가 자동으로 계산됩니다.'},
+  {key:'rating',no:5,title:'행동평정척도',desc:'행동 심각도와 기초선',lede:'사용한 척도의 종류, 응답자, 하위영역별 점수를 기록하고 표적행동과 연결해 해석합니다. 사후 평가 때 다시 실시하면 중재 전후를 비교할 수 있습니다.'},
+  {key:'abc',no:6,title:'ABC 관찰 · 일화기록',desc:'선행사건–행동–후속결과, 녹음',lede:'A-B-C 관찰지 양식에 기록합니다. 관찰을 시작하면 설정한 간격(기본 15분)마다 새 관찰지가 이어지고, 녹음은 관찰지마다 따로 저장됩니다.'},
+  {key:'hypo',no:7,title:'자료 종합 · 가설',desc:'QABF와 ABC를 비교해 가설 세우기',lede:'QABF와 ABC 관찰 결과를 나란히 보고 행동의 기능에 대한 가설 문장을 씁니다. 아직 없는 자료는 \'아직 없음\'으로 표시됩니다.'},
+  {key:'plan',no:8,title:'중재 계획',desc:'선행사건·대체행동·후속결과',basic:true,lede:'가설에 맞춰 중재 계획을 적습니다. 전용 입력 화면은 다음 버전에서 추가됩니다.'},
+  {key:'intervene',no:9,title:'중재 실행 기록',desc:'기초선과 같은 방법으로 측정',lede:'중재를 실행하면서 기초선과 같은 방법으로 회기마다 값을 적습니다. 그래프에 기초선(A)과 중재(B)가 이어서 표시됩니다.'},
+  {key:'evaluate',no:10,title:'평가 · 수정',desc:'변화 확인, 유지·수정·중단 결정',basic:true,lede:'기초선과 중재기 기록을 자동으로 비교해 보여 줍니다. 변화를 확인하고 다음 결정을 기록하세요.'}
 ];
 const PROC=Object.fromEntries(PROCS.map(p=>[p.key,p]));
 const MEMO_FIELDS={
@@ -596,6 +602,7 @@ function loadStore(){
 }
 function defaultData(key){
   switch(key){
+    case 'profile':return {grade:'',age:'',gender:'',classType:'',classNote:'',homeroom:'',specialTeacher:'',referDate:'',referBy:'',referReason:'',disability:'',diagDate:'',meds:'',sensory:'',health:'',comm:[],commNote:'',academic:'',attention:'',social:'',daily:'',motor:'',strengths:'',likes:'',prefs:[],teach:'',hard:'',dislikes:'',triggers:'',history:[],supports:'',family:'',homeBeh:'',contact:'',homeWish:'',goalStudent:'',goalFamily:'',goalTeacher:''};
     case 'define':return {name:'',definition:'',start:'',end:'',examples:'',nonExamples:'',measures:[],setting:'',checks:[],stage:'초안',sources:[],sourceNote:'',priority:[],priorityNote:'',boundary:'',episode:'',questions:'',planWhen:'',planLength:'',planPeriod:'',planObserver:'',planDate:'',planTools:'',planIoa:'',measure:'',unit:'',measureWhy:'',measureFixed:false,ioaDone:false,ioaNote:'',revLog:''};
     case 'qabf':return {forms:[],activeForm:null};
     case 'abc':return {sheets:[],session:null,interval:15,audio:{},plan:{start:'',end:'',fired:''}};
@@ -614,6 +621,8 @@ function ensureProject(p){
     const def=defaultData(x.key);
     s.data=Object.assign(def,s.data||{});
   });
+  const pf=p.procs.profile.data;
+  ['comm','prefs','history'].forEach(k=>{if(!Array.isArray(pf[k]))pf[k]=[];});pf.prefs.forEach(o=>pfFix(o,'prefs'));pf.history.forEach(o=>pfFix(o,'history'));
   const dd=p.procs.define.data;
   if(!Array.isArray(dd.measures))dd.measures=[];if(!Array.isArray(dd.sources))dd.sources=[];if(!Array.isArray(dd.priority))dd.priority=[];
   if(!dd.measure&&dd.measures.length)dd.measure=dd.measures[0];/* 예전 '측정 방법'(여러 개)은 첫 번째를 예정 측정 방법으로 */
@@ -939,7 +948,7 @@ function projCard(p){
     <p class="proj-target">${name?'표적행동 · '+esc(name):'<span class="muted">표적행동 미정</span>'}</p>
     ${p.memo?`<p class="proj-memo">${esc(p.memo)}</p>`:''}
     <div class="dots" role="img" aria-label="${PROCS.length}개 절차 중 ${done}개 완료">${PROCS.map(x=>`<span class="dot s-${p.procs[x.key].status}" title="${esc(x.title)}: ${statusInfo(p.procs[x.key]).label}"></span>`).join('')}</div>
-    <p class="meta">완료 ${done}/8 · 최근 수정 ${p.updatedAt?fmtShort(p.updatedAt):'-'}<br>마지막 백업 ${p.lastBackupAt?relDays(p.lastBackupAt):'아직 없음'}</p>
+    <p class="meta">완료 ${done}/${PROCS.length} · 최근 수정 ${p.updatedAt?fmtShort(p.updatedAt):'-'}<br>마지막 백업 ${p.lastBackupAt?relDays(p.lastBackupAt):'아직 없음'}</p>
     <div class="card-actions">
       <button type="button" class="btn primary small" data-act="open-proj" data-id="${p.id}">열기</button>
       <button type="button" class="btn small" data-act="dup-proj" data-id="${p.id}">복제</button>
@@ -991,6 +1000,7 @@ function viewProc(p,key){
   const x=PROC[key];const s=p.procs[key];
   let body;
   switch(key){
+    case 'profile':body=viewProfile(p);break;
     case 'define':body=viewDefine(p);break;
     case 'qabf':body=viewQabf(p);break;
     case 'abc':body=viewAbc(p);break;
@@ -1006,7 +1016,7 @@ function viewProc(p,key){
     <div style="min-width:0;flex:1 1 300px"><p class="eyebrow"><span class="mono">${esc(p.code)}</span> · 권장 순서 ${x.no}</p><h1>${esc(x.title)}</h1>${key==='hypo'?(store.settings.hypoLedeHidden?'<p class="lede"><button type="button" class="btn small ghost lede-toggle" data-act="hy-lede">설명 보기</button></p>':`<p class="lede">${x.lede} <button type="button" class="btn small ghost lede-toggle" data-act="hy-lede">접기</button></p>`):`<p class="lede">${x.lede}</p>`}</div>
     <div id="status-slot">${statusPill(s)}</div>
   </section>
-  ${key!=='define'?targetBanner(p):''}
+  ${key!=='define'&&key!=='profile'?targetBanner(p):''}
   ${body}
   <section class="card done-bar" id="done-bar">${doneBar(s)}</section>`;
 }
@@ -1024,6 +1034,112 @@ function targetBanner(p){
   const d=p.procs.define.data;
   if(!d.name&&!d.definition)return `<div class="target-banner empty"><span>표적행동이 아직 정의되지 않았습니다.</span><button type="button" class="btn small" data-act="open-proc" data-key="define">표적행동 정의 열기</button></div>`;
   return `<div class="target-banner"><span class="tb-label">표적행동</span><div style="min-width:0;flex:1"><strong>${esc(d.name||'(이름 없음)')}</strong>${d.stage&&d.stage!=='확정'?`<span class="stage-tag">${esc(d.stage)}</span>`:''}${d.definition?`<p>${esc(d.definition)}</p>`:''}</div></div>`;
+}
+
+/* 0. profile (학생 기본 정보)
+   칸 data-f: 'prof:칸', 목록 'pfl:prefs|history:id:칸'. 이름 칸은 두지 않고 프로젝트의 학생 코드를 보여 준다.
+   선호(강화제 후보) prefs[{id,kind,what,note}], 지원 이력 history[{id,what,when,effect,note}] 은 id 목록(공유 동기화 호환). */
+const PF_CLASS=['일반학급','특수학급','통합학급(시간제)','특수학교','기타'];
+const PF_COMM=['말','몸짓·손짓','그림카드','AAC 기기','글','수어','기타'];
+const PF_PREF_KINDS=['','물건','활동','음식','칭찬·관심 방식','사람','감각','기타'];
+const PF_EFFECTS=['','효과 있음','일부 효과','효과 없음','오히려 나빠짐','모름'];
+function pfNew(kind){return kind==='prefs'?{id:uid('pp'),kind:'',what:'',note:''}:{id:uid('ph'),what:'',when:'',effect:'',note:''};}
+function pfFix(o,kind){const d=pfNew(kind);for(const k in d)if(k!=='id'&&o[k]==null)o[k]=d[k];return o;}
+function pfIn(id,f,v,ph,o){o=o||{};return `<label class="field${o.cls?' '+o.cls:''}"><span>${o.label}${o.small?` <small>${o.small}</small>`:''}</span>${o.area?`<textarea id="pf-${id}" data-f="${f}" rows="${o.rows||2}" placeholder="${esc(ph||'')}">${esc(v)}</textarea>`:`<input${o.type?` type="${o.type}"`:''} id="pf-${id}" data-f="${f}" value="${esc(v)}" placeholder="${esc(ph||'')}">`}</label>`;}
+function pfF(d,k,label,ph,o){return pfIn(k,'prof:'+k,d[k],ph,Object.assign({label},o||{}));}
+function pfSel(id,f,opts,v,label){return `<label class="field"><span>${label}</span><select id="pf-${id}" data-f="${f}">${opts.map(x=>`<option value="${esc(x)}"${v===x?' selected':''}>${esc(x||'선택')}</option>`).join('')}</select></label>`;}
+function pfPrefRow(r,i){
+  const k=`prefs:${r.id}`;
+  return `<div class="r-row" id="pfr-${r.id}"><div class="r-row-head"><b>선호 ${i+1}</b><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-pf:${k}">삭제</button></div>
+    <div class="r-grid score">${pfSel(r.id+'-kind',`pfl:${k}:kind`,PF_PREF_KINDS,r.kind,'종류')}
+      ${pfIn(r.id+'-what',`pfl:${k}:what`,r.what,'예: 공룡 스티커, 컴퓨터 5분',{label:'무엇',cls:'wide2'})}
+      ${pfIn(r.id+'-note',`pfl:${k}:note`,r.note,'예: 줄 때 바로 효과, 자주 주면 질림',{label:'메모',cls:'wide2'})}</div>
+    ${ui.confirm==='del-pf:'+k?confirmBox('이 선호 항목을 삭제합니다.','del-pf',k):''}</div>`;
+}
+function pfHistRow(r,i){
+  const k=`history:${r.id}`;
+  return `<div class="r-row" id="pfr-${r.id}"><div class="r-row-head"><b>지원 ${i+1}</b><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-pf:${k}">삭제</button></div>
+    <div class="r-grid score">${pfIn(r.id+'-what',`pfl:${k}:what`,r.what,'예: 토큰판, 자리 배치 바꾸기',{label:'써 본 중재·지원',cls:'wide2'})}
+      ${pfIn(r.id+'-when',`pfl:${k}:when`,r.when,'예: 2025년 2학기, 3주',{label:'시기·기간'})}
+      ${pfSel(r.id+'-effect',`pfl:${k}:effect`,PF_EFFECTS,r.effect,'효과')}
+      ${pfIn(r.id+'-note',`pfl:${k}:note`,r.note,'예: 처음엔 좋았으나 보상이 늦어지자 효과 줄어듦',{label:'잘된 점 · 안 된 점',cls:'wide2'})}</div>
+    ${ui.confirm==='del-pf:'+k?confirmBox('이 지원 이력을 삭제합니다.','del-pf',k):''}</div>`;
+}
+function viewProfile(p){
+  const d=p.procs.profile.data;
+  return `
+  <section class="card pf-privacy"><p><b>개인정보 주의</b> 실명 대신 학생 코드를 씁니다. 진단명·약물 같은 민감한 정보는 지원에 꼭 필요할 때만 적으세요. 공유 프로젝트는 이 내용도 함께 쓰는 사람에게 보입니다.</p></section>
+  <section class="card">
+    <h2 class="h3">1. 기본 정보</h2>
+    <p class="pf-code">학생 코드 <b class="mono">${esc(p.code||'(코드 없음)')}</b> <small class="muted">코드는 프로젝트 화면의 '프로젝트 정보 수정'에서 바꿉니다.</small></p>
+    <div class="three">${pfF(d,'grade','학년 · 반','예: 3학년 2반')}${pfF(d,'age','나이','예: 9세')}${pfF(d,'gender','성별','')}</div>
+    <fieldset class="field"><legend>학급 형태</legend><div class="chips">${PF_CLASS.map(x=>chip('pfclass',x,d.classType===x,'b')).join('')}</div></fieldset>
+    ${pfF(d,'classNote','통합 시간 · 학급 메모','예: 국어·수학은 특수학급, 나머지는 통합학급')}
+    <div class="two">${pfF(d,'homeroom','담임교사','예: 담임 A')}${pfF(d,'specialTeacher','특수교사 · 지원 인력','예: 특수교사 B, 보조인력 1명')}</div>
+    <div class="three">${pfF(d,'referDate','의뢰 일자','',{type:'date'})}${pfF(d,'referBy','의뢰한 사람','예: 담임교사')}</div>
+    ${pfF(d,'referReason','의뢰 이유','예: 수업 중 자리 이탈이 잦아 본인과 다른 학생의 학습이 방해됨',{area:1})}
+  </section>
+  <section class="card">
+    <h2 class="h3">2. 장애 · 건강 정보</h2>
+    <div class="two">${pfF(d,'disability','장애 유형 · 진단명','예: 자폐성장애')}${pfF(d,'diagDate','진단 시기','예: 2022년')}</div>
+    ${pfF(d,'meds','복용 약물 · 부작용','예: 아침 복용, 오후에 졸림',{area:1})}
+    ${pfF(d,'sensory','감각 특성','예: 큰 소리에 귀를 막음, 옷 라벨을 싫어함',{area:1})}
+    ${pfF(d,'health','건강상 주의점','알레르기, 발작, 수면·식사 등. 예: 잠이 부족한 날 행동이 늘어남',{area:1})}
+  </section>
+  <section class="card">
+    <h2 class="h3">3. 발달 · 학습 수준</h2>
+    <fieldset class="field"><legend>의사소통 방식</legend><div class="chips">${PF_COMM.map(x=>chip('pfcomm',x,d.comm.includes(x),'b')).join('')}</div></fieldset>
+    ${pfF(d,'commNote','의사소통 · 이해 수준','예: 두 단어 문장으로 요구, 한 단계 지시는 이해',{area:1})}
+    <div class="two">${pfF(d,'academic','학업 수준','읽기·쓰기·수학. 예: 받침 없는 글자 읽기, 한 자리 덧셈',{area:1})}${pfF(d,'attention','주의 집중 시간','예: 혼자 하는 과제 5분 정도',{area:1})}</div>
+    <div class="three">${pfF(d,'social','사회성','예: 좋아하는 친구 1명과 놀이',{area:1})}${pfF(d,'daily','일상생활 기술','예: 화장실 혼자 사용',{area:1})}${pfF(d,'motor','운동 능력','예: 가위질 서툼',{area:1})}</div>
+  </section>
+  <section class="card">
+    <h2 class="h3">4. 강점</h2>
+    <div class="two">${pfF(d,'strengths','잘하는 것','예: 퍼즐, 기억력이 좋음',{area:1})}${pfF(d,'likes','좋아하는 활동 · 과목','예: 체육, 그림 그리기',{area:1})}</div>
+    <fieldset class="field"><legend>선호하는 것 <small>강화제 후보 · 중재 계획에서 참고</small></legend>
+      <div class="r-list" id="pf-prefs">${d.prefs.length?d.prefs.map(pfPrefRow).join(''):'<p class="rows-empty">아직 선호 항목이 없습니다.</p>'}</div>
+      <button type="button" class="btn small" data-act="pf-add" data-k="prefs">+ 선호 추가</button>
+    </fieldset>
+    ${pfF(d,'teach','잘 맞는 교수 방법','예: 그림 일과표, 짧은 지시, 먼저 시범 보이기',{area:1})}
+  </section>
+  <section class="card">
+    <h2 class="h3">5. 어려움</h2>
+    ${pfF(d,'hard','어려워하는 과제 · 상황','예: 쓰기 과제, 기다리기',{area:1})}
+    <div class="two">${pfF(d,'dislikes','싫어하는 것','예: 큰 소리, 갑작스러운 일정 변화',{area:1})}${pfF(d,'triggers','이미 알려진 촉발 요인','예: 학습지를 받을 때, 쉬는 시간이 끝날 때',{area:1})}</div>
+  </section>
+  <section class="card">
+    <h2 class="h3">6. 지원 이력</h2>
+    <div class="r-list" id="pf-history">${d.history.length?d.history.map(pfHistRow).join(''):'<p class="rows-empty">아직 지원 이력이 없습니다.</p>'}</div>
+    <button type="button" class="btn small" data-act="pf-add" data-k="history">+ 지원 이력 추가</button>
+    ${pfF(d,'supports','지금 받고 있는 지원','치료, 보조인력, 방과후 등. 예: 주 1회 언어치료',{area:1})}
+  </section>
+  <section class="card">
+    <h2 class="h3">7. 가정 · 주변 환경</h2>
+    <div class="two">${pfF(d,'family','가족 구성 · 주 양육자','예: 부모, 동생 1명 · 주 양육자 어머니',{area:1})}${pfF(d,'homeBeh','가정에서의 행동','예: 숙제할 때 비슷한 행동',{area:1})}</div>
+    <div class="two">${pfF(d,'contact','보호자 연락 · 협력 정도','예: 알림장 매일 확인, 주 1회 통화',{area:1})}${pfF(d,'homeWish','가정의 바람 · 우선순위','예: 수업 시간에 자리에 앉아 있기',{area:1})}</div>
+  </section>
+  <section class="card">
+    <h2 class="h3">8. 학생과 가족의 목표</h2>
+    ${pfF(d,'goalStudent','학생 본인이 원하는 것','예: 친구와 축구하기',{area:1})}
+    <div class="two">${pfF(d,'goalFamily','보호자가 바라는 모습','',{area:1})}${pfF(d,'goalTeacher','교사가 바라는 모습','',{area:1})}</div>
+  </section>`;
+}
+/* 다른 절차 화면에서 보는 학생 기본 정보 요약 (가설·중재 계획) */
+function pfPrefText(r){return [r.what,r.kind?`(${r.kind})`:''].filter(x=>String(x||'').trim()).join(' ');}
+function pfRef(p,kind){
+  const d=p.procs.profile.data;const t=v=>String(v||'').trim();
+  const prefs=d.prefs.filter(r=>t(r.what));
+  const rows=kind==='hypo'
+    ?[['알려진 촉발 요인',d.triggers],['싫어하는 것',d.dislikes],['어려워하는 과제 · 상황',d.hard],['감각 특성',d.sensory],['건강상 주의점',d.health],['의사소통',[d.comm.join(', '),d.commNote].filter(t).join(' · ')]]
+    :[['잘하는 것',d.strengths],['좋아하는 활동 · 과목',d.likes],['잘 맞는 교수 방법',d.teach],['싫어하는 것',d.dislikes],['의사소통',[d.comm.join(', '),d.commNote].filter(t).join(' · ')]];
+  const hist=d.history.filter(r=>t(r.what));
+  const items=rows.filter(r=>t(r[1])).map(([l,v])=>`<p><b>${esc(l)}</b> ${esc(v)}</p>`);
+  if(prefs.length)items.push(`<p><b>선호(강화제 후보)</b> ${prefs.map(r=>esc(pfPrefText(r))).join(', ')}</p>`);
+  if(kind!=='hypo'&&hist.length)items.push(`<p><b>써 본 지원</b> ${hist.map(r=>esc(r.what)+(r.effect?` <span class="muted">(${esc(r.effect)})</span>`:'')).join(', ')}</p>`);
+  const body=items.length?items.join(''):'<p class="muted">학생 기본 정보가 아직 비어 있습니다.</p>';
+  return `<details class="card pf-ref"${items.length?' open':''}><summary>학생 기본 정보에서 <small>${kind==='hypo'?'촉발 요인·어려움·감각·건강':'강점·선호·써 본 지원'}</small></summary>
+    <div class="sum-box">${body}</div>
+    <div class="row">${kind==='plan'&&prefs.length?'<button type="button" class="btn small" data-act="pf-fill">선호를 후속결과 칸에 넣기</button>':''}<button type="button" class="btn small ghost" data-act="open-proc" data-key="profile">학생 기본 정보 열기</button></div></details>`;
 }
 
 /* 1. define */
@@ -1469,6 +1585,7 @@ function viewHypo(p){
     <div class="two"><div class="sum-box"><h3>QABF (가장 높은 척도)</h3>${qSum}</div><div class="sum-box"><h3>ABC 관찰 (많은 순 3개)</h3>${aSum}</div></div>
     ${hyMatchView(p)}
   </section>
+  ${pfRef(p,'hypo')}
   ${hyBlock(p,h,'m',1,multi)}
   ${more.map((x,i)=>hyBlock(p,x,x.id,i+2,true)).join('')}
   <section class="card hy-add"><div class="row"><button type="button" class="btn" data-act="hy-add">＋ 가설 추가</button><small class="muted">한 행동에 기능이 둘 이상일 수 있으면 가설을 따로 세웁니다.</small></div></section>`;
@@ -1783,7 +1900,7 @@ async function hydrateRatingFiles(){
 /* memo procedures */
 function viewMemo(p,key){
   const d=p.procs[key].data;
-  return `<section class="card">${MEMO_FIELDS[key].map(([k,l,ph])=>`<label class="field"><span>${esc(l)}</span><textarea id="mf-${k}" data-f="mf:${k}" rows="${k==='log'?6:3}" placeholder="${esc(ph)}">${esc(d[k])}</textarea></label>`).join('')}</section>`;
+  return `${key==='plan'?pfRef(p,'plan'):''}<section class="card">${MEMO_FIELDS[key].map(([k,l,ph])=>`<label class="field"><span>${esc(l)}</span><textarea id="mf-${k}" data-f="mf:${k}" rows="${k==='log'?6:3}" placeholder="${esc(ph)}">${esc(d[k])}</textarea></label>`).join('')}</section>`;
 }
 
 /* ---------- recorder ---------- */
@@ -2265,6 +2382,14 @@ function exampleProject(){
    p.procs.baseline.data.sessions=[[-6,4],[-5,5],[-4,3],[-3,4],[-2,5]].map(([o,v])=>({id:uid('bs'),date:day(o),time:'09:00',mins:'40',setting:'국어, 개별 과제',value:String(v),observer:'담임',note:''}));
    Object.assign(p.procs.baseline.data,{dir:'줄이기',goal:'2',goalNote:'3회기 연속 목표 값 이하'});
    Object.assign(p.procs.baseline,{status:'progress',updatedAt:at(0,9,10)});}
+  Object.assign(p.procs.profile.data,{grade:'3학년',age:'9세',classType:'통합학급(시간제)',classNote:'국어·수학 일부는 특수학급 (예시)',referBy:'담임교사',referReason:'국어·수학 시간에 자리 이탈이 잦아 본인 학습 시간이 줄어듦',
+    sensory:'큰 소리가 나면 귀를 막음',comm:['말','그림카드'],commNote:'짧은 문장으로 요구, 한 단계 지시는 이해',attention:'혼자 하는 학습지 5분 정도',
+    strengths:'퍼즐·블록 맞추기, 일과 순서를 잘 기억함',likes:'체육, 그림 그리기',teach:'그림 일과표, 짧고 구체적인 지시, 과제를 작게 나누기',
+    prefs:[{id:uid('pp'),kind:'활동',what:'블록 놀이 5분',note:''},{id:uid('pp'),kind:'물건',what:'공룡 스티커',note:'모으는 것을 좋아함'},{id:uid('pp'),kind:'칭찬·관심 방식',what:'하이파이브',note:''}],
+    hard:'긴 쓰기 과제, 기다리기',dislikes:'큰 소리, 갑작스러운 일정 변화',triggers:'학습지를 받을 때',
+    history:[{id:uid('ph'),what:'자리 앞쪽 배치',when:'1학기',effect:'일부 효과',note:'교사 가까이에서는 줄었으나 학습지 시간엔 여전함'}],
+    homeWish:'수업 시간에 자리에 앉아 과제 해 보기',goalStudent:'친구들과 체육 시간에 같이 놀기'});
+  Object.assign(p.procs.profile,{status:'progress',updatedAt:at(0,9,0)});
   return p;
 }
 
@@ -2284,8 +2409,8 @@ const actions={
   'undone':()=>setDone(curProject(),ui.proc,false),
   'chip':el=>{
     const p=curProject();const g=el.dataset.g,v=el.dataset.v;
-    const multi={defsrc:()=>[p.procs.define.data.sources,'define'],defpri:()=>[p.procs.define.data.priority,'define'],rfunc:()=>[p.procs.rating.data.funcs,'rating']};
-    const single={measure:()=>[p.procs.define.data,'measure','define'],defstage:()=>[p.procs.define.data,'stage','define'],rtype:()=>[p.procs.rating.data,'type','rating'],bldir:()=>[p.procs.baseline.data,'dir','baseline']};
+    const multi={defsrc:()=>[p.procs.define.data.sources,'define'],defpri:()=>[p.procs.define.data.priority,'define'],rfunc:()=>[p.procs.rating.data.funcs,'rating'],pfcomm:()=>[p.procs.profile.data.comm,'profile']};
+    const single={measure:()=>[p.procs.define.data,'measure','define'],defstage:()=>[p.procs.define.data,'stage','define'],rtype:()=>[p.procs.rating.data,'type','rating'],bldir:()=>[p.procs.baseline.data,'dir','baseline'],pfclass:()=>[p.procs.profile.data,'classType','profile']};
     const hm=/^(func|conf|verify)(?::(.+))?$/.exec(g);
     if(hm){/* 가설 칸: func·conf·verify(가설 1) 또는 func:id 등(가설 2부터) */
       const h=hyData(p,hm[2]);if(!h)return;
@@ -2304,6 +2429,23 @@ const actions={
       if(key==='baseline')refreshBl(p);
       if(g==='rtype'){const t=$('#rtype-tip');if(t)t.textContent=RATING_TYPE_TIP[obj[field]]||'종류를 고르면 결과를 어떻게 읽을지 안내가 나옵니다.';}
     }
+  },
+  'pf-add':el=>{
+    const p=curProject();const k=el.dataset.k;const d=p.procs.profile.data;const r=pfNew(k);d[k].push(r);
+    touch(p,'profile');saveNow();const y=window.scrollY;render();window.scrollTo(0,y);
+    const f=$(`#pf-${r.id}-what`);if(f){try{f.focus({preventScroll:true});}catch(e){}f.scrollIntoView({block:'center'});}
+  },
+  'del-pf':el=>{
+    const p=curProject();const [k,id]=el.dataset.id.split(':');const d=p.procs.profile.data;if(!Array.isArray(d[k]))return;
+    d[k]=d[k].filter(x=>x.id!==id);ui.confirm=null;touch(p,'profile');saveNow();rerenderForConfirm();toast('삭제했습니다');
+  },
+  'pf-fill':()=>{
+    const p=curProject();const prefs=p.procs.profile.data.prefs.filter(r=>String(r.what||'').trim());
+    if(!prefs.length){toast('학생 기본 정보에 선호 항목이 아직 없습니다');return;}
+    const t='강화제 후보(학생 기본 정보): '+prefs.map(pfPrefText).join(', ');
+    const pd=p.procs.plan.data;const cur=String(pd.consequence||'');if(cur.includes(t)){toast('이미 후속결과 칸에 들어 있습니다');return;}
+    pd.consequence=cur.trim()?cur.replace(/\s+$/,'')+'\n'+t:t;
+    touch(p,'plan');saveNow();const y=window.scrollY;render();window.scrollTo(0,y);toast('선호를 후속결과 칸에 넣었습니다');
   },
   'hy-add':()=>{
     const p=curProject();const d=p.procs.hypo.data;if(!Array.isArray(d.more))d.more=[];const h=hyNew();d.more.push(h);
@@ -2483,6 +2625,11 @@ function onField(el){
       p[name]=val;p.updatedAt=nowISO();scheduleSave();renderCrumbs();
       if(name==='code'){const t=$('#proj-title');if(t)t.textContent=val||'(코드 없음)';}
       break;
+    case 'prof':
+      p.procs.profile.data[name]=val;touch(p,'profile');break;
+    case 'pfl':{
+      const [k,id,field]=name.split(':');const arr=p.procs.profile.data[k];const o=Array.isArray(arr)&&arr.find(x=>x.id===id);if(!o)return;
+      o[field]=val;touch(p,'profile');break;}
     case 'define':
       p.procs.define.data[name]=val;touch(p,'define');refreshDefine(p);break;
     case 'defbool':
@@ -2609,6 +2756,8 @@ function inkTarget(spec){
   const p=curProject();if(!p)return null;
   switch(scope){
     case 'proj':return {obj:p,field:name,save:()=>{p.updatedAt=nowISO();scheduleSave();}};
+    case 'prof':return {obj:p.procs.profile.data,field:name,save:()=>touch(p,'profile')};
+    case 'pfl':{const [k,id,fd]=name.split(':');const arr=p.procs.profile.data[k];const o=Array.isArray(arr)&&arr.find(x=>x.id===id);if(!o)return null;return {obj:o,field:fd,save:()=>touch(p,'profile')};}
     case 'define':return {obj:p.procs.define.data,field:name,save:()=>touch(p,'define')};
     case 'qform':{const f=activeForm(p);if(!f)return null;return {obj:f,field:name,save:()=>{f.updatedAt=nowISO();touch(p,'qabf');}};}
     case 'sheet':{const [sid,fd]=name.split(':');const sh=sheetById(p,sid);if(!sh)return null;return {obj:sh,field:fd,save:()=>{sh.updatedAt=nowISO();touch(p,'abc');}};}
