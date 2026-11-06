@@ -3360,6 +3360,7 @@ const FIREBASE_CONFIG={apiKey:"AIzaSyClV4aC9gg2KURwNFgKOKYk6fXv9HcarbU",authDoma
 const FIREBASE_VER='12.19.0';
 const SYNC_ON=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.projectId);
 const SYNC_SKIP_TOP=new Set(['id','shared','lastBackupAt','example']);/* 이 기기에만 두는 칸 */
+const SYNC_META=/(^|\/)updatedAt$|^procs\/[^/]+\/status$/;/* 내용이 아닌 칸: 이것만 바뀌었으면 보내지 않는다 */
 const NO_HIST=/(^|\/)(updatedAt|ink)(\/|\[|$)|^procs\/abc\/data\/session(\/|$)/;/* 수정 기록·충돌로 남기지 않는 칸 */
 const Sync={ad:null,loading:null,user:null,authKnown:false,online:navigator.onLine,cur:null,ft:null,lastInput:0,dlg:null,stats:{writes:0,flushes:0},inkGone:new Set(),deleting:new Set()};
 
@@ -3704,6 +3705,8 @@ function syncPending(S){
   const d=syncDiff(syncFlat(st.base),syncFlat(p));
   /* 예전 판이 서버에 올린 손글씨는 지운다(손글씨는 이 기기에만) */
   S.cells.forEach((c,pa)=>{if(!c.deleted&&INK_PATH.test(pa)&&!Sync.inkGone.has(pa)&&!d.cells.some(w=>w.path===pa))d.cells.push({path:pa,deleted:true});});
+  /* 고쳤다가 원래대로 되돌린 경우 내용 칸은 diff에 안 나온다. 그때 남는 수정 시각·진행 상태 칸만으로는 보내지 않는다(다음에 내용이 바뀔 때 함께 감) */
+  if(!d.items.length&&d.cells.every(w=>SYNC_META.test(w.path)))return {cells:[],items:[]};
   return d;
 }
 function syncFlushSoon(ms,force){clearTimeout(Sync.ft);Sync.ft=setTimeout(()=>syncFlush(force),ms);}
