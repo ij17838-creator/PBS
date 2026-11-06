@@ -902,7 +902,7 @@ function projCard(p){
       <button type="button" class="btn small" data-act="dup-proj" data-id="${p.id}">복제</button>
       <button type="button" class="btn small ghost danger" data-act="ask" data-key="del-proj:${p.id}">삭제</button>
     </div>
-    ${ui.confirm==='del-proj:'+p.id?confirmBox(`<b>${esc(p.code)}</b> 프로젝트의 기록과 녹음을 모두 삭제합니다. 되돌릴 수 없습니다.`,'del-proj',p.id):''}
+    ${ui.confirm==='del-proj:'+p.id?confirmBox(p.shared&&p.shared.role==='owner'?`<b>${esc(p.code)}</b> 공유 프로젝트를 삭제합니다. 함께 쓰는 사람들의 기기에서도 이 프로젝트가 지워집니다. 되돌릴 수 없습니다.`:p.shared?`<b>${esc(p.code)}</b> 프로젝트를 이 기기에서만 지웁니다. 다른 사람의 기기와 서버 자료는 그대로입니다.`:`<b>${esc(p.code)}</b> 프로젝트의 기록과 녹음을 모두 삭제합니다. 되돌릴 수 없습니다.`,'del-proj',p.id):''}
   </article>`;
 }
 
@@ -1711,7 +1711,13 @@ async function duplicateProject(p){
   for(const oldId of Object.keys(map)){try{const r=await AudioDB.getBlob(oldId);if(r)await AudioDB.put(map[oldId],c.id,r.blob,r.duration,r.createdAt);}catch(e){}}
   store.projects.push(c);saveNow();render();updateUsage();toast('프로젝트를 복제했습니다');
 }
-async function deleteProject(p){
+async function deleteProject(p,fromServer){
+  /* 공유 프로젝트 소유자가 지우면 서버에 '삭제됨'으로 표시해 다른 멤버 기기에서도 지워지게 한다 */
+  if(!fromServer&&p.shared&&p.shared.role==='owner'&&(SYNC_ON||window.__pbsSyncAdapter)){
+    Sync.deleting.add(p.id);
+    try{const ad=await syncEnsureUser();await ad.deleteProject(p.shared.projectId,syncMe());}
+    catch(e){Sync.deleting.delete(p.id);console.error(e);ui.confirm=null;rerenderForConfirm();toast('서버에 연결하지 못해 삭제하지 않았습니다. 인터넷 연결과 로그인을 확인한 뒤 다시 지우세요.');return;}
+  }
   if(rec.seg&&rec.seg.target.projectId===p.id)stopRecording();
   if(abcData(p).session)abcData(p).session.running=false;
   for(const id of blobIds(p))dropUrl(id);
@@ -2681,7 +2687,7 @@ const FIREBASE_VER='12.19.0';
 const SYNC_ON=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.projectId);
 const SYNC_SKIP_TOP=new Set(['id','shared','lastBackupAt','example']);/* 이 기기에만 두는 칸 */
 const NO_HIST=/(^|\/)(updatedAt|ink)(\/|\[|$)|^procs\/abc\/data\/session(\/|$)/;/* 수정 기록·충돌로 남기지 않는 칸 */
-const Sync={ad:null,loading:null,user:null,authKnown:false,online:navigator.onLine,cur:null,ft:null,lastInput:0,dlg:null,stats:{writes:0,flushes:0},inkGone:new Set()};
+const Sync={ad:null,loading:null,user:null,authKnown:false,online:navigator.onLine,cur:null,ft:null,lastInput:0,dlg:null,stats:{writes:0,flushes:0},inkGone:new Set(),deleting:new Set()};
 
 /* 프로젝트 → {cells: 경로→값, items: 항목경로→{parent,order}}. 경로 예: procs/abc/data/sheets[s1]/rows[w2]/b */
 function syncFlat(p){
@@ -2852,7 +2858,10 @@ async function makeFirestoreAdapter(){
       if(!inv.exists()||inv.data().projectId!==pid){const e=new Error('badcode');e.code='badcode';throw e;}
       const mref=sub(pid,'members',me.uid);
       const m=await F.getDoc(mref);
-      if(!m.exists()){await F.setDoc(mref,{name:me.name,role:'member',joinedAt:ts(),inviteKey});count(1);}
+      if(!m.exists()){
+        const pr=await F.getDoc(pd(pid)).catch(()=>null);
+        if(pr&&pr.exists()&&pr.data().deleted){const e=new Error('deleted');e.code='deleted';throw e;}
+        await F.setDoc(mref,{name:me.name,role:'member',joinedAt:ts(),inviteKey});count(1);}
       return getAll(pid);
     },
     watch(pid,h){
@@ -2863,6 +2872,7 @@ async function makeFirestoreAdapter(){
         F.onSnapshot(sub(pid,'cells'),opt,s=>h.cells(ch(s).map(x=>(x.d.at=iso(x.d.at),x)),s.metadata.fromCache),h.error),
         F.onSnapshot(sub(pid,'items'),opt,s=>h.items(ch(s),s.metadata.fromCache),h.error),
         F.onSnapshot(F.query(sub(pid,'conflicts'),F.where('resolved','==',false)),s=>h.conflicts(s.docs.map(d=>{const x=conv(d);return Object.assign(x,{id:d.id,at:iso(x.at),theirsAt:iso(x.theirsAt)});})),h.error),
+        F.onSnapshot(pd(pid),s=>h.project(s.exists()?s.data():null),()=>{}),
         F.onSnapshot(sub(pid,'members'),opt,s=>h.members(s.docs.map(d=>{const x=conv(d);return Object.assign(x,{uid:d.id,joinedAt:iso(x.joinedAt)});}),s.metadata.fromCache),h.error)
       ];
       return ()=>un.forEach(f=>{try{f();}catch(e){}});
@@ -2896,6 +2906,12 @@ async function makeFirestoreAdapter(){
       return s.docs.map(d=>{const x=d.data({serverTimestamps:'estimate'});return {id:d.id,value:x.value,prevValue:x.prevValue,by:x.by,byName:x.byName,at:iso(x.at)};}).sort((a,b)=>(a.at||'').localeCompare(b.at||''));
     },
     async resolve(pid,id,me){await F.updateDoc(sub(pid,'conflicts',id),{resolved:true,resolvedBy:me.uid,resolvedAt:ts()});count(1);},
+    async deleteProject(pid,me){
+      const m=await F.getDoc(sub(pid,'members',me.uid));const k=m.exists()?m.data().inviteKey:'';
+      await F.updateDoc(pd(pid),{deleted:true,deletedAt:ts(),deletedBy:me.uid,updatedAt:ts()});count(1);
+      if(k){try{await F.deleteDoc(F.doc(db,'invites',k));count(1);}catch(e){}}
+    },
+    watchDoc(pid,cb){return F.onSnapshot(pd(pid),s=>cb(s.exists()?s.data():null),()=>{});},
     async removeMember(pid,uid){await F.deleteDoc(sub(pid,'members',uid));count(1);},
     async setName(pid,me){await F.updateDoc(sub(pid,'members',me.uid),{name:me.name});count(1);},
     async changeCode(pid,newKey,me){
@@ -2914,6 +2930,7 @@ function syncOnAuth(u){
   const S=Sync.cur;
   if(!u&&S&&S.unsub){S.unsub();S.unsub=null;S.gotCells=S.gotItems=false;}
   if(u&&S&&!S.unsub)syncSubscribe(S);
+  if(u)setTimeout(syncWatchDocs,0);else syncUnwatchDocs();
   syncRefreshCards();syncStatusUI();
 }
 async function syncEnsureUser(){
@@ -2941,6 +2958,7 @@ function syncSubscribe(S){
       S.gotCells=true;S.fromCache=cache;syncNet();syncAbsorbSoon(S);},
     items:(chs,cache)=>{chs.forEach(c=>{const d=c.d;if(c.removed)S.items.delete(d.path);else S.items.set(d.path,{parent:d.parent,order:Number(d.order)||0,deleted:!!d.deleted});});
       S.gotItems=true;syncAbsorbSoon(S);},
+    project:d=>{if(d&&d.deleted)syncGone(S.localId);},
     conflicts:list=>{S.conflicts=list;syncDecorateSoon();syncRefreshCards();},
     members:(list,cache)=>{S.members=list;const me=syncMe();
       if(!cache&&me&&!list.some(m=>m.uid===me.uid))S.error='removed';
@@ -2948,6 +2966,21 @@ function syncSubscribe(S){
     error:e=>{const c=(e&&e.code)||'';S.error=/permission/.test(c)?'denied':'error';if(S.unsub){S.unsub();S.unsub=null;}syncStatusUI();syncRefreshCards();}
   });
 }
+/* 소유자가 서버에서 지운 공유 프로젝트는 이 기기에서도 지운다 */
+function syncGone(localId){
+  const p=projById(localId);if(!p||!p.shared||Sync.deleting.has(localId))return;
+  Sync.deleting.add(localId);
+  const code=p.code;deleteProject(p,true).then(()=>toast(`소유자가 '${code}' 공유 프로젝트를 삭제해 이 기기에서도 지웠습니다`));
+}
+/* 이 기기에 있는 공유 프로젝트마다 프로젝트 문서(작은 문서 1개)만 지켜본다: 소유자가 지우면 홈 목록에서도 바로 사라진다 */
+function syncWatchDocs(){
+  if(!Sync.ad||!Sync.user)return;
+  Sync.docs=Sync.docs||new Map();
+  const want=new Map(store.projects.filter(x=>x.shared).map(x=>[x.shared.projectId,x.id]));
+  Sync.docs.forEach((un,pid)=>{if(!want.has(pid)){un();Sync.docs.delete(pid);}});
+  want.forEach((lid,pid)=>{if(!Sync.docs.has(pid))Sync.docs.set(pid,Sync.ad.watchDoc(pid,d=>{if(d&&d.deleted)syncGone(lid);}));});
+}
+function syncUnwatchDocs(){if(Sync.docs){Sync.docs.forEach(un=>un());Sync.docs.clear();}}
 function syncAbsorbSoon(S){clearTimeout(S.at);S.at=setTimeout(()=>syncAbsorb(S),30);}
 /* 서버 자료(theirs)를 이 기기 자료(mine)에 합친다. base = 마지막으로 서버와 맞춘 자료 */
 function syncAbsorb(S){
@@ -3254,9 +3287,10 @@ function syncRefreshCards(){
   }
   if(ui.view==='home'){const j=$('#sync-join-login');if(j)j.innerHTML=Sync.user?`<p class="meta">로그인: ${esc(Sync.user.email||Sync.user.name)}</p>`:'';}
 }
-function syncAfterRender(){syncWatch();syncDecorateSoon();syncStatusUI();}
+function syncAfterRender(){syncWatch();syncWatchDocs();syncDecorateSoon();syncStatusUI();}
 function syncErrMsg(e){
   const c=(e&&e.code)||'';
+  if(c==='deleted')return '소유자가 삭제한 프로젝트입니다';
   if(c==='badcode')return '공유 ID 또는 공유 코드가 맞지 않습니다';
   if(/permission/.test(c))return '권한이 없습니다. 공유 ID·코드를 확인하세요';
   if(/unavailable|network/.test(c))return '서버에 연결하지 못했습니다. 인터넷 연결을 확인하세요';
@@ -3301,7 +3335,7 @@ Object.assign(actions,{
       const st=syncState(id);st.base=syncBaseOf(p);st.revs=revs;
       store.projects.push(p);saveNow();go('project',{projectId:id,proc:null});
       toast('공유 프로젝트를 받았습니다. 이제 함께 고친 내용이 실시간으로 반영됩니다.');
-    }catch(e){if(e&&e.code!=='badcode')console.error(e);toast(syncErrMsg(e));}
+    }catch(e){if(e&&e.code!=='badcode'&&e.code!=='deleted')console.error(e);toast(syncErrMsg(e));}
     finally{el.disabled=false;}
   },
   'sync-copy':async()=>{

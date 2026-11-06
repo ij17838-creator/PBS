@@ -47,7 +47,8 @@ service cloud.firestore {
           && (
             (request.resource.data.role == 'owner' && get(projectPath(pid)).data.owner == me())
             || (request.resource.data.role == 'member'
-                && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteKey)).data.projectId == pid)
+                && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteKey)).data.projectId == pid
+                && get(projectPath(pid)).data.get('deleted', false) != true)
           );
         // 역할 변경 등은 소유자만. 본인은 표시 이름만 바꿀 수 있다.
         allow update: if isOwner(pid) || (uid == me() && isMember(pid) && onlyChanges(['name']));
