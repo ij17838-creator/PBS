@@ -124,6 +124,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .pill{display:inline-flex;align-items:center;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
 .pill.muted{background:var(--sunk);color:var(--muted)}
 .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
 .confirm{background:var(--rec-soft);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;color:var(--ink);font-size:.9rem}
 
 /* home */
@@ -299,6 +300,15 @@ td.top{color:var(--accent);font-weight:700}
 .interp span{font-weight:700;margin-right:6px}
 .rec-actions{display:flex;flex-wrap:wrap;gap:6px}
 .hypo-preview{background:var(--accent-soft);border-radius:10px;padding:14px 16px;font-family:var(--font-display);font-size:1.08rem;line-height:1.6}
+.hy-miss{display:block;margin-top:6px;font-family:var(--font-body);font-size:.8rem;color:var(--muted)}
+.hy-match{display:flex;gap:10px;align-items:flex-start;background:var(--surface-2);border-radius:10px;padding:12px 14px}
+.hy-match p{margin:0;font-size:.9rem}
+.hy-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hy-beh{font-weight:700;margin:0}
+.hy-memo summary{cursor:pointer;font-weight:700;font-size:.9rem;min-height:36px;display:flex;align-items:center;gap:8px}
+.hy-memo[open] summary{margin-bottom:8px}
+.hy-other-btn{color:var(--muted)}
+.lede-toggle{margin-left:4px;vertical-align:baseline}
 .sum-box{background:var(--surface-2);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px}
 .sum-box h3{font-size:.92rem}
 .sum-box ul{margin:0;padding-left:18px;font-size:.9rem}
@@ -562,7 +572,7 @@ function defaultData(key){
     case 'define':return {name:'',definition:'',start:'',end:'',examples:'',nonExamples:'',measures:[],setting:'',checks:[],stage:'초안',sources:[],sourceNote:'',priority:[],priorityNote:'',boundary:'',episode:'',questions:'',planWhen:'',planLength:'',planPeriod:'',planObserver:'',planDate:'',planTools:'',planIoa:'',measure:'',unit:'',measureWhy:'',measureFixed:false,ioaDone:false,ioaNote:'',revLog:''};
     case 'qabf':return {forms:[],activeForm:null};
     case 'abc':return {sheets:[],session:null,interval:15,audio:{},plan:{start:'',end:'',fired:''}};
-    case 'hypo':return {when:'',behavior:'',funcs:[],funcOther:'',evidence:'',confidence:'',memo:''};
+    case 'hypo':return {when:'',behavior:'',funcs:[],funcOther:'',evidence:'',confidence:'',memo:'',setting:'',cons:'',verify:[],verifyNote:'',more:[]};
     /* scale·when·scores·memo는 예전 '기본 메모' 칸. when·scores는 예전에 적은 내용으로 보여 주고, memo는 주의점 칸으로 옮긴다 */
     case 'rating':return {scale:'',when:'',scores:'',memo:'',type:'',purpose:'',raters:[],rows:[],target:'',funcs:[],funcNote:'',diff:'',cautions:'',retestDate:'',retestNote:'',files:[]};
     default:{const o={};(MEMO_FIELDS[key]||[]).forEach(f=>o[f[0]]='');return o;}
@@ -578,6 +588,8 @@ function ensureProject(p){
   const dd=p.procs.define.data;
   if(!Array.isArray(dd.measures))dd.measures=[];if(!Array.isArray(dd.sources))dd.sources=[];if(!Array.isArray(dd.priority))dd.priority=[];
   if(!dd.measure&&dd.measures.length)dd.measure=dd.measures[0];/* 예전 '측정 방법'(여러 개)은 첫 번째를 예정 측정 방법으로 */
+  const hd=p.procs.hypo.data;
+  if(!Array.isArray(hd.funcs))hd.funcs=[];if(!Array.isArray(hd.verify))hd.verify=[];if(!Array.isArray(hd.more))hd.more=[];hd.more.forEach(hyFix);
   const rd=p.procs.rating.data;
   ['raters','rows','funcs','files'].forEach(k=>{if(!Array.isArray(rd[k]))rd[k]=[];});
   if(rd.memo&&rd.memo.trim()){rd.cautions=rd.cautions&&rd.cautions.trim()?rd.cautions+'\n'+rd.memo:rd.memo;rd.memo='';}/* 예전 '메모'는 주의점·메모 칸으로 합친다 */
@@ -769,7 +781,7 @@ const urlCache=new Map();
 function dropUrl(id){const u=urlCache.get(id);if(u){URL.revokeObjectURL(u);urlCache.delete(id);}}
 
 /* ---------- ui state ---------- */
-const ui=Object.assign({view:'home',projectId:null,proc:null},store.ui||{},{confirm:null,optsEdit:null,abcFilter:'all',qItemsOpen:false,micHelp:'',openSheets:new Set()});
+const ui=Object.assign({view:'home',projectId:null,proc:null},store.ui||{},{confirm:null,optsEdit:null,abcFilter:'all',qItemsOpen:false,micHelp:'',openSheets:new Set(),hyOther:new Set(),hyMemoOpen:false});
 function curProject(){return store.projects.find(p=>p.id===ui.projectId)||null;}
 function projById(id){return store.projects.find(p=>p.id===id)||null;}
 
@@ -957,7 +969,7 @@ function viewProc(p,key){
   }
   return `
   <section class="proc-head">
-    <div style="min-width:0;flex:1 1 300px"><p class="eyebrow"><span class="mono">${esc(p.code)}</span> · 권장 순서 ${x.no}</p><h1>${esc(x.title)}</h1><p class="lede">${x.lede}</p></div>
+    <div style="min-width:0;flex:1 1 300px"><p class="eyebrow"><span class="mono">${esc(p.code)}</span> · 권장 순서 ${x.no}</p><h1>${esc(x.title)}</h1>${key==='hypo'?(store.settings.hypoLedeHidden?'<p class="lede"><button type="button" class="btn small ghost lede-toggle" data-act="hy-lede">설명 보기</button></p>':`<p class="lede">${x.lede} <button type="button" class="btn small ghost lede-toggle" data-act="hy-lede">접기</button></p>`):`<p class="lede">${x.lede}</p>`}</div>
     <div id="status-slot">${statusPill(s)}</div>
   </section>
   ${key!=='define'?targetBanner(p):''}
@@ -1331,33 +1343,117 @@ async function hydrateAudio(){
   }
 }
 
-/* 5. hypothesis */
+/* 5. hypothesis
+   가설 1은 예전처럼 hypo.data 칸에 두고(경로가 바뀌지 않게), 가설 2부터는 hypo.data.more(id 목록)에 둔다.
+   화면 키: 가설 1 = 'm', 그 밖 = 항목 id. 입력칸 data-f: 가설 1 'hypo:칸', 그 밖 'hyx:id:칸' */
+const HY_VERIFY=['추가 관찰','기능분석'];
+const QABF_FUNC={att:'관심 얻기',esc:'과제·요구 피하기',non:'감각 자극 얻기',phy:'신체적 불편 줄이기',tan:'물건·활동 얻기'};
+const FUNC_STEM={'관심 얻기':'관심을 얻','과제·요구 피하기':'과제·요구를 피하','물건·활동 얻기':'물건·활동을 얻','감각 자극 얻기':'감각 자극을 얻','신체적 불편 줄이기':'신체적 불편을 줄이'};
+/* ABC 후속결과 낱말 → 기능(처음 맞는 것 하나). 반응 없음·신체적 제지·자리 이동은 기능을 정하기 어려워 세지 않는다 */
+const C_FUNC=[[/중단|제거|면제|미루|늦춰|피하|빼 ?주|그만/,'과제·요구 피하기'],[/관심|꾸중|이름|부름|칭찬|훈계|달래|쳐다|또래 반응|웃음/,'관심 얻기'],[/선호물|물건|활동 제공|간식|장난감|허락/,'물건·활동 얻기']];
+function hyNew(){return {id:uid('hy'),setting:'',when:'',cons:'',funcs:[],funcOther:'',evidence:'',confidence:'',verify:[],verifyNote:''};}
+function hyFix(h){const d=hyNew();for(const k in d)if(k!=='id'&&h[k]==null)h[k]=d[k];['funcs','verify'].forEach(k=>{if(!Array.isArray(h[k]))h[k]=[];});return h;}
+function hyData(p,k){const d=p.procs.hypo.data;if(!k||k==='m')return d;return (d.more||[]).find(x=>x.id===k)||null;}
+function hyAnalysis(p){
+  const sums={};p.procs.qabf.data.forms.forEach(f=>qabfScores(f).forEach(s=>{sums[s.key]=(sums[s.key]||0)+s.total;}));
+  const qmax=Math.max(0,...Object.values(sums));
+  const qF=qmax>0?QABF_SCALES.filter(s=>sums[s.key]===qmax).map(s=>QABF_FUNC[s.key]):[];
+  const rows=allRows(p);const cnt={};
+  rows.forEach(r=>{const seen=new Set();String(r.c||'').split(/[,，;\n]+/).map(x=>x.trim()).filter(Boolean).forEach(v=>{const m=C_FUNC.find(([re])=>re.test(v));if(m)seen.add(m[1]);});seen.forEach(f=>{cnt[f]=(cnt[f]||0)+1;});});
+  const cmax=Math.max(0,...Object.values(cnt));
+  const cF=cmax>0?FUNCS.filter(f=>cnt[f]===cmax):[];
+  const common=qF.filter(f=>cF.includes(f));
+  return {qF,qmax,cF,cmax,nRows:rows.length,common,state:!qF.length||!cF.length?'lack':common.length?'match':'mismatch'};
+}
+function hyMatchView(p){
+  const a=hyAnalysis(p);const q=a.qF.map(f=>`「${f}」`).join(' · '),c=a.cF.map(f=>`「${f}」`).join(' · ');
+  let pill,msg;
+  if(a.state==='match'){pill='<span class="pill ok">일치</span>';msg=`QABF와 ABC 후속결과가 모두 ${a.common.map(f=>`「${f}」`).join(' · ')}를 가리킵니다. 이 기능으로 가설을 세우세요.`;}
+  else if(a.state==='mismatch'){pill='<span class="pill warn">불일치</span>';msg=`QABF는 ${q}, ABC 후속결과는 ${c}를 가리킵니다. 관찰을 더 하거나 기능분석을 고려하세요.`;}
+  else{
+    pill='<span class="pill muted">판단 보류</span>';
+    const miss=[];if(!a.qF.length)miss.push('QABF 점수');if(!a.cF.length)miss.push(a.nRows?'기능을 읽을 수 있는 ABC 후속결과(예: 과제 중단, 관심 제공)':'ABC 기록');
+    msg=`${miss.join('와 ')}가 아직 없어 두 자료를 비교할 수 없습니다.${a.qF.length?` QABF는 ${q}를 가리킵니다.`:''}${a.cF.length?` ABC 후속결과는 ${c}를 가리킵니다.`:''}`;
+  }
+  return `<div class="hy-match" id="hy-match">${pill}<p>${msg}<br><small class="muted">QABF는 응답지 점수 합계가 가장 높은 척도, ABC는 후속결과를 기능으로 바꿔 센 건수(과제 중단 → 과제·요구 피하기, 관심 제공·이름 부름 → 관심 얻기, 선호물 제공 → 물건·활동 얻기)로 봅니다.</small></p></div>`;
+}
+function hyEvidenceText(p){
+  const out=[];
+  p.procs.qabf.data.forms.forEach(f=>{const sc=qabfScores(f);const mx=Math.max.apply(null,sc.map(s=>s.total));const tops=sc.filter(s=>s.total===mx&&mx>0);
+    if(tops.length)out.push(`QABF(${f.rater||'응답자 미입력'}) ${tops.map(s=>s.name).join('·')} ${mx}점`);});
+  const abc=allRows(p);
+  if(abc.length){
+    const tA=tally(abc,'a').slice(0,3),tC=tally(abc,'c').slice(0,3);const j=t=>t.map(([k,v])=>`${k} ${v}`).join(', ');
+    out.push(`ABC ${abc.length}건: ${[tA.length?'선행사건 '+j(tA):'',tC.length?'후속결과 '+j(tC):''].filter(Boolean).join(' / ')||'내용 없음'}`);
+  }
+  const a=hyAnalysis(p);
+  if(a.state==='match')out.push(`두 자료 모두 「${a.common.join('·')}」를 가리킴`);
+  else if(a.state==='mismatch')out.push(`두 자료가 가리키는 기능이 다름(QABF ${a.qF.join('·')}, ABC ${a.cF.join('·')})`);
+  return out.length?out.join('. ')+'.':'';
+}
+function hyBlock(p,h,k,n,multi){
+  const main=k==='m';const md=p.procs.hypo.data;
+  const F=f=>main?`hypo:${f}`:`hyx:${k}:${f}`;const I=f=>main?`hy-${f}`:`hy-${k}-${f}`;const G=g=>main?g:`${g}:${k}`;
+  const funcs=h.funcs||[],verify=h.verify||[];
+  const showOther=!!(h.funcOther||'').trim()||ui.hyOther.has(k);
+  const low=h.confidence==='낮음'||h.confidence==='보통';
+  let beh='';
+  if(main){
+    const dn=(p.procs.define.data.name||'').trim(),old=(md.behavior||'').trim();
+    beh=`<div class="field"><span>어떤 행동이 <small>표적행동 카드에서 가져옴</small></span><p class="hy-beh">${dn?`「${esc(dn)}」`:'<span class="muted">표적행동 이름이 아직 없습니다. 1. 표적행동 정의에서 정하세요.</span>'}</p>
+      ${old&&old!==dn?`<p class="hint">예전에 이 칸에 적은 「${esc(old)}」을(를) 가설 문장에 씁니다. <button type="button" class="btn small ghost" data-act="hy-beh-clear">표적행동 이름 쓰기</button></p>`:''}</div>`;
+  }
+  return `
+  <section class="card hy-card" id="hy-card-${k}">
+    <div class="hy-head"><h2 class="h3">${multi?`가설 ${n}`:'가설 문장'}</h2>${main?'':`<button type="button" class="btn small ghost danger" data-act="ask" data-key="del-hy:${k}">삭제</button>`}</div>
+    ${!main&&ui.confirm==='del-hy:'+k?confirmBox(`가설 ${n}을 삭제합니다.`,'del-hy',k):''}
+    <label class="field"><span>배경사건 <small>먼 선행사건 · 행동을 잘 일으키는 조건</small></span><input id="${I('setting')}" data-f="${F('setting')}" value="${esc(h.setting||'')}" placeholder="예: 잠이 부족한 날, 아침에 가정에서 갈등이 있었던 날"></label>
+    <label class="field"><span>어떤 상황에서 <small>직접 선행사건</small></span><input id="${I('when')}" data-f="${F('when')}" value="${esc(h.when||'')}" placeholder="예: 국어 시간에 학습지를 받았을 때"></label>
+    ${beh}
+    <label class="field"><span>어떤 결과가 따르나 <small>행동을 유지시키는 후속결과</small></span><input id="${I('cons')}" data-f="${F('cons')}" value="${esc(h.cons||'')}" placeholder="예: 교사가 학습지를 거두어 과제가 중단된다"></label>
+    <fieldset class="field"><legend>추정 기능</legend><div class="chips">${FUNCS.map(v=>chip(G('func'),v,funcs.includes(v),'b')).join('')}${showOther?'':`<button type="button" class="chip c-b hy-other-btn" data-act="hy-other" data-id="${k}">기타…</button>`}</div>
+      ${showOther?`<input id="${I('funcOther')}" data-f="${F('funcOther')}" value="${esc(h.funcOther||'')}" placeholder="기타 기능 (직접 입력)" aria-label="기타 기능">`:''}</fieldset>
+    <div class="hypo-preview" id="hypo-preview-${k}">${hypoSentence(p,h)}</div>
+    <div class="field"><label class="field"><span>근거</span><textarea id="${I('evidence')}" data-f="${F('evidence')}" rows="3" placeholder="예: QABF 도피·회피 13점, ABC 4건 중 3건에서 과제 제시 뒤 발생하고 과제가 중단됨">${esc(h.evidence||'')}</textarea></label>
+      <div class="row"><button type="button" class="btn small" data-act="hy-fill" data-id="${k}">자료 요약 넣기</button><small class="muted">위 자료 요약의 점수·건수를 근거 끝에 덧붙입니다.</small></div></div>
+    <fieldset class="field"><legend>확신 정도</legend><div class="chips">${CONF.map(v=>chip(G('conf'),v,h.confidence===v,'b')).join('')}</div></fieldset>
+    ${low?`<fieldset class="field"><legend>검증 계획 <small>확신이 ${esc(h.confidence)}이면 무엇으로 확인할지 고르세요</small></legend><div class="chips">${HY_VERIFY.map(v=>chip(G('verify'),v,verify.includes(v),'b')).join('')}</div>
+      <input id="${I('verifyNote')}" data-f="${F('verifyNote')}" value="${esc(h.verifyNote||'')}" placeholder="예: 다음 주 국어 시간 3회 더 관찰, 과제 제시 조건 비교" aria-label="검증 계획 메모"></fieldset>`:''}
+    ${main?`<details class="hy-memo" data-hy-memo${ui.hyMemoOpen?' open':''}><summary>메모${(md.memo||'').trim()?' <small class="pill muted">내용 있음</small>':''}</summary>
+      <label class="field"><textarea id="hy-memo" data-f="hypo:memo" rows="2" aria-label="메모">${esc(md.memo||'')}</textarea></label></details>`:''}
+  </section>`;
+}
 function viewHypo(p){
   const h=p.procs.hypo.data;const q=p.procs.qabf.data.forms;const abc=allRows(p);const nSheets=p.procs.abc.data.sheets.length;
+  const more=Array.isArray(h.more)?h.more:[];
   const qSum=q.length?`<ul>${q.map(f=>{const sc=qabfScores(f);const mx=Math.max.apply(null,sc.map(s=>s.total));const tops=sc.filter(s=>s.total===mx&&mx>0);return `<li>${esc(f.rater||'응답자 미입력')}: ${tops.length?tops.map(s=>s.name).join(', ')+` (${mx}점)`:'점수 없음'} <span class="muted">· 응답 ${qAnswered(f)}/25</span></li>`;}).join('')}</ul>`:'<p class="muted">아직 없음</p>';
   const tA=tally(abc,'a').slice(0,3),tC=tally(abc,'c').slice(0,3);
   const aSum=abc.length?`<p class="meta">ABC 기록 ${abc.length}행 (관찰지 ${nSheets}장)</p><p><b>선행사건</b> ${tA.map(([k,v])=>`${esc(k)} ${v}`).join(', ')||'-'}</p><p><b>후속결과</b> ${tC.map(([k,v])=>`${esc(k)} ${v}`).join(', ')||'-'}</p>`:'<p class="muted">아직 없음</p>';
+  const multi=more.length>0;
   return `
   <section class="card"><h2 class="h3">자료 요약</h2>
     <div class="two"><div class="sum-box"><h3>QABF (가장 높은 척도)</h3>${qSum}</div><div class="sum-box"><h3>ABC 관찰 (많은 순 3개)</h3>${aSum}</div></div>
-    <p class="hint">두 자료가 같은 기능을 가리키면 가설을 세웁니다. 서로 다르면 관찰을 더 하거나 기능분석을 고려하세요.</p>
+    ${hyMatchView(p)}
   </section>
-  <section class="card"><h2 class="h3">가설 문장</h2>
-    <label class="field"><span>어떤 상황에서 <small>선행사건·배경</small></span><input id="hy-when" data-f="hypo:when" value="${esc(h.when)}" placeholder="예: 국어 시간에 학습지를 받았을 때"></label>
-    <label class="field"><span>어떤 행동이</span><input id="hy-beh" data-f="hypo:behavior" value="${esc(h.behavior)}" placeholder="${esc(p.procs.define.data.name||'표적행동')}"></label>
-    <fieldset class="field"><legend>추정 기능</legend><div class="chips">${FUNCS.map(v=>chip('func',v,h.funcs.includes(v),'b')).join('')}</div>
-      <input id="hy-funcother" data-f="hypo:funcOther" value="${esc(h.funcOther)}" placeholder="기타 (직접 입력)"></fieldset>
-    <div class="hypo-preview" id="hypo-preview">${hypoSentence(p)}</div>
-    <label class="field"><span>근거</span><textarea id="hy-evidence" data-f="hypo:evidence" rows="3" placeholder="예: QABF 도피·회피 13점, ABC 4건 중 3건에서 과제 제시 뒤 발생하고 과제가 중단됨">${esc(h.evidence)}</textarea></label>
-    <fieldset class="field"><legend>확신 정도</legend><div class="chips">${CONF.map(v=>chip('conf',v,h.confidence===v,'b')).join('')}</div></fieldset>
-    <label class="field"><span>메모</span><textarea id="hy-memo" data-f="hypo:memo" rows="2">${esc(h.memo)}</textarea></label>
-  </section>`;
+  ${hyBlock(p,h,'m',1,multi)}
+  ${more.map((x,i)=>hyBlock(p,x,x.id,i+2,true)).join('')}
+  <section class="card hy-add"><div class="row"><button type="button" class="btn" data-act="hy-add">＋ 가설 추가</button><small class="muted">한 행동에 기능이 둘 이상일 수 있으면 가설을 따로 세웁니다.</small></div></section>`;
 }
-function hypoSentence(p){
-  const h=p.procs.hypo.data;
-  const w=h.when.trim()||'(상황)';const b=h.behavior.trim()||p.procs.define.data.name||'(행동)';
-  const f=h.funcs.concat(h.funcOther.trim()?[h.funcOther.trim()]:[]).join(' · ')||'(기능)';
-  return `${esc(w)}, 「${esc(b)}」 행동이 나타난다. 추정 기능: ${esc(f)}.`;
+/* 가설 문장: "배경·상황, 학생은 「행동」 행동을 한다. 그러면 결과. 따라서 이 행동은 ~하기 위해 나타나는 것으로 보인다." 빈 칸은 문장에서 빼고 아래에 안내 */
+function hypoSentence(p,h){
+  const md=p.procs.hypo.data;h=h||md;
+  const b=(md.behavior||'').trim()||(p.procs.define.data.name||'').trim();
+  const lead=[(h.setting||'').trim(),(h.when||'').trim()].filter(Boolean).join(' ');
+  const c=(h.cons||'').trim().replace(/[.。]+$/,'');
+  const fs=(h.funcs||[]).filter(f=>FUNC_STEM[f]);const fo=(h.funcOther||'').trim();
+  const out=[`${lead?esc(lead)+', ':''}학생은 「${esc(b||'표적행동')}」 행동을 한다.`];
+  if(c)out.push(`그러면 ${esc(c)}.`);
+  if(fs.length||fo){
+    const known=fs.length?fs.map(f=>FUNC_STEM[f]).join('거나 ')+'기':'';
+    out.push(known?`따라서 이 행동은 ${known} 위해${fo?`(기타: ${esc(fo)})`:''} 나타나는 것으로 보인다.`:`따라서 이 행동은 「${esc(fo)}」 기능을 위해 나타나는 것으로 보인다.`);
+  }
+  const miss=[];if(!b)miss.push('표적행동 이름');if(!lead)miss.push('상황');if(!c)miss.push('결과');if(!fs.length&&!fo)miss.push('추정 기능');
+  return out.join(' ')+(miss.length?`<small class="hy-miss">더 채울 칸: ${miss.join(', ')}</small>`:'');
 }
 
 /* 3. rating (행동평정척도) */
@@ -1967,13 +2063,18 @@ const actions={
   'undone':()=>setDone(curProject(),ui.proc,false),
   'chip':el=>{
     const p=curProject();const g=el.dataset.g,v=el.dataset.v;
-    const multi={defsrc:()=>[p.procs.define.data.sources,'define'],defpri:()=>[p.procs.define.data.priority,'define'],func:()=>[p.procs.hypo.data.funcs,'hypo'],rfunc:()=>[p.procs.rating.data.funcs,'rating']};
-    const single={conf:()=>[p.procs.hypo.data,'confidence','hypo'],measure:()=>[p.procs.define.data,'measure','define'],defstage:()=>[p.procs.define.data,'stage','define'],rtype:()=>[p.procs.rating.data,'type','rating']};
+    const multi={defsrc:()=>[p.procs.define.data.sources,'define'],defpri:()=>[p.procs.define.data.priority,'define'],rfunc:()=>[p.procs.rating.data.funcs,'rating']};
+    const single={measure:()=>[p.procs.define.data,'measure','define'],defstage:()=>[p.procs.define.data,'stage','define'],rtype:()=>[p.procs.rating.data,'type','rating']};
+    const hm=/^(func|conf|verify)(?::(.+))?$/.exec(g);
+    if(hm){/* 가설 칸: func·conf·verify(가설 1) 또는 func:id 등(가설 2부터) */
+      const h=hyData(p,hm[2]);if(!h)return;
+      if(hm[1]==='conf')h.confidence=h.confidence===v?'':v;else toggleIn(hm[1]==='func'?h.funcs:h.verify,v);
+      touch(p,'hypo');const y=window.scrollY;render();window.scrollTo(0,y);return;
+    }
     if(multi[g]){
       const [arr,key]=multi[g]();toggleIn(arr,v);
       const on=arr.includes(v);el.classList.toggle('on',on);el.setAttribute('aria-pressed',String(on));
       touch(p,key);
-      if(g==='func')$('#hypo-preview').innerHTML=hypoSentence(p);
     }else if(single[g]){
       const [obj,field,key]=single[g]();obj[field]=obj[field]===v?'':v;
       $$(`[data-act="chip"][data-g="${g}"]`).forEach(b=>{const on=b.dataset.v===obj[field];b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));});
@@ -1982,6 +2083,25 @@ const actions={
       if(g==='rtype'){const t=$('#rtype-tip');if(t)t.textContent=RATING_TYPE_TIP[obj[field]]||'종류를 고르면 결과를 어떻게 읽을지 안내가 나옵니다.';}
     }
   },
+  'hy-add':()=>{
+    const p=curProject();const d=p.procs.hypo.data;if(!Array.isArray(d.more))d.more=[];const h=hyNew();d.more.push(h);
+    touch(p,'hypo');saveNow();const y=window.scrollY;render();window.scrollTo(0,y);
+    const c=$('#hy-card-'+h.id);if(c)c.scrollIntoView({block:'start'});
+  },
+  'del-hy':el=>{
+    const p=curProject();const d=p.procs.hypo.data;d.more=(d.more||[]).filter(x=>x.id!==el.dataset.id);
+    ui.confirm=null;touch(p,'hypo');saveNow();rerenderForConfirm();toast('가설을 삭제했습니다');
+  },
+  'hy-fill':el=>{
+    const p=curProject();const h=hyData(p,el.dataset.id);if(!h)return;
+    const t=hyEvidenceText(p);if(!t){toast('넣을 자료가 아직 없습니다. QABF나 ABC 관찰을 먼저 입력하세요');return;}
+    const cur=String(h.evidence||'');if(cur.includes(t)){toast('이미 근거에 들어 있습니다');return;}
+    h.evidence=cur.trim()?cur.replace(/\s+$/,'')+'\n'+t:t;
+    touch(p,'hypo');saveNow();const y=window.scrollY;render();window.scrollTo(0,y);toast('자료 요약을 근거에 넣었습니다');
+  },
+  'hy-other':el=>{ui.hyOther.add(el.dataset.id);const y=window.scrollY;render();window.scrollTo(0,y);const f=$(el.dataset.id==='m'?'#hy-funcOther':`#hy-${el.dataset.id}-funcOther`);if(f){try{f.focus({preventScroll:true});}catch(e){}}},
+  'hy-beh-clear':()=>{const p=curProject();p.procs.hypo.data.behavior='';touch(p,'hypo');const y=window.scrollY;render();window.scrollTo(0,y);},
+  'hy-lede':()=>{store.settings.hypoLedeHidden=!store.settings.hypoLedeHidden;scheduleSave();const y=window.scrollY;render();window.scrollTo(0,y);},
   'r-add':el=>{
     const p=curProject();const d=ratingData(p);const id=uid('r');
     if(el.dataset.kind==='rater')d.raters.push({id,name:'',role:'',date:ymdLocal(),period:''});
@@ -2144,7 +2264,10 @@ function onField(el){
       }
       touch(p,'abc');saveNow();updateLive();toast(`관찰 간격을 ${n}분으로 정했습니다`);break;}
     case 'hypo':
-      p.procs.hypo.data[name]=val;touch(p,'hypo');{const pv=$('#hypo-preview');if(pv)pv.innerHTML=hypoSentence(p);}break;
+      p.procs.hypo.data[name]=val;touch(p,'hypo');{const pv=$('#hypo-preview-m');if(pv)pv.innerHTML=hypoSentence(p);}break;
+    case 'hyx':{
+      const [id,field]=name.split(':');const h=hyData(p,id);if(!h)return;
+      h[field]=val;touch(p,'hypo');const pv=$('#hypo-preview-'+id);if(pv)pv.innerHTML=hypoSentence(p,h);break;}
     case 'mf':
       p.procs[ui.proc].data[name]=val;touch(p,ui.proc);break;
     case 'rating':
@@ -2179,7 +2302,7 @@ function setPlanTime(el){
   toast(v?`${k==='start'?'관찰 시작 시간':'최종 종료 시간'}을 ${v}(으)로 정했습니다`:`${k==='start'?'관찰 시작 시간':'최종 종료 시간'}을 지웠습니다`);
 }
 document.addEventListener('input',e=>{const el=e.target.closest('[data-f]');if(el&&el.id!=='obs-interval')onField(el);});
-document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.matches&&d.matches('details[data-sheet]')){if(d.open)ui.openSheets.add(d.dataset.sheet);else ui.openSheets.delete(d.dataset.sheet);}},true);
+document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.matches&&d.matches('details[data-hy-memo]'))ui.hyMemoOpen=d.open;if(d&&d.matches&&d.matches('details[data-sheet]')){if(d.open)ui.openSheets.add(d.dataset.sheet);else ui.openSheets.delete(d.dataset.sheet);}},true);
 document.addEventListener('change',async e=>{
   const el=e.target;
   if(el.matches('[data-f]')&&(el.type==='checkbox'||el.tagName==='SELECT'||el.type==='date'||el.type==='datetime-local'||el.type==='number')){onField(el);return;}
@@ -2232,6 +2355,7 @@ function inkTarget(spec){
     case 'row':{const [sid,rid,fd]=name.split(':');const sh=sheetById(p,sid);if(!sh)return null;const r=sh.rows.find(x=>x.id===rid);if(!r)return null;
       return {obj:r,field:fd,save:()=>{sh.updatedAt=nowISO();touch(p,'abc');}};}
     case 'hypo':return {obj:p.procs.hypo.data,field:name,save:()=>touch(p,'hypo')};
+    case 'hyx':{const [id,fd]=name.split(':');const h=hyData(p,id);if(!h)return null;return {obj:h,field:fd,save:()=>touch(p,'hypo')};}
     case 'rating':return {obj:p.procs.rating.data,field:name,save:()=>touch(p,'rating')};
     case 'rrow':{const [kind,id,fd]=name.split(':');const d=p.procs.rating.data;const o=(kind==='rater'?d.raters:d.rows).find(x=>x.id===id);if(!o)return null;
       return {obj:o,field:fd,save:()=>touch(p,'rating')};}
