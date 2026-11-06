@@ -363,6 +363,11 @@ td.top{color:var(--accent);font-weight:700}
 .sheet-range{font-weight:600}
 .sheet-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:14px}
 .sheet-meta .wide{grid-column:1/-1}
+.sheet-meta .span2{grid-column:span 2}
+.sh-range{display:flex;align-items:center;gap:6px}
+.sh-range input{font-family:var(--font-mono);min-width:0;flex:1 1 0}
+.sh-date{font-family:var(--font-mono)}
+.obs-btns{display:flex;flex-wrap:wrap;gap:8px}
 .ro{min-height:44px;display:flex;align-items:center;padding:0 10px;border:1px dashed var(--line-strong);border-radius:10px;font-size:.92rem;white-space:nowrap;overflow:hidden}
 .abc-tbl{border-top:1px solid var(--line)}
 .abc-tr{display:grid;grid-template-columns:136px repeat(3,minmax(0,1fr)) 64px;grid-template-areas:"t a b c x" "f f f f f";border-bottom:1px solid var(--line)}
@@ -1363,9 +1368,9 @@ function obsView(p){
       <label class="field plan-time"><span>관찰 시작 시간</span><input type="time" id="obs-plan-start" data-plan="start" value="${esc(a.plan.start)}"></label>
       <label class="field plan-time"><span>최종 종료 시간</span><input type="time" id="obs-plan-end" data-plan="end" value="${esc(a.plan.end)}"></label>
     </div>
-    <span id="obs-ctrl-btn">${obsCtrlBtn(p)}</span>
+    <div class="obs-btns"><button type="button" class="btn" data-act="sheet-manual">+ 관찰지 직접 추가</button><span id="obs-ctrl-btn">${obsCtrlBtn(p)}</span></div>
   </div>
-  <p class="hint">관찰 시작 시간을 정해 두면 이 화면이 열려 있을 때 그 시각에 관찰이 저절로 시작됩니다. 최종 종료 시간을 정하면 마지막 관찰지는 그 시각에 끝나고 더 이상 관찰지가 추가되지 않습니다. '지금 시각 찍기'를 누르면 기록 중인 관찰지에 그 시각의 행이 생깁니다. 관찰 간격이 지나면 새 관찰지가 아래에 이어 붙고, 녹음 중이었다면 녹음을 이전 관찰지에 저장한 뒤 새 관찰지에서 다시 녹음합니다. 아동·관찰자·장소·상황은 고치지 않으면 이전 관찰지 내용이 그대로 이어집니다.</p>
+  <p class="hint">관찰 시작 시간을 정해 두면 이 화면이 열려 있을 때 그 시각에 관찰이 저절로 시작됩니다. 최종 종료 시간을 정하면 마지막 관찰지는 그 시각에 끝나고 더 이상 관찰지가 추가되지 않습니다. '지금 시각 찍기'를 누르면 기록 중인 관찰지에 그 시각의 행이 생깁니다. 관찰 간격이 지나면 새 관찰지가 아래에 이어 붙고, 녹음 중이었다면 녹음을 이전 관찰지에 저장한 뒤 새 관찰지에서 다시 녹음합니다. 아동·관찰자·장소·상황은 고치지 않으면 이전 관찰지 내용이 그대로 이어집니다. 관찰지의 날짜·시간과 각 행의 시간은 직접 고칠 수 있고, 종이 노트에 적은 관찰은 '관찰지 직접 추가'로 빈 관찰지를 만든 뒤 날짜와 시간을 넣어 옮기면 됩니다.</p>
   <div class="sheets" id="sheets-current">${cur.length?cur.map(sh=>sheetView(p,sh)).join(''):`<div class="empty">아직 관찰지가 없습니다. '관찰 시작', '지금 시각 찍기', '녹음 시작' 중 하나를 누르면 첫 관찰지가 만들어지고 시간이 흐르기 시작합니다.</div>`}</div>`;
 }
 function obsCtrlBtn(p){
@@ -1391,8 +1396,8 @@ function sheetView(p,sh){
     <header class="sheet-head" id="shh-${id}">${sheetHead(p,sh)}</header>
     <div class="sheet-meta">
       <label class="field"><span>아동</span><input id="sf-${id}-child" data-f="sheet:${id}:child" value="${esc(sh.child)}" placeholder="학생 코드"></label>
-      <div class="field"><span>날짜</span><div class="ro">${fmtDate(sh.start)}</div></div>
-      <div class="field"><span>시간</span><div class="ro mono" id="shr-${id}">${rangeText(sh)}</div></div>
+      <label class="field"><span>날짜</span><input type="date" class="sh-date" id="shd-${id}" data-shdt="${id}:date" value="${dayKey(sh.start)}"${act?' title="기록 중인 관찰지의 날짜는 관찰을 종료한 뒤 바꿀 수 있습니다"':''}></label>
+      <div class="field span2"><span>시간 <small>직접 고칠 수 있음</small></span><div class="sh-range"><input type="time" id="shs-${id}" data-shdt="${id}:start" value="${fmtTime(sh.start)}" aria-label="관찰지 시작 시각"><span aria-hidden="true">~</span><input type="time" id="she-${id}" data-shdt="${id}:end" value="${fmtTime(sh.endedAt||sh.end)}" aria-label="관찰지 끝 시각"></div></div>
       <label class="field"><span>관찰자</span><input id="sf-${id}-observer" data-f="sheet:${id}:observer" value="${esc(sh.observer)}"></label>
       <label class="field"><span>장소</span><input id="sf-${id}-place" data-f="sheet:${id}:place" value="${esc(sh.place)}" placeholder="예: 3-2 교실"></label>
       <label class="field wide"><span>상황</span><textarea id="sf-${id}-situation" data-f="sheet:${id}:situation" rows="2" placeholder="예: 국어 시간, 학습지 활동">${esc(sh.situation)}</textarea></label>
@@ -2278,9 +2283,72 @@ function markSheetEnded(p,old){
   const oe=$('#sh-'+old.id);if(!oe)return;
   oe.classList.remove('active');
   const h=$('#shh-'+old.id);if(h)h.innerHTML=sheetHead(p,old);
-  const r=$('#shr-'+old.id);if(r)r.textContent=rangeText(old);
+  refreshShTimes(old);
   const foot=oe.querySelector('.sheet-foot');
   if(foot&&!foot.querySelector('[data-key="del-sheet:'+old.id+'"]'))foot.insertAdjacentHTML('beforeend',`<div class="row end"><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-sheet:${old.id}">이 관찰지 삭제</button></div>`);
+}
+function refreshShTimes(sh){
+  const d=$('#shd-'+sh.id);if(d&&document.activeElement!==d)d.value=dayKey(sh.start);
+  const a=$('#shs-'+sh.id);if(a&&document.activeElement!==a)a.value=fmtTime(sh.start);
+  const b=$('#she-'+sh.id);if(b&&document.activeElement!==b)b.value=fmtTime(sh.endedAt||sh.end);
+}
+/* 관찰지 날짜·시작·끝 시각을 직접 고친다 */
+function setSheetTime(el){
+  const p=curProject();if(!p)return;
+  const [sid,k]=el.dataset.shdt.split(':');const sh=sheetById(p,sid);if(!sh)return;
+  const act=isActive(p,sh);const endISO=sh.endedAt||sh.end;
+  const back=(msg)=>{refreshShTimes(sh);el.value=k==='date'?dayKey(sh.start):fmtTime(k==='start'?sh.start:endISO);if(msg)toast(msg);};
+  if(k==='date'){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(el.value)){back('날짜를 입력하세요');return;}
+    if(act){back('기록 중인 관찰지의 날짜는 관찰을 종료한 뒤 바꿀 수 있습니다');return;}
+    const [y,m,d]=el.value.split('-').map(Number);const o=new Date(sh.start);const n=new Date(o);n.setFullYear(y,m-1,d);
+    const delta=n.getTime()-o.getTime();if(!delta)return;
+    const mv=x=>x?new Date(Date.parse(x)+delta).toISOString():x;
+    sh.start=mv(sh.start);sh.end=mv(sh.end);if(sh.endedAt)sh.endedAt=mv(sh.endedAt);
+    sh.rows.forEach(r=>{if(r.time)r.time=mv(r.time);});
+  }else{
+    const v=/^\d{2}:\d{2}/.test(el.value)?el.value.slice(0,5):'';
+    if(!v){back('시각을 입력하세요');return;}
+    const t=Date.parse(timeOnDay(sh.start,v));
+    if(k==='start'){
+      if(act&&t>Date.now()){back('기록 중인 관찰지의 시작 시각은 지금보다 앞이어야 합니다');return;}
+      if(t>=Date.parse(endISO)){
+        if(act){back('시작 시각은 끝 시각보다 앞이어야 합니다');return;}
+        /* 시작을 끝보다 뒤로 옮기면 관찰지 길이를 그대로 두고 끝 시각도 함께 옮긴다 */
+        const len=Math.max(60000,Date.parse(endISO)-Date.parse(sh.start));
+        sh.end=sh.endedAt=new Date(t+len).toISOString();
+      }
+      sh.start=new Date(t).toISOString();
+    }else{
+      if(t<=Date.parse(sh.start)){back('끝 시각은 시작 시각보다 뒤여야 합니다');return;}
+      if(act){
+        if(t<=Date.now()){back('기록 중인 관찰지의 끝 시각은 지금보다 뒤로 정하세요. 지금 끝내려면 관찰 종료를 누르세요.');return;}
+        sh.end=new Date(t).toISOString();
+      }else{sh.end=new Date(t).toISOString();sh.endedAt=sh.end;}
+    }
+  }
+  sh.updatedAt=nowISO();touch(p,'abc');saveNow();
+  renderAbcAll();
+  toast(`관찰지 시간을 ${fmtDate(sh.start)} ${rangeText(sh)}(으)로 고쳤습니다`);
+}
+/* 종이 노트 등에 적어 둔 관찰을 옮기려고 빈 관찰지를 직접 만든다 (시간은 흐르지 않음) */
+function addManualSheet(p){
+  const a=abcData(p);let s=a.session;let sid;let separate=false;
+  if(s&&s.running){sid=uid('n');separate=true;}
+  else if(s){sid=s.id;}
+  else{s={id:uid('n'),running:false,activeSheetId:null,endAt:null};a.session=s;sid=s.id;}
+  const last=sessionSheets(p,sid).pop();
+  let st;
+  if(last){st=Date.parse(last.endedAt||last.end);}
+  else{const d=new Date();d.setSeconds(0,0);st=a.plan.start?atClock(d.getTime(),a.plan.start):d.getTime();}
+  const sh=makeSheet(p,sid,new Date(st).toISOString(),last||null,null);
+  sh.endedAt=sh.end;sh.manual=true;
+  a.sheets.push(sh);
+  if(separate)ui.openSheets.add(sh.id);
+  touch(p,'abc');saveNow();renderAbcAll();
+  const d=$('#shd-'+sh.id);
+  if(d){d.scrollIntoView({behavior:'smooth',block:'center'});try{d.focus({preventScroll:true});}catch(e){}}
+  toast(separate?'관찰 중이라 지난 관찰지 목록에 추가했습니다. 날짜와 시간을 노트에 적힌 대로 고치세요.':'관찰지를 추가했습니다. 날짜와 시간을 노트에 적힌 대로 고치세요.');
 }
 function keepView(fn){
   const x=window.scrollX,y=window.scrollY;const ae=document.activeElement;let ss=null,se=null;
@@ -2569,6 +2637,7 @@ const actions={
     toast(`관찰을 시작했습니다. ${abcData(p).interval}분마다 새 관찰지가 추가됩니다.`);
   },
   'obs-end':()=>{const p=curProject();endSession(p);renderAbcAll();},
+  'sheet-manual':()=>addManualSheet(curProject()),
   'row-add':el=>{const p=curProject();const sh=sheetById(p,el.dataset.sid);if(sh)addRow(p,sh,null);},
   'del-row':el=>{
     const p=curProject();const sh=sheetById(p,el.dataset.sid);if(!sh)return;
@@ -2660,7 +2729,7 @@ function onField(el){
       if(sh){
         sh.end=new Date(Math.max(Date.parse(sheetEnd(p,sh.start,a.session.endAt)),Date.now())).toISOString();
         const h=$('#shh-'+sh.id);if(h)h.innerHTML=sheetHead(p,sh);
-        const r=$('#shr-'+sh.id);if(r)r.textContent=rangeText(sh);
+        refreshShTimes(sh);
       }
       touch(p,'abc');saveNow();updateLive();toast(`관찰 간격을 ${n}분으로 정했습니다`);break;}
     case 'hypo':
@@ -2702,7 +2771,7 @@ function setPlanTime(el){
     if(sh){
       sh.end=new Date(Math.max(Date.parse(sheetEnd(p,sh.start,s.endAt)),Date.now())).toISOString();
       const h=$('#shh-'+sh.id);if(h)h.innerHTML=sheetHead(p,sh);
-      const r=$('#shr-'+sh.id);if(r)r.textContent=rangeText(sh);
+      refreshShTimes(sh);
     }
   }
   touch(p,'abc');saveNow();updateLive();
@@ -2714,6 +2783,7 @@ document.addEventListener('change',async e=>{
   const el=e.target;
   if(el.matches('[data-f]')&&(el.type==='checkbox'||el.tagName==='SELECT'||el.type==='date'||el.type==='datetime-local'||el.type==='number')){onField(el);return;}
   if(el.matches('[data-plan]')){setPlanTime(el);return;}
+  if(el.matches('[data-shdt]')){setSheetTime(el);return;}
   if(el.id==='import-file'&&el.files&&el.files[0]){const f=el.files[0];el.value='';await importBackup(f);return;}
   if(el.matches('[data-rfile]')&&el.files&&el.files[0]){
     const file=el.files[0];el.value='';
