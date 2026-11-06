@@ -381,6 +381,19 @@ td.top{color:var(--accent);font-weight:700}
 .abc-thead small{display:block;font-size:.7rem;font-weight:500;color:var(--muted)}
 .abc-tr textarea{min-height:64px;padding:8px 10px;field-sizing:content}
 .abc-tr input[type=time]{padding:8px 6px;font-family:var(--font-mono)}
+/* 24시간 시각 칸: 글자 칸 + 아래쪽 시계 버튼 */
+.t24{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;width:100%;position:relative}
+.t24 .t24-in{width:100%;min-width:0;min-height:44px;padding:10px 8px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface-2);color:var(--ink);font-family:var(--font-mono);font-size:16px;line-height:1.5;letter-spacing:.02em}
+.t24 .t24-in:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+.t24 .t24-in.bad{border-color:var(--rec);outline-color:var(--rec)}
+.t24-pick{display:inline-flex;align-items:center;gap:4px;min-height:30px;padding:2px 8px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:.78rem;cursor:pointer}
+.t24-pick:hover{background:var(--sunk);color:var(--ink)}
+.t24-pick svg{width:15px;height:15px}
+.t24-native{position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
+.sh-range{align-items:flex-start}
+.sh-range > span[aria-hidden]{padding-top:10px}
+.sh-range .t24{flex:1 1 0}
+.sh-range .t24 .t24-in{flex:none}
 .cell-label{display:none}
 .rows-empty{padding:16px;color:var(--muted);font-size:.9rem;text-align:center}
 .sheet-foot{display:flex;flex-direction:column;gap:12px;padding:14px}
@@ -1339,6 +1352,25 @@ function timeOnDay(baseISO,v){
   const d=new Date(baseISO);d.setHours(h,m||0,sec||0,0);return d.toISOString();
 }
 
+/* 24시간 표기 시각 칸 (브라우저의 오전/오후 표시 대신). sec=true면 초까지 */
+const CLOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+function t24(attrs,val,sec,label){
+  return `<span class="t24"><input type="tel" inputmode="numeric" autocomplete="off" class="t24-in" data-t24="${sec?'s':'m'}" ${attrs} value="${esc(val||'')}" placeholder="${sec?'--:--:--':'--:--'}" maxlength="11" aria-label="${esc(label)} (24시간)"><button type="button" class="t24-pick" data-act="t24-pick" tabindex="-1" title="시계로 고르기">${CLOCK_SVG}<span>시계</span></button><input type="time" class="t24-native"${sec?' step="1"':''} tabindex="-1" aria-hidden="true"></span>`;
+}
+/* "1625", "16:25", "162530", "4:25 오후" 등을 {h,m,s}로 */
+function parseClock24(v){
+  v=String(v||'').trim().toLowerCase();if(!v)return null;
+  const pm=/오후|pm/.test(v),am=/오전|am/.test(v);
+  v=v.replace(/오전|오후|am|pm/g,'').replace(/[시분]/g,':').replace(/초/g,'').replace(/[.\s]+/g,':').replace(/:+/g,':').replace(/^:|:$/g,'');
+  let h,m,sc=0;
+  if(/^\d+$/.test(v)){
+    if(v.length<=2){h=+v;m=0;}else if(v.length<=4){h=+v.slice(0,-2);m=+v.slice(-2);}else if(v.length<=6){h=+v.slice(0,-4);m=+v.slice(-4,-2);sc=+v.slice(-2);}else return null;
+  }else{const q=v.split(':');if(q.length<2||q.length>3||q.some(x=>!/^\d{1,2}$/.test(x)))return null;h=+q[0];m=+q[1];sc=q[2]?+q[2]:0;}
+  if(pm&&h<12)h+=12;if(am&&h===12)h=0;
+  if(h>23||m>59||sc>59)return null;
+  return {h,m,s:sc};
+}
+function fmtClock24(c,sec){return pad(c.h)+':'+pad(c.m)+(sec?':'+pad(c.s):'');}
 function viewAbc(p){
   return `
   <section class="card rec-card" id="rec-card">${recCard(p)}</section>
@@ -1365,8 +1397,8 @@ function obsView(p){
   <div class="obs-ctrl">
     <div class="obs-times">
       <label class="field interval"><span>관찰 간격</span><span class="unit"><input type="number" inputmode="numeric" min="1" max="180" step="1" id="obs-interval" data-f="abcset:interval" value="${a.interval}"><span>분</span></span></label>
-      <label class="field plan-time"><span>관찰 시작 시간</span><input type="time" id="obs-plan-start" data-plan="start" value="${esc(a.plan.start)}"></label>
-      <label class="field plan-time"><span>최종 종료 시간</span><input type="time" id="obs-plan-end" data-plan="end" value="${esc(a.plan.end)}"></label>
+      <div class="field plan-time"><span>관찰 시작 시간</span>${t24('id="obs-plan-start" data-plan="start"',a.plan.start,false,'관찰 시작 시간')}</div>
+      <div class="field plan-time"><span>최종 종료 시간</span>${t24('id="obs-plan-end" data-plan="end"',a.plan.end,false,'최종 종료 시간')}</div>
     </div>
     <div class="obs-btns"><button type="button" class="btn" data-act="sheet-manual">+ 관찰지 직접 추가</button><span id="obs-ctrl-btn">${obsCtrlBtn(p)}</span></div>
   </div>
@@ -1397,7 +1429,7 @@ function sheetView(p,sh){
     <div class="sheet-meta">
       <label class="field"><span>아동</span><input id="sf-${id}-child" data-f="sheet:${id}:child" value="${esc(sh.child)}" placeholder="학생 코드"></label>
       <label class="field"><span>날짜</span><input type="date" class="sh-date" id="shd-${id}" data-shdt="${id}:date" value="${dayKey(sh.start)}"${act?' title="기록 중인 관찰지의 날짜는 관찰을 종료한 뒤 바꿀 수 있습니다"':''}></label>
-      <div class="field span2"><span>시간 <small>직접 고칠 수 있음</small></span><div class="sh-range"><input type="time" id="shs-${id}" data-shdt="${id}:start" value="${fmtTime(sh.start)}" aria-label="관찰지 시작 시각"><span aria-hidden="true">~</span><input type="time" id="she-${id}" data-shdt="${id}:end" value="${fmtTime(sh.endedAt||sh.end)}" aria-label="관찰지 끝 시각"></div></div>
+      <div class="field span2"><span>시간 <small>직접 고칠 수 있음</small></span><div class="sh-range">${t24(`id="shs-${id}" data-shdt="${id}:start"`,fmtTime(sh.start),false,'관찰지 시작 시각')}<span aria-hidden="true">~</span>${t24(`id="she-${id}" data-shdt="${id}:end"`,fmtTime(sh.endedAt||sh.end),false,'관찰지 끝 시각')}</div></div>
       <label class="field"><span>관찰자</span><input id="sf-${id}-observer" data-f="sheet:${id}:observer" value="${esc(sh.observer)}"></label>
       <label class="field"><span>장소</span><input id="sf-${id}-place" data-f="sheet:${id}:place" value="${esc(sh.place)}" placeholder="예: 3-2 교실"></label>
       <label class="field wide"><span>상황</span><textarea id="sf-${id}-situation" data-f="sheet:${id}:situation" rows="2" placeholder="예: 국어 시간, 학습지 활동">${esc(sh.situation)}</textarea></label>
@@ -1425,7 +1457,7 @@ function sheetView(p,sh){
 function rowView(p,sh,r){
   const k=`${sh.id}:${r.id}`;const ph=esc(p.procs.define.data.name||'관찰한 행동');
   return `<div class="abc-tr" id="rw-${r.id}">
-    <div class="td t"><span class="cell-label">시간</span><input type="time" step="1" id="rw-${r.id}-time" data-f="row:${k}:time" value="${r.time?fmtTime(r.time,true):''}" aria-label="발생 시각"></div>
+    <div class="td t"><span class="cell-label">시간</span>${t24(`id="rw-${r.id}-time" data-f="row:${k}:time"`,r.time?fmtTime(r.time,true):'',true,'발생 시각')}</div>
     <div class="td a"><span class="cell-label"><span class="abc-tag t-a">A</span>선행사건</span><textarea rows="2" id="rw-${r.id}-a" data-f="row:${k}:a" aria-label="선행사건">${esc(r.a)}</textarea></div>
     <div class="td b"><span class="cell-label"><span class="abc-tag t-b">B</span>행동</span><textarea rows="2" id="rw-${r.id}-b" data-f="row:${k}:b" placeholder="${ph}" aria-label="행동">${esc(r.b)}</textarea></div>
     <div class="td c"><span class="cell-label"><span class="abc-tag t-c">C</span>후속결과</span><textarea rows="2" id="rw-${r.id}-c" data-f="row:${k}:c" aria-label="후속결과">${esc(r.c)}</textarea></div>
@@ -2289,8 +2321,8 @@ function markSheetEnded(p,old){
 }
 function refreshShTimes(sh){
   const d=$('#shd-'+sh.id);if(d&&document.activeElement!==d)d.value=dayKey(sh.start);
-  const a=$('#shs-'+sh.id);if(a&&document.activeElement!==a)a.value=fmtTime(sh.start);
-  const b=$('#she-'+sh.id);if(b&&document.activeElement!==b)b.value=fmtTime(sh.endedAt||sh.end);
+  const a=$('#shs-'+sh.id);if(a&&document.activeElement!==a){a.value=fmtTime(sh.start);a.defaultValue=a.value;}
+  const b=$('#she-'+sh.id);if(b&&document.activeElement!==b){b.value=fmtTime(sh.endedAt||sh.end);b.defaultValue=b.value;}
 }
 /* 관찰지 날짜·시작·끝 시각을 직접 고친다 */
 function setSheetTime(el){
@@ -2637,6 +2669,12 @@ const actions={
     toast(`관찰을 시작했습니다. ${abcData(p).interval}분마다 새 관찰지가 추가됩니다.`);
   },
   'obs-end':()=>{const p=curProject();endSession(p);renderAbcAll();},
+  't24-pick':el=>{
+    const box=el.closest('.t24');const tx=box.querySelector('.t24-in');const nv=box.querySelector('.t24-native');
+    const c=parseClock24(tx.value);nv.value=c?fmtClock24(c,tx.dataset.t24==='s'):'';
+    try{if(nv.showPicker){nv.showPicker();return;}}catch(e){}
+    tx.focus();
+  },
   'sheet-manual':()=>addManualSheet(curProject()),
   'row-add':el=>{const p=curProject();const sh=sheetById(p,el.dataset.sid);if(sh)addRow(p,sh,null);},
   'del-row':el=>{
@@ -2777,10 +2815,28 @@ function setPlanTime(el){
   touch(p,'abc');saveNow();updateLive();
   toast(v?`${k==='start'?'관찰 시작 시간':'최종 종료 시간'}을 ${v}(으)로 정했습니다`:`${k==='start'?'관찰 시작 시간':'최종 종료 시간'}을 지웠습니다`);
 }
-document.addEventListener('input',e=>{const el=e.target.closest('[data-f]');if(el&&el.id!=='obs-interval')onField(el);});
+document.addEventListener('input',e=>{const el=e.target.closest('[data-f]');if(el&&el.id!=='obs-interval'&&!el.matches('.t24-in'))onField(el);});
 document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.matches&&d.matches('details[data-hy-memo]'))ui.hyMemoOpen=d.open;if(d&&d.matches&&d.matches('details[data-sheet]')){if(d.open)ui.openSheets.add(d.dataset.sheet);else ui.openSheets.delete(d.dataset.sheet);}},true);
 document.addEventListener('change',async e=>{
   const el=e.target;
+  if(el.matches('.t24-native')){/* 시계로 고른 값을 24시간 글자로 옮긴다 */
+    const tx=el.parentNode.querySelector('.t24-in');if(!tx||!el.value)return;
+    tx.value=el.value.length===5&&tx.dataset.t24==='s'?el.value+':00':el.value.slice(0,tx.dataset.t24==='s'?8:5);
+    tx.dispatchEvent(new Event('change',{bubbles:true}));return;
+  }
+  if(el.matches('.t24-in')){
+    const raw=el.value.trim();
+    if(raw){
+      const c=parseClock24(raw);
+      if(!c){el.classList.add('bad');toast('시각을 알아볼 수 없습니다. 24시간으로 적어 주세요. 예: 16:25 또는 1625');el.value=el.defaultValue;el.classList.remove('bad');return;}
+      el.value=fmtClock24(c,el.dataset.t24==='s');
+    }
+    el.defaultValue=el.value;
+    if(el.matches('[data-plan]')){setPlanTime(el);return;}
+    if(el.matches('[data-shdt]')){setSheetTime(el);return;}
+    if(el.matches('[data-f]')){onField(el);return;}
+    return;
+  }
   if(el.matches('[data-f]')&&(el.type==='checkbox'||el.tagName==='SELECT'||el.type==='date'||el.type==='datetime-local'||el.type==='number')){onField(el);return;}
   if(el.matches('[data-plan]')){setPlanTime(el);return;}
   if(el.matches('[data-shdt]')){setSheetTime(el);return;}
