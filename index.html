@@ -3591,6 +3591,7 @@ async function makeFirestoreAdapter(){
     async setName(pid,me){await F.updateDoc(sub(pid,'members',me.uid),{name:me.name});count(1);},
     async changeCode(pid,newKey,me){
       const mref=sub(pid,'members',me.uid);const m=await F.getDoc(mref);const old=m.exists()?m.data().inviteKey:'';
+      if(old===newKey)return;
       await F.setDoc(F.doc(db,'invites',newKey),{projectId:pid,createdBy:me.uid});
       await F.updateDoc(mref,{inviteKey:newKey});
       if(old&&old!==newKey){try{await F.deleteDoc(F.doc(db,'invites',old));}catch(e){}}
@@ -3637,6 +3638,9 @@ function syncSubscribe(S){
     conflicts:list=>{S.conflicts=list;syncDecorateSoon();syncRefreshCards();},
     members:(list,cache)=>{S.members=list;const me=syncMe();
       if(!cache&&me&&!list.some(m=>m.uid===me.uid))S.error='removed';
+      /* 역할은 서버 멤버 기록을 따른다: 소유자 계정으로 다른 기기에서 받은 경우에도 소유자 기능(코드 바꾸기·내보내기·삭제)이 보이게 */
+      const mine=me&&list.find(m=>m.uid===me.uid);const lp=projById(S.localId);
+      if(!cache&&mine&&lp&&lp.shared&&(mine.role==='owner'||mine.role==='member')&&lp.shared.role!==mine.role){lp.shared.role=mine.role;scheduleSave();if(curProject()===lp&&ui.view==='project'){const y=window.scrollY;render();window.scrollTo(0,y);}}
       syncRefreshCards();syncStatusUI();},
     error:e=>{const c=(e&&e.code)||'';S.error=/permission/.test(c)?'denied':'error';if(S.unsub){S.unsub();S.unsub=null;}syncStatusUI();syncRefreshCards();}
   });
@@ -3934,7 +3938,7 @@ function syncProjectCardInner(p){
     ${S&&(S.error==='removed'||S.error==='denied')?`<p class="banner warn">이 프로젝트의 공유 멤버가 아니어서 동기화를 멈췄습니다. 이 기기의 사본은 그대로 남아 있습니다.</p>`:''}
     ${mem.length?`<div><h3 class="sub-label">멤버 ${mem.length}명</h3><ul class="sync-members">${mem.map(m=>`<li><span>${esc(m.name||'이름 없음')}${m.role==='owner'?' <small>소유자</small>':''}${me&&m.uid===me.uid?' <small>(나)</small>':''}</span><span class="meta">${m.joinedAt?fmtShort(m.joinedAt):''}</span>${owner&&me&&m.uid!==me.uid?`<button type="button" class="btn small ghost danger" data-act="ask" data-key="sync-kick:${esc(m.uid)}">내보내기</button>`:''}
       ${ui.confirm==='sync-kick:'+m.uid?confirmBox(`<b>${esc(m.name||'이 멤버')}</b>님을 공유에서 내보냅니다. 내보낸 뒤에는 공유 코드도 바꾸세요.`,'sync-kick',m.uid):''}</li>`).join('')}</ul></div>`:''}
-    ${owner?`<div class="new-form"><label class="field"><span>공유 코드 바꾸기 <small>이미 들어온 멤버는 그대로</small></span><input id="sync-code-change" autocomplete="off" maxlength="60"></label><button type="button" class="btn" data-act="sync-recode">바꾸기</button></div>`:''}`;
+    ${owner?`<div class="new-form"><label class="field"><span>공유 코드 바꾸기 <small>원하는 코드(6자 이상)로 언제든 바꿀 수 있습니다. 이미 들어온 멤버는 그대로이고, 예전 코드로는 더 받을 수 없습니다</small></span><input id="sync-code-change" autocomplete="off" maxlength="60" placeholder="새 공유 코드"></label><button type="button" class="btn" data-act="sync-recode">바꾸기</button></div>`:''}`;
 }
 function syncConflictCard(p){
   const S=Sync.cur&&Sync.cur.localId===p.id?Sync.cur:null;
