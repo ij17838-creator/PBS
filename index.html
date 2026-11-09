@@ -1897,7 +1897,8 @@ function viewRating(p){
   const old=(d.when||'').trim()||(d.scores||'').trim();
   return `
   <section class="card"><h2 class="h3">척도 정보</h2>
-    <label class="field"><span>척도 이름</span><input id="rt-scale" data-f="rating:scale" value="${esc(d.scale)}" placeholder="예: K-CBCL, 학교 행동평정척도"></label>
+    <label class="field"><span>척도 이름</span><input id="rt-scale" data-f="rating:scale" value="${esc(d.scale)}" placeholder="예: SDQ, K-CBCL, 학교 행동평정척도"></label>
+    <div class="row"><a class="btn small" href="https://sdqinfo.org/py/sdqinfo/b0.py" target="_blank" rel="noopener noreferrer">SDQ 설문 받기 (언어별)</a><small class="muted">SDQ(강점·난점 설문지) 공식 사이트에서 한국어 등 언어별 설문을 받습니다. 새 창으로 열립니다.</small></div>
     <fieldset class="field"><legend>척도 종류</legend><div class="chips">${RATING_TYPES.map(v=>chip('rtype',v,d.type===v,'b')).join('')}</div>
       <p class="hint" id="rtype-tip">${esc(RATING_TYPE_TIP[d.type]||'종류를 고르면 결과를 어떻게 읽을지 안내가 나옵니다.')}</p></fieldset>
     <label class="field"><span>실시 목적</span><input id="rt-purpose" data-f="rating:purpose" value="${esc(d.purpose)}" placeholder="예: 자리 이탈 외에 다른 문제행동 영역이 있는지 선별"></label>
