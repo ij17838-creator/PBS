@@ -482,6 +482,9 @@ html.in-ink .ink-host{caret-color:transparent}
 .sync-members li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface-2)}
 .sync-members li > span:first-child{flex:1 1 140px;font-weight:600}
 .sync-members .confirm{flex:1 1 100%}
+.proj-share{font-size:.88rem;display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px}
+.proj-share .sub-label{margin:0}
+.proj-share .chip-m{background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:1px 8px}
 .sync-conflicts{border-color:var(--warn);background:var(--warn-soft)}
 .sync-clist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .sync-citem{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:1px solid var(--line-strong);border-radius:10px;padding:10px 12px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}
@@ -966,6 +969,7 @@ function projCard(p){
     <p class="proj-target">${name?'표적행동 · '+esc(name):'<span class="muted">표적행동 미정</span>'}</p>
     ${p.memo?`<p class="proj-memo">${esc(p.memo)}</p>`:''}
     <div class="dots" role="img" aria-label="${PROCS.length}개 절차 중 ${done}개 완료">${PROCS.map(x=>`<span class="dot s-${p.procs[x.key].status}" title="${esc(x.title)}: ${statusInfo(p.procs[x.key]).label}"></span>`).join('')}</div>
+    ${projShareLine(p)}
     <p class="meta">완료 ${done}/${PROCS.length} · 최근 수정 ${p.updatedAt?fmtShort(p.updatedAt):'-'}<br>마지막 백업 ${p.lastBackupAt?relDays(p.lastBackupAt):'아직 없음'}</p>
     <div class="card-actions">
       <button type="button" class="btn primary small" data-act="open-proj" data-id="${p.id}">열기</button>
@@ -974,6 +978,23 @@ function projCard(p){
     </div>
     ${ui.confirm==='del-proj:'+p.id?confirmBox(p.shared&&p.shared.role==='owner'?`<b>${esc(p.code)}</b> 공유 프로젝트를 삭제합니다. 함께 쓰는 사람들의 기기에서도 이 프로젝트가 지워집니다. 되돌릴 수 없습니다.`:p.shared?`<b>${esc(p.code)}</b> 프로젝트를 이 기기에서만 지웁니다. 다른 사람의 기기와 서버 자료는 그대로입니다.`:`<b>${esc(p.code)}</b> 프로젝트의 기록과 녹음을 모두 삭제합니다. 되돌릴 수 없습니다.`,'del-proj',p.id):''}
   </article>`;
+}
+
+/* 소유자에게만: 이 프로젝트를 공유받은 사람(소유자 본인 제외) */
+function projShareInner(p){
+  const list=Sync.mem&&Sync.mem.get(p.shared.projectId);
+  if(!list)return `<span class="muted">${Sync.user?'공유 인원 불러오는 중':'로그인하면 공유 인원 표시'}</span>`;
+  const ms=list.filter(m=>m.role!=='owner').sort((a,b)=>String(a.joinedAt||'').localeCompare(String(b.joinedAt||'')));
+  if(!ms.length)return '<span class="muted">아직 공유받은 사람 없음</span>';
+  return `<span class="sub-label">공유받은 사람 ${ms.length}명</span>${ms.map(m=>`<span class="chip-m" title="${m.joinedAt?esc(fmtShort(m.joinedAt))+' 참여':''}">${esc(m.name||'이름 없음')}</span>`).join('')}`;
+}
+function projShareLine(p){
+  if(!p.shared||p.shared.role!=='owner'||(!SYNC_ON&&!window.__pbsSyncAdapter))return '';
+  return `<p class="proj-share" data-share-pid="${esc(p.shared.projectId)}">${projShareInner(p)}</p>`;
+}
+function syncRefreshShareLines(){
+  if(ui.view!=='home')return;
+  document.querySelectorAll('[data-share-pid]').forEach(el=>{const p=store.projects.find(x=>x.shared&&x.shared.projectId===el.dataset.sharePid);if(p)el.innerHTML=projShareInner(p);});
 }
 
 /* project */
@@ -3588,6 +3609,7 @@ async function makeFirestoreAdapter(){
       if(k){try{await F.deleteDoc(F.doc(db,'invites',k));count(1);}catch(e){}}
     },
     watchDoc(pid,cb){return F.onSnapshot(pd(pid),s=>cb(s.exists()?s.data():null),()=>{});},
+    watchMembers(pid,cb){return F.onSnapshot(sub(pid,'members'),s=>cb(s.docs.map(d=>{const x=d.data({serverTimestamps:'estimate'});return {uid:d.id,name:x.name||'',role:x.role||'',joinedAt:iso(x.joinedAt)};})),()=>{});},
     async removeMember(pid,uid){await F.deleteDoc(sub(pid,'members',uid));count(1);},
     async setName(pid,me){await F.updateDoc(sub(pid,'members',me.uid),{name:me.name});count(1);},
     async changeCode(pid,newKey,me){
@@ -3659,8 +3681,15 @@ function syncWatchDocs(){
   const want=new Map(store.projects.filter(x=>x.shared).map(x=>[x.shared.projectId,x.id]));
   Sync.docs.forEach((un,pid)=>{if(!want.has(pid)){un();Sync.docs.delete(pid);}});
   want.forEach((lid,pid)=>{if(!Sync.docs.has(pid))Sync.docs.set(pid,Sync.ad.watchDoc(pid,d=>{if(d&&d.deleted)syncGone(lid);}));});
+  /* 내가 소유자인 프로젝트는 멤버 목록도 지켜본다: 홈 카드에 공유받은 사람 표시 */
+  if(!Sync.ad.watchMembers)return;
+  Sync.memUn=Sync.memUn||new Map();Sync.mem=Sync.mem||new Map();
+  const own=new Set(store.projects.filter(x=>x.shared&&x.shared.role==='owner').map(x=>x.shared.projectId));
+  Sync.memUn.forEach((un,pid)=>{if(!own.has(pid)){un();Sync.memUn.delete(pid);Sync.mem.delete(pid);}});
+  own.forEach(pid=>{if(!Sync.memUn.has(pid))Sync.memUn.set(pid,Sync.ad.watchMembers(pid,list=>{Sync.mem.set(pid,list);syncRefreshShareLines();}));});
 }
-function syncUnwatchDocs(){if(Sync.docs){Sync.docs.forEach(un=>un());Sync.docs.clear();}}
+function syncUnwatchDocs(){if(Sync.docs){Sync.docs.forEach(un=>un());Sync.docs.clear();}
+  if(Sync.memUn){Sync.memUn.forEach(un=>un());Sync.memUn.clear();}if(Sync.mem)Sync.mem.clear();syncRefreshShareLines();}
 function syncAbsorbSoon(S){clearTimeout(S.at);S.at=setTimeout(()=>syncAbsorb(S),30);}
 /* 서버 자료(theirs)를 이 기기 자료(mine)에 합친다. base = 마지막으로 서버와 맞춘 자료 */
 function syncAbsorb(S){
