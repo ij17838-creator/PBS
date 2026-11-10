@@ -1306,11 +1306,6 @@ function viewDefine(p){
       <label class="field"><span>이 방법을 고른 이유</span><input id="def-mwhy" data-f="define:measureWhy" value="${esc(d.measureWhy)}" placeholder="예: 한 번 일어나면 짧게 끝나서 횟수로 셀 수 있음"></label>
     </div>
     <label class="check"><input type="checkbox" id="def-mfixed" data-f="defbool:measureFixed" ${d.measureFixed?'checked':''}> <span>관찰해 보고 이 측정 방법으로 확정했다</span></label>
-    <fieldset class="field"><legend>관찰자 간 일치도 (IOA)</legend>
-      <label class="field"><span>확인 계획</span><input id="def-plan-ioa" data-f="define:planIoa" value="${esc(d.planIoa)}" placeholder="예: 관찰 3회 중 1회는 두 사람이 따로 기록해 비교 (80% 이상)"></label>
-      <label class="check"><input type="checkbox" id="def-ioa" data-f="defbool:ioaDone" ${d.ioaDone?'checked':''}> <span>다른 관찰자와 같은 시간을 함께 기록해 비교해 봤다</span></label>
-      <label class="field"><span>일치도 메모</span><input id="def-ioanote" data-f="define:ioaNote" value="${esc(d.ioaNote)}" placeholder="예: 11/14 국어, 보조교사와 함께 기록, 일치도 90%"></label>
-    </fieldset>
   </section>
   <details class="card later">
     <summary>관찰한 뒤에 채울 내용<small>주로 나타나는 상황</small></summary>
