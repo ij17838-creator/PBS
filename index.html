@@ -145,6 +145,23 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .tools .tool-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 
 /* project */
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:10px}
+.cat-card{display:flex;flex-direction:column;gap:8px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;color:var(--ink);font:inherit;cursor:pointer}
+.cat-card:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.cat-top{display:flex;align-items:center;gap:10px}
+.cat-no{font-family:var(--font-mono);font-size:.9rem;font-weight:700;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:var(--sunk);color:var(--muted);flex:none}
+.cat-title{font-weight:700;font-size:1.1rem;flex:1;min-width:0}
+.cat-count{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.cat-desc{color:var(--muted);font-size:.86rem}
+.cat-procs{display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--line);padding-top:10px}
+.cat-proc{display:flex;align-items:center;gap:7px;font-size:.88rem}
+.cat-proc .dot{width:10px;height:10px;max-width:none;border-radius:50%;flex:none}
+.cat-proc .mono{color:var(--muted);font-size:.8rem}
+.cat-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.cat-tab{font:inherit;font-size:.9rem;padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.cat-tab.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.cat-tab .mono{opacity:.7}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .proc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-top:10px}
 .proc-card{position:relative;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto 1fr auto;column-gap:12px;row-gap:4px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;color:var(--ink);font:inherit;cursor:pointer;min-height:148px}
 .proc-card:hover{border-color:var(--accent);box-shadow:var(--shadow)}
@@ -565,6 +582,14 @@ const PROCS=[
   {key:'evaluate',no:10,title:'평가 · 수정',desc:'변화 확인·다음 결정',basic:true,lede:'자동 비교 후 결정 기록'}
 ];
 const PROC=Object.fromEntries(PROCS.map(p=>[p.key,p]));
+/* 절차를 묶는 상위 카테고리 3개. 절차 번호(권장 순서)와 저장 자료는 그대로 */
+const CATS=[
+  {key:'info',no:1,title:'기본 정보',desc:'누구를·무엇을 지원하나',procs:['profile','define']},
+  {key:'measure',no:2,title:'측정',desc:'얼마나·왜 일어나나',procs:['baseline','qabf','rating','abc','hypo']},
+  {key:'support',no:3,title:'중재 및 평가',desc:'어떻게 바꾸고 확인하나',procs:['plan','intervene','evaluate']}
+];
+const CAT=Object.fromEntries(CATS.map(c=>[c.key,c]));
+CATS.forEach(c=>c.procs.forEach(k=>{PROC[k].cat=c.key;}));
 const MEMO_FIELDS={
   rating:[['scale','척도 이름','사용한 행동평정척도 이름'],['when','실시일 · 응답자','예: 11/3, 담임교사'],['scores','점수 · 결과','하위영역별 점수와 해석을 적으세요'],['memo','메모','']],
   plan:[['antecedent','선행사건 중재 (환경 조정)','예: 과제를 작은 단위로 나누어 제시'],['replacement','대체행동 교수','문제행동과 같은 기능을 하는 적절한 행동. 예: "쉬어도 돼요?" 카드 사용'],['consequence','후속결과 중재','적절한 행동은 강화하고, 문제행동에는 일관되게 대응'],['crisis','위기 대응 · 역할 분담','']],
@@ -703,7 +728,7 @@ let store=loadStore();
 let saveTimer=null;
 function saveNow(){
   clearTimeout(saveTimer);saveTimer=null;
-  store.ui={view:ui.view,projectId:ui.projectId,proc:ui.proc};
+  store.ui={view:ui.view,projectId:ui.projectId,proc:ui.proc,cat:ui.cat};
   try{
     /* 그사이 다른 탭(창)이 저장했으면 그 내용과 합친 뒤 저장한다(덮어쓰지 않음) */
     const cur=localStorage.getItem(LS_KEY);
@@ -842,7 +867,7 @@ const urlCache=new Map();
 function dropUrl(id){const u=urlCache.get(id);if(u){URL.revokeObjectURL(u);urlCache.delete(id);}}
 
 /* ---------- ui state ---------- */
-const ui=Object.assign({view:'home',projectId:null,proc:null},store.ui||{},{confirm:null,optsEdit:null,abcFilter:'all',qItemsOpen:false,micHelp:'',openSheets:new Set(),hyOther:new Set(),hyMemoOpen:false});
+const ui=Object.assign({view:'home',projectId:null,proc:null,cat:null},store.ui||{},{confirm:null,optsEdit:null,abcFilter:'all',qItemsOpen:false,micHelp:'',openSheets:new Set(),hyOther:new Set(),hyMemoOpen:false});
 function curProject(){return store.projects.find(p=>p.id===ui.projectId)||null;}
 function projById(id){return store.projects.find(p=>p.id===id)||null;}
 
@@ -899,6 +924,8 @@ const main=$('#main');
 function render(){
   if(ui.view!=='home'&&!curProject()){ui.view='home';ui.projectId=null;ui.proc=null;}
   if(ui.view==='proc'&&!PROC[ui.proc])ui.view='project';
+  if(ui.view==='proc')ui.cat=PROC[ui.proc].cat;
+  if(ui.cat&&!CAT[ui.cat])ui.cat=null;
   stopDictation();
   const p=curProject();
   if(ui.view==='home')main.innerHTML=viewHome();
@@ -920,8 +947,10 @@ function renderCrumbs(){
   const c=$('#crumbs');const p=curProject();
   if(ui.view==='home'){c.innerHTML='<span class="here">행동 관찰 기록장</span>';return;}
   let h='<button type="button" data-act="go-home">프로젝트 목록</button><span class="sep">›</span>';
-  if(ui.view==='project')h+=`<span class="here mono">${esc(p.code||'(코드 없음)')}</span>`;
-  else h+=`<button type="button" data-act="go-project" class="mono">${esc(p.code||'(코드 없음)')}</button><span class="sep">›</span><span class="here">${esc(PROC[ui.proc].title)}</span>`;
+  const code=esc(p.code||'(코드 없음)');const cat=ui.cat&&CAT[ui.cat];
+  if(ui.view==='project'&&!cat)h+=`<span class="here mono">${code}</span>`;
+  else if(ui.view==='project')h+=`<button type="button" data-act="go-project" class="mono">${code}</button><span class="sep">›</span><span class="here">${esc(cat.title)}</span>`;
+  else h+=`<button type="button" data-act="go-project" class="mono">${code}</button><span class="sep">›</span><button type="button" data-act="open-cat" data-key="${cat.key}">${esc(cat.title)}</button><span class="sep">›</span><span class="here">${esc(PROC[ui.proc].title)}</span>`;
   c.innerHTML=h;
 }
 function confirmBox(msg,act,id,extra){
@@ -999,6 +1028,7 @@ function syncRefreshShareLines(){
 
 /* project */
 function viewProject(p){
+  if(ui.cat&&CAT[ui.cat])return viewCat(p,CAT[ui.cat]);
   return `
   <section>
     <p class="eyebrow">학생 프로젝트</p>
@@ -1007,8 +1037,8 @@ function viewProject(p){
   </section>
   ${syncConflictCard(p)}
   <section>
-    <div class="sec-head"><h2 class="h3">관찰 절차</h2><p class="hint">필요한 절차만 골라 열기</p></div>
-    <div class="proc-grid">${PROCS.map(x=>procCard(p,x)).join('')}</div>
+    <div class="sec-head"><h2 class="h3">관찰 절차</h2><p class="hint">영역을 골라 절차 열기</p></div>
+    <div class="cat-grid">${CATS.map(c=>catCard(p,c)).join('')}</div>
   </section>
   ${syncProjectCard(p)}
   <section class="card tools">
@@ -1023,6 +1053,27 @@ function viewProject(p){
     <label class="field"><span>학생 코드</span><input id="proj-code" data-f="proj:code" maxlength="40" value="${esc(p.code)}"></label>
     <label class="field"><span>메모</span><input id="proj-memo" data-f="proj:memo" maxlength="120" value="${esc(p.memo)}"></label>
   </details>`;
+}
+function catCard(p,c){
+  const done=c.procs.filter(k=>p.procs[k].status==='done').length;
+  return `<button type="button" class="cat-card" data-act="open-cat" data-key="${c.key}">
+    <span class="cat-top"><span class="cat-no">${c.no}</span><span class="cat-title">${esc(c.title)}</span><span class="cat-count">완료 ${done}/${c.procs.length}</span></span>
+    <span class="cat-desc">${esc(c.desc)}</span>
+    <span class="cat-procs">${c.procs.map(k=>{const x=PROC[k];const s=p.procs[k];return `<span class="cat-proc"><span class="dot s-${s.status}" aria-hidden="true"></span><span class="mono">${x.no}</span> ${esc(x.title)}<span class="sr-only"> · ${statusInfo(s).label}</span></span>`;}).join('')}</span>
+  </button>`;
+}
+function viewCat(p,c){
+  return `
+  <section>
+    <p class="eyebrow"><span class="mono">${esc(p.code||'(코드 없음)')}</span> · 관찰 절차</p>
+    <h1>${esc(c.title)}</h1>
+    <p class="lede">${esc(c.desc)}</p>
+  </section>
+  <nav class="cat-tabs" aria-label="절차 영역">${CATS.map(x=>`<button type="button" class="cat-tab${x.key===c.key?' on':''}" data-act="open-cat" data-key="${x.key}" aria-current="${x.key===c.key?'page':'false'}"><span class="mono">${x.no}</span> ${esc(x.title)}</button>`).join('')}</nav>
+  ${syncConflictCard(p)}
+  <section>
+    <div class="proc-grid">${c.procs.map(k=>procCard(p,PROC[k])).join('')}</div>
+  </section>`;
 }
 function procCard(p,x){
   const s=p.procs[x.key];const st=statusInfo(s);
@@ -2531,8 +2582,9 @@ function exampleProject(){
 /* ---------- events ---------- */
 const actions={
   'go-home':()=>go('home',{projectId:null,proc:null}),
-  'go-project':()=>go('project',{proc:null}),
-  'open-proj':el=>go('project',{projectId:el.dataset.id,proc:null}),
+  'go-project':()=>go('project',{proc:null,cat:null}),
+  'open-cat':el=>go('project',{proc:null,cat:el.dataset.key}),
+  'open-proj':el=>go('project',{projectId:el.dataset.id,proc:null,cat:null}),
   'open-proc':el=>go('proc',{proc:el.dataset.key}),
   'dup-proj':el=>{const p=projById(el.dataset.id);if(p)duplicateProject(p);},
   'ask':el=>{ui.confirm=el.dataset.key;rerenderForConfirm();},
@@ -2754,7 +2806,7 @@ document.addEventListener('submit',e=>{
   e.preventDefault();
   const code=$('#new-code').value.trim();const memo=$('#new-memo').value.trim();
   if(!code){toast('학생 코드를 입력하세요');$('#new-code').focus();return;}
-  const p=newProject(code,memo);store.projects.push(p);saveNow();go('project',{projectId:p.id,proc:null});toast('프로젝트를 만들었습니다');
+  const p=newProject(code,memo);store.projects.push(p);saveNow();go('project',{projectId:p.id,proc:null,cat:null});toast('프로젝트를 만들었습니다');
 });
 function onField(el){
   const p=curProject();
@@ -4031,7 +4083,7 @@ Object.assign(actions,{
     const id=($('#sync-join-id').value||'').trim();const code=($('#sync-join-code').value||'').trim();
     if(!id||!code){toast('공유 ID와 공유 코드를 모두 입력하세요');return;}
     const have=projById(id);
-    if(have&&have.shared){go('project',{projectId:id,proc:null});toast('이미 이 기기에 있는 공유 프로젝트입니다');return;}
+    if(have&&have.shared){go('project',{projectId:id,proc:null,cat:null});toast('이미 이 기기에 있는 공유 프로젝트입니다');return;}
     if(have){toast('같은 ID의 프로젝트가 이 기기에 이미 있습니다 (공유를 시작한 기기입니다)');return;}
     el.disabled=true;
     try{
@@ -4044,7 +4096,7 @@ Object.assign(actions,{
       const p=ensureProject(syncUnflat(tc,ti));
       p.id=id;p.lastBackupAt=null;p.example=false;p.shared={projectId:id,role:'member',since:nowISO(),code};
       const st=syncState(id);st.base=syncBaseOf(p);st.revs=revs;
-      store.projects.push(p);saveNow();go('project',{projectId:id,proc:null});
+      store.projects.push(p);saveNow();go('project',{projectId:id,proc:null,cat:null});
       toast('공유 프로젝트를 받았습니다. 이제 함께 고친 내용이 실시간으로 반영됩니다.');
     }catch(e){if(e&&e.code!=='badcode'&&e.code!=='deleted')console.error(e);toast(syncErrMsg(e));}
     finally{el.disabled=false;}
