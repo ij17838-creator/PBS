@@ -1410,7 +1410,6 @@ function qFormView(p,f){
       <label class="field"><span>평가한 행동</span><textarea rows="1" class="one" id="qf-beh" data-f="qform:behavior">${esc(f.behavior)}</textarea></label>
     </div>
   </section>
-  <section class="card" id="q-result">${qResult(f)}</section>
   <section class="card">
     <div class="sec-head"><h2 class="h3">문항 응답</h2><span class="meta" id="q-count">응답 ${qAnswered(f)}/25</span></div>
     <p class="scale-legend">${QABF_OPTS.map(o=>`<span><b class="mono">${o.v}</b> ${o.full}</span>`).join('')}</p>
@@ -1420,7 +1419,8 @@ function qFormView(p,f){
     <label class="field"><span>메모</span><textarea id="qf-note" data-f="qform:note" rows="3" placeholder="응답 상황, 특이사항">${esc(f.note)}</textarea></label>
     <div class="row end"><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-qform:${f.id}">이 응답지 삭제</button></div>
     ${ui.confirm==='del-qform:'+f.id?confirmBox('이 응답지를 삭제합니다. 되돌릴 수 없습니다.','del-qform',f.id):''}
-  </section>`;
+  </section>
+  <section class="card" id="q-result">${qResult(f)}</section>`;
 }
 function qItemRow(f,n){
   const s=QABF_SCALES[(n-1)%5];const v=f.ratings[n]==null?'':f.ratings[n];const txt=store.settings.qabfItems[n];
