@@ -52,6 +52,8 @@
 [hidden]{display:none!important}
 body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%}
+/* 앱 전체 글: 어절(띄어쓰기) 단위로 줄바꿈. 한 줄에 다 안 들어가는 긴 낱말·주소만 중간에서 끊음 */
+body{word-break:keep-all;overflow-wrap:break-word}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
 h1,h2,h3{margin:0;text-wrap:balance}
 h1{font-family:var(--font-display);font-weight:700;font-size:clamp(1.6rem,4.5vw,2.15rem);line-height:1.25;letter-spacing:-.01em}
