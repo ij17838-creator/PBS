@@ -107,6 +107,14 @@ section{min-width:0}
 .field legend{margin-bottom:6px;padding:0}
 input[type=text],input:not([type]),input[type=date],input[type=datetime-local],input[type=number],input[type=time],select,textarea{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface-2);color:var(--ink);font:inherit;font-size:16px;line-height:1.5}
 textarea{resize:vertical}
+/* 글자 칸: 어절 단위로 줄바꿈, 줄이 늘면 칸도 늘어남(ABC 관찰지와 같은 방식) */
+textarea{word-break:keep-all;overflow-wrap:anywhere}
+textarea[data-f]{field-sizing:content}
+textarea[data-f][rows="2"]{min-height:70px}
+textarea[data-f][rows="3"]{min-height:94px}
+textarea[data-f][rows="4"]{min-height:118px}
+textarea[data-f][rows="6"]{min-height:166px}
+textarea.one{resize:none;min-height:46px;overflow:hidden}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
 .check{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
 .check input{width:20px;height:20px;margin:2px 0 0;accent-color:var(--accent);flex-shrink:0}
@@ -937,7 +945,22 @@ function render(){
   updateRecUI();
   scheduleSave();
   syncAfterRender();
+  growAll(main);
 }
+/* 글자 칸 자동 높이: field-sizing을 지원하지 않는 브라우저에서만 직접 맞춘다. 한 줄 칸(textarea.one)은 Enter로 줄을 넣지 않는다 */
+const GROW_CSS=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));
+function growFit(el){
+  if(GROW_CSS||!el||el.tagName!=='TEXTAREA'||!el.dataset.f||!el.offsetParent)return;
+  el.style.height='auto';const cs=getComputedStyle(el);
+  el.style.height=(el.scrollHeight+parseFloat(cs.borderTopWidth)+parseFloat(cs.borderBottomWidth))+'px';
+}
+function growAll(root){if(GROW_CSS||!root)return;requestAnimationFrame(()=>root.querySelectorAll('textarea[data-f]').forEach(growFit));}
+document.addEventListener('input',e=>{const el=e.target;if(!el||el.tagName!=='TEXTAREA')return;
+  if(el.classList.contains('one')&&/\n/.test(el.value)){const at=el.selectionStart;el.value=el.value.replace(/\s*\n+\s*/g,' ');try{el.setSelectionRange(at,at);}catch(x){}}
+  growFit(el);},true);
+document.addEventListener('focusin',e=>growFit(e.target));
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing&&e.target&&e.target.matches&&e.target.matches('textarea.one'))e.preventDefault();});
+if(!GROW_CSS){new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes)if(n.nodeType===1)growAll(n.tagName==='TEXTAREA'?n.parentNode:n);}).observe(document.body,{childList:true,subtree:true});addEventListener('resize',()=>growAll(main));}
 function go(view,opts){
   Object.assign(ui,{view},opts||{});
   ui.confirm=null;ui.optsEdit=null;ui.qItemsOpen=false;ui.micHelp='';
@@ -1135,7 +1158,7 @@ const PF_PREF_KINDS=['','물건','활동','음식','칭찬·관심 방식','사�
 const PF_EFFECTS=['','효과 있음','일부 효과','효과 없음','오히려 나빠짐','모름'];
 function pfNew(kind){return kind==='prefs'?{id:uid('pp'),kind:'',what:'',note:''}:{id:uid('ph'),what:'',when:'',effect:'',note:''};}
 function pfFix(o,kind){const d=pfNew(kind);for(const k in d)if(k!=='id'&&o[k]==null)o[k]=d[k];return o;}
-function pfIn(id,f,v,ph,o){o=o||{};return `<label class="field${o.cls?' '+o.cls:''}"><span>${o.label}${o.small?` <small>${o.small}</small>`:''}</span>${o.area?`<textarea id="pf-${id}" data-f="${f}" rows="${o.rows||2}" placeholder="${esc(ph||'')}">${esc(v)}</textarea>`:`<input${o.type?` type="${o.type}"`:''} id="pf-${id}" data-f="${f}" value="${esc(v)}" placeholder="${esc(ph||'')}">`}</label>`;}
+function pfIn(id,f,v,ph,o){o=o||{};return `<label class="field${o.cls?' '+o.cls:''}"><span>${o.label}${o.small?` <small>${o.small}</small>`:''}</span>${o.area?`<textarea id="pf-${id}" data-f="${f}" rows="${o.rows||2}" placeholder="${esc(ph||'')}">${esc(v)}</textarea>`:o.type?`<input type="${o.type}" id="pf-${id}" data-f="${f}" value="${esc(v)}" placeholder="${esc(ph||'')}">`:`<textarea rows="1" class="one" id="pf-${id}" data-f="${f}" placeholder="${esc(ph||'')}">${esc(v)}</textarea>`}</label>`;}
 function pfF(d,k,label,ph,o){return pfIn(k,'prof:'+k,d[k],ph,Object.assign({label},o||{}));}
 function pfSel(id,f,opts,v,label){return `<label class="field"><span>${label}</span><select id="pf-${id}" data-f="${f}">${opts.map(x=>`<option value="${esc(x)}"${v===x?' selected':''}>${esc(x||'선택')}</option>`).join('')}</select></label>`;}
 function pfPrefRow(r,i){
@@ -1265,14 +1288,14 @@ function viewDefine(p){
   </section>
   <section class="card">
     <h2 class="h3">행동 정의</h2>
-    <label class="field"><span>행동 이름 <small>짧게</small></span><input id="def-name" data-f="define:name" value="${esc(d.name)}" placeholder="예: 자리 이탈"></label>
+    <label class="field"><span>행동 이름 <small>짧게</small></span><textarea rows="1" class="one" id="def-name" data-f="define:name" placeholder="예: 자리 이탈">${esc(d.name)}</textarea></label>
     <label class="field"><span>조작적 정의</span><textarea id="def-definition" data-f="define:definition" rows="3" placeholder="예: 수업 중 교사의 허락 없이 엉덩이가 의자에서 떨어져 자리에서 1m 이상 벗어나는 행동">${esc(d.definition)}</textarea></label>
     <div class="two">
-      <label class="field"><span>시작 기준</span><input id="def-start" data-f="define:start" value="${esc(d.start)}" placeholder="예: 엉덩이가 의자에서 완전히 떨어지는 순간"></label>
-      <label class="field"><span>종료 기준</span><input id="def-end" data-f="define:end" value="${esc(d.end)}" placeholder="예: 다시 의자에 앉는 순간"></label>
+      <label class="field"><span>시작 기준</span><textarea rows="1" class="one" id="def-start" data-f="define:start" placeholder="예: 엉덩이가 의자에서 완전히 떨어지는 순간">${esc(d.start)}</textarea></label>
+      <label class="field"><span>종료 기준</span><textarea rows="1" class="one" id="def-end" data-f="define:end" placeholder="예: 다시 의자에 앉는 순간">${esc(d.end)}</textarea></label>
     </div>
     <label class="field"><span>경계 사례 판단 규칙 <small>애매한 경우 셀지 말지</small></span><textarea id="def-boundary" data-f="define:boundary" rows="3" placeholder="한 줄에 하나씩. 예: 엉덩이만 들썩이고 바로 앉음 → 세지 않음&#10;의자를 끌고 함께 움직임 → 셈&#10;허락받고 나갔다가 돌아오지 않음 → 허락 범위를 넘은 때부터 셈">${esc(d.boundary)}</textarea></label>
-    <label class="field"><span>1회로 묶는 기준</span><input id="def-episode" data-f="define:episode" value="${esc(d.episode)}" placeholder="예: 앉은 뒤 5초 안에 다시 일어나면 이어진 1회로 셈"></label>
+    <label class="field"><span>1회로 묶는 기준</span><textarea rows="1" class="one" id="def-episode" data-f="define:episode" placeholder="예: 앉은 뒤 5초 안에 다시 일어나면 이어진 1회로 셈">${esc(d.episode)}</textarea></label>
     <p class="hint">예시는 1~2개부터</p>
     <div class="two">
       <label class="field"><span>해당하는 예</span><textarea id="def-ex" data-f="define:examples" rows="2" placeholder="한 줄에 하나씩">${esc(d.examples)}</textarea></label>
@@ -1282,35 +1305,35 @@ function viewDefine(p){
   <section class="card">
     <h2 class="h3">정의의 근거</h2>
     <fieldset class="field"><legend>정의의 출처 <small>지금 정의는 무엇을 보고 썼나요</small></legend><div class="chips">${DEF_SOURCES.map(x=>chip('defsrc',x,d.sources.includes(x),'b')).join('')}</div></fieldset>
-    <label class="field"><span>출처 메모</span><input id="def-srcnote" data-f="define:sourceNote" value="${esc(d.sourceNote)}" placeholder="예: 11/3 담임교사와 짧은 대화, 의뢰서 내용"></label>
+    <label class="field"><span>출처 메모</span><textarea rows="1" class="one" id="def-srcnote" data-f="define:sourceNote" placeholder="예: 11/3 담임교사와 짧은 대화, 의뢰서 내용">${esc(d.sourceNote)}</textarea></label>
     <fieldset class="field"><legend>이 행동을 표적으로 고른 이유</legend><div class="chips">${DEF_PRIORITY.map(x=>chip('defpri',x,d.priority.includes(x),'b')).join('')}</div></fieldset>
-    <label class="field"><span>이유 메모</span><input id="def-prinote" data-f="define:priorityNote" value="${esc(d.priorityNote)}" placeholder="예: 수업마다 여러 번 나타나 본인 학습 시간이 줄어듦"></label>
+    <label class="field"><span>이유 메모</span><textarea rows="1" class="one" id="def-prinote" data-f="define:priorityNote" placeholder="예: 수업마다 여러 번 나타나 본인 학습 시간이 줄어듦">${esc(d.priorityNote)}</textarea></label>
   </section>
   <section class="card">
     <h2 class="h3">관찰 준비</h2>
     <label class="field"><span>관찰·면담에서 확인할 질문</span><textarea id="def-questions" data-f="define:questions" rows="3" placeholder="한 줄에 하나씩. 예: 1m 기준이 이 교실 배치에 맞나?&#10;허락받은 이탈은 어떻게 볼까?">${esc(d.questions)}</textarea></label>
     <fieldset class="field"><legend>관찰 계획 (예정)</legend>
       <div class="three">
-        <label class="field"><span>언제 · 어떤 수업</span><input id="def-pwhen" data-f="define:planWhen" value="${esc(d.planWhen)}" placeholder="예: 월·수 3교시 국어"></label>
-        <label class="field"><span>1회 관찰 길이</span><input id="def-plen" data-f="define:planLength" value="${esc(d.planLength)}" placeholder="예: 40분 (수업 시작부터 끝까지)"></label>
-        <label class="field"><span>관찰 기간·횟수</span><input id="def-pperiod" data-f="define:planPeriod" value="${esc(d.planPeriod)}" placeholder="예: 2주 동안 6회 이상"></label>
-        <label class="field"><span>누가 기록</span><input id="def-pwho" data-f="define:planObserver" value="${esc(d.planObserver)}" placeholder="예: 담임교사, 특수교사"></label>
+        <label class="field"><span>언제 · 어떤 수업</span><textarea rows="1" class="one" id="def-pwhen" data-f="define:planWhen" placeholder="예: 월·수 3교시 국어">${esc(d.planWhen)}</textarea></label>
+        <label class="field"><span>1회 관찰 길이</span><textarea rows="1" class="one" id="def-plen" data-f="define:planLength" placeholder="예: 40분 (수업 시작부터 끝까지)">${esc(d.planLength)}</textarea></label>
+        <label class="field"><span>관찰 기간·횟수</span><textarea rows="1" class="one" id="def-pperiod" data-f="define:planPeriod" placeholder="예: 2주 동안 6회 이상">${esc(d.planPeriod)}</textarea></label>
+        <label class="field"><span>누가 기록</span><textarea rows="1" class="one" id="def-pwho" data-f="define:planObserver" placeholder="예: 담임교사, 특수교사">${esc(d.planObserver)}</textarea></label>
         <label class="field"><span>첫 관찰 예정일</span><input type="date" id="def-pdate" data-f="define:planDate" value="${esc(d.planDate)}"></label>
       </div>
-      <label class="field"><span>기록 방법·도구</span><input id="def-ptools" data-f="define:planTools" value="${esc(d.planTools)}" placeholder="예: 빈도는 계수기 · ABC 관찰지 함께 작성"></label>
+      <label class="field"><span>기록 방법·도구</span><textarea rows="1" class="one" id="def-ptools" data-f="define:planTools" placeholder="예: 빈도는 계수기 · ABC 관찰지 함께 작성">${esc(d.planTools)}</textarea></label>
     </fieldset>
     <fieldset class="field"><legend>측정 방법 (예정 1개)</legend><div class="chips">${MEASURES.map(m=>chip('measure',m,d.measure===m,'b')).join('')}</div></fieldset>
     <p class="measure-tip" id="measure-tip">${measureTip(d)}</p>
     <div class="two">
-      <label class="field"><span>측정 단위</span><input id="def-unit" data-f="define:unit" value="${esc(d.unit)}" placeholder="${esc(g?g.unit:'측정 방법을 먼저 고르세요')}"></label>
-      <label class="field"><span>이 방법을 고른 이유</span><input id="def-mwhy" data-f="define:measureWhy" value="${esc(d.measureWhy)}" placeholder="예: 한 번 일어나면 짧게 끝나서 횟수로 셀 수 있음"></label>
+      <label class="field"><span>측정 단위</span><textarea rows="1" class="one" id="def-unit" data-f="define:unit" placeholder="${esc(g?g.unit:'측정 방법을 먼저 고르세요')}">${esc(d.unit)}</textarea></label>
+      <label class="field"><span>이 방법을 고른 이유</span><textarea rows="1" class="one" id="def-mwhy" data-f="define:measureWhy" placeholder="예: 한 번 일어나면 짧게 끝나서 횟수로 셀 수 있음">${esc(d.measureWhy)}</textarea></label>
     </div>
     <label class="check"><input type="checkbox" id="def-mfixed" data-f="defbool:measureFixed" ${d.measureFixed?'checked':''}> <span>관찰해 보고 이 측정 방법으로 확정했다</span></label>
   </section>
   <details class="card later">
     <summary>관찰한 뒤에 채울 내용<small>주로 나타나는 상황</small></summary>
     <p class="hint">관찰·면담 후 채우기</p>
-    <label class="field"><span>주로 나타나는 상황</span><input id="def-setting" data-f="define:setting" value="${esc(d.setting)}" placeholder="예: 국어·수학 시간, 학습지 활동"></label>
+    <label class="field"><span>주로 나타나는 상황</span><textarea rows="1" class="one" id="def-setting" data-f="define:setting" placeholder="예: 국어·수학 시간, 학습지 활동">${esc(d.setting)}</textarea></label>
   </details>
   <section class="card">
     <div class="sec-head"><h2 class="h3">정의 점검</h2><span class="meta" id="check-count">${d.checks.length}/${DEF_CHECKS.length} 확인${nw?` · 경고 ${nw}`:''}</span></div>
@@ -1340,7 +1363,7 @@ function qItemsPanel(){
   const items=store.settings.qabfItems;
   return `<section class="card q-items-panel">
     <div class="sec-head"><h2 class="h3">문항 문구 설정</h2><span class="hint">모든 프로젝트 공통</span></div>
-    <ol>${Array.from({length:25},(_,i)=>{const n=i+1;const s=QABF_SCALES[i%5];return `<li><span class="q-no mono">${n}</span><span class="scale-tag">${s.name}</span><input id="qtext-${n}" data-f="qitem:${n}" value="${esc(items[n]||'')}" placeholder="문항 ${n} 문구"></li>`;}).join('')}</ol>
+    <ol>${Array.from({length:25},(_,i)=>{const n=i+1;const s=QABF_SCALES[i%5];return `<li><span class="q-no mono">${n}</span><span class="scale-tag">${s.name}</span><textarea rows="1" class="one" id="qtext-${n}" data-f="qitem:${n}" placeholder="문항 ${n} 문구">${esc(items[n]||'')}</textarea></li>`;}).join('')}</ol>
   </section>`;
 }
 function qFormView(p,f){
@@ -1348,10 +1371,10 @@ function qFormView(p,f){
   return `
   <section class="card">
     <div class="grid-4">
-      <label class="field"><span>응답자</span><input id="qf-rater" data-f="qform:rater" value="${esc(f.rater)}" placeholder="예: 담임교사 A"></label>
+      <label class="field"><span>응답자</span><textarea rows="1" class="one" id="qf-rater" data-f="qform:rater" placeholder="예: 담임교사 A">${esc(f.rater)}</textarea></label>
       <label class="field"><span>관계</span><select id="qf-role" data-f="qform:role">${roles.map(r=>`<option value="${r}"${f.role===r?' selected':''}>${r||'선택'}</option>`).join('')}</select></label>
       <label class="field"><span>작성일</span><input type="date" id="qf-date" data-f="qform:date" value="${esc(f.date)}"></label>
-      <label class="field"><span>평가한 행동</span><input id="qf-beh" data-f="qform:behavior" value="${esc(f.behavior)}"></label>
+      <label class="field"><span>평가한 행동</span><textarea rows="1" class="one" id="qf-beh" data-f="qform:behavior">${esc(f.behavior)}</textarea></label>
     </div>
   </section>
   <section class="card" id="q-result">${qResult(f)}</section>
@@ -1507,11 +1530,11 @@ function sheetView(p,sh){
   return `<article class="sheet${act?' active':''}" id="sh-${id}">
     <header class="sheet-head" id="shh-${id}">${sheetHead(p,sh)}</header>
     <div class="sheet-meta">
-      <label class="field"><span>아동</span><input id="sf-${id}-child" data-f="sheet:${id}:child" value="${esc(sh.child)}" placeholder="학생 코드"></label>
+      <label class="field"><span>아동</span><textarea rows="1" class="one" id="sf-${id}-child" data-f="sheet:${id}:child" placeholder="학생 코드">${esc(sh.child)}</textarea></label>
       <label class="field"><span>날짜</span><input type="date" class="sh-date" id="shd-${id}" data-shdt="${id}:date" value="${dayKey(sh.start)}"${act?' title="기록 중인 관찰지의 날짜는 관찰을 종료한 뒤 바꿀 수 있습니다"':''}></label>
       <div class="field span2"><span>시간 <small>직접 고칠 수 있음</small></span><div class="sh-range">${t24(`id="shs-${id}" data-shdt="${id}:start"`,fmtTime(sh.start),false,'관찰지 시작 시각')}<span aria-hidden="true">~</span>${t24(`id="she-${id}" data-shdt="${id}:end"`,fmtTime(sh.endedAt||sh.end),false,'관찰지 끝 시각')}</div></div>
-      <label class="field"><span>관찰자</span><input id="sf-${id}-observer" data-f="sheet:${id}:observer" value="${esc(sh.observer)}"></label>
-      <label class="field"><span>장소</span><input id="sf-${id}-place" data-f="sheet:${id}:place" value="${esc(sh.place)}" placeholder="예: 3-2 교실"></label>
+      <label class="field"><span>관찰자</span><textarea rows="1" class="one" id="sf-${id}-observer" data-f="sheet:${id}:observer">${esc(sh.observer)}</textarea></label>
+      <label class="field"><span>장소</span><textarea rows="1" class="one" id="sf-${id}-place" data-f="sheet:${id}:place" placeholder="예: 3-2 교실">${esc(sh.place)}</textarea></label>
       <label class="field wide"><span>상황</span><textarea id="sf-${id}-situation" data-f="sheet:${id}:situation" rows="2" placeholder="예: 국어 시간, 학습지 활동">${esc(sh.situation)}</textarea></label>
     </div>
     <div class="abc-tbl">
@@ -1674,18 +1697,18 @@ function hyBlock(p,h,k,n,multi){
   <section class="card hy-card" id="hy-card-${k}">
     <div class="hy-head"><h2 class="h3">${multi?`가설 ${n}`:'가설 문장'}</h2>${main?'':`<button type="button" class="btn small ghost danger" data-act="ask" data-key="del-hy:${k}">삭제</button>`}</div>
     ${!main&&ui.confirm==='del-hy:'+k?confirmBox(`가설 ${n}을 삭제합니다.`,'del-hy',k):''}
-    <label class="field"><span>배경사건 <small>행동을 부르는 조건</small></span><input id="${I('setting')}" data-f="${F('setting')}" value="${esc(h.setting||'')}" placeholder="예: 잠이 부족한 날, 아침에 가정에서 갈등이 있었던 날"></label>
-    <label class="field"><span>어떤 상황에서 <small>직접 선행사건</small></span><input id="${I('when')}" data-f="${F('when')}" value="${esc(h.when||'')}" placeholder="예: 국어 시간에 학습지를 받았을 때"></label>
+    <label class="field"><span>배경사건 <small>행동을 부르는 조건</small></span><textarea rows="1" class="one" id="${I('setting')}" data-f="${F('setting')}" placeholder="예: 잠이 부족한 날, 아침에 가정에서 갈등이 있었던 날">${esc(h.setting||'')}</textarea></label>
+    <label class="field"><span>어떤 상황에서 <small>직접 선행사건</small></span><textarea rows="1" class="one" id="${I('when')}" data-f="${F('when')}" placeholder="예: 국어 시간에 학습지를 받았을 때">${esc(h.when||'')}</textarea></label>
     ${beh}
-    <label class="field"><span>어떤 결과가 따르나 <small>행동을 유지시키는 후속결과</small></span><input id="${I('cons')}" data-f="${F('cons')}" value="${esc(h.cons||'')}" placeholder="예: 교사가 학습지를 거두어 과제가 중단된다"></label>
+    <label class="field"><span>어떤 결과가 따르나 <small>행동을 유지시키는 후속결과</small></span><textarea rows="1" class="one" id="${I('cons')}" data-f="${F('cons')}" placeholder="예: 교사가 학습지를 거두어 과제가 중단된다">${esc(h.cons||'')}</textarea></label>
     <fieldset class="field"><legend>추정 기능</legend><div class="chips">${FUNCS.map(v=>chip(G('func'),v,funcs.includes(v),'b')).join('')}${showOther?'':`<button type="button" class="chip c-b hy-other-btn" data-act="hy-other" data-id="${k}">기타…</button>`}</div>
-      ${showOther?`<input id="${I('funcOther')}" data-f="${F('funcOther')}" value="${esc(h.funcOther||'')}" placeholder="기타 기능 (직접 입력)" aria-label="기타 기능">`:''}</fieldset>
+      ${showOther?`<textarea rows="1" class="one" id="${I('funcOther')}" data-f="${F('funcOther')}" placeholder="기타 기능 (직접 입력)" aria-label="기타 기능">${esc(h.funcOther||'')}</textarea>`:''}</fieldset>
     <div class="hypo-preview" id="hypo-preview-${k}">${hypoSentence(p,h)}</div>
     <div class="field"><label class="field"><span>근거</span><textarea id="${I('evidence')}" data-f="${F('evidence')}" rows="3" placeholder="예: QABF 도피·회피 13점, ABC 4건 중 3건에서 과제 제시 뒤 발생하고 과제가 중단됨">${esc(h.evidence||'')}</textarea></label>
       <div class="row"><button type="button" class="btn small" data-act="hy-fill" data-id="${k}">자료 요약 넣기</button><small class="muted">근거 끝에 요약 덧붙임</small></div></div>
     <fieldset class="field"><legend>확신 정도</legend><div class="chips">${CONF.map(v=>chip(G('conf'),v,h.confidence===v,'b')).join('')}</div></fieldset>
     ${low?`<fieldset class="field"><legend>검증 계획 <small>확신이 ${esc(h.confidence)}이면 무엇으로 확인할지 고르세요</small></legend><div class="chips">${HY_VERIFY.map(v=>chip(G('verify'),v,verify.includes(v),'b')).join('')}</div>
-      <input id="${I('verifyNote')}" data-f="${F('verifyNote')}" value="${esc(h.verifyNote||'')}" placeholder="예: 다음 주 국어 시간 3회 더 관찰, 과제 제시 조건 비교" aria-label="검증 계획 메모"></fieldset>`:''}
+      <textarea rows="1" class="one" id="${I('verifyNote')}" data-f="${F('verifyNote')}" placeholder="예: 다음 주 국어 시간 3회 더 관찰, 과제 제시 조건 비교" aria-label="검증 계획 메모">${esc(h.verifyNote||'')}</textarea></fieldset>`:''}
     ${main?`<details class="hy-memo" data-hy-memo${ui.hyMemoOpen?' open':''}><summary>메모${(md.memo||'').trim()?' <small class="pill muted">내용 있음</small>':''}</summary>
       <label class="field"><textarea id="hy-memo" data-f="hypo:memo" rows="2" aria-label="메모">${esc(md.memo||'')}</textarea></label></details>`:''}
   </section>`;
@@ -1805,9 +1828,9 @@ function sesRow(p,ph,s,i){
       <label class="field"><span>시작 시각</span><input type="time" id="ses-${s.id}-time" data-f="ses:${k}:time" value="${esc(s.time)}"></label>
       <label class="field"><span>관찰 시간(분)</span><input id="ses-${s.id}-mins" data-f="ses:${k}:mins" value="${esc(s.mins)}" inputmode="decimal" placeholder="예: 40"></label>
       <label class="field bl-val"><span>측정값</span><span class="bl-val-in">${freq?`<button type="button" class="btn small" data-act="ses-inc" data-ph="${ph}" data-id="${s.id}" data-d="-1" aria-label="1 빼기">−</button>`:''}<input id="ses-${s.id}-value" data-f="ses:${k}:value" value="${esc(s.value)}" inputmode="decimal" placeholder="${esc(p.procs.define.data.unit||'숫자')}">${freq?`<button type="button" class="btn small" data-act="ses-inc" data-ph="${ph}" data-id="${s.id}" data-d="1" aria-label="1 더하기">＋1</button>`:''}</span></label>
-      <label class="field wide2"><span>상황 · 활동</span><input id="ses-${s.id}-setting" data-f="ses:${k}:setting" value="${esc(s.setting)}" placeholder="예: 국어, 개별 과제"></label>
-      <label class="field"><span>관찰자</span><input id="ses-${s.id}-observer" data-f="ses:${k}:observer" value="${esc(s.observer)}" placeholder="예: 담임"></label>
-      <label class="field wide2"><span>메모</span><input id="ses-${s.id}-note" data-f="ses:${k}:note" value="${esc(s.note)}" placeholder="예: 시험 주간, 결석 후 첫날"></label>
+      <label class="field wide2"><span>상황 · 활동</span><textarea rows="1" class="one" id="ses-${s.id}-setting" data-f="ses:${k}:setting" placeholder="예: 국어, 개별 과제">${esc(s.setting)}</textarea></label>
+      <label class="field"><span>관찰자</span><textarea rows="1" class="one" id="ses-${s.id}-observer" data-f="ses:${k}:observer" placeholder="예: 담임">${esc(s.observer)}</textarea></label>
+      <label class="field wide2"><span>메모</span><textarea rows="1" class="one" id="ses-${s.id}-note" data-f="ses:${k}:note" placeholder="예: 시험 주간, 결석 후 첫날">${esc(s.note)}</textarea></label>
     </div>
     ${ui.confirm==='del-ses:'+k?confirmBox('이 회기 기록을 삭제합니다.','del-ses',k):''}
   </div>`;
@@ -1852,7 +1875,7 @@ function viewBaseline(p){
     <fieldset class="field"><legend>목표 방향</legend><div class="chips">${BL_DIRS.map(v=>chip('bldir',v,bd.dir===v,'b')).join('')}</div><p class="hint">미선택 시 줄이기</p></fieldset>
     <div class="two">
       <label class="field"><span>목표 값 <small>그래프에 목표선으로 표시</small></span><span class="bl-val-in"><input id="bl-goal" data-f="base:goal" value="${esc(bd.goal)}" inputmode="decimal" placeholder="${esc(p.procs.define.data.unit||'숫자')}"><button type="button" class="btn small" data-act="bl-goal">평균 기준 제안</button></span></label>
-      <label class="field"><span>달성 기준</span><input id="bl-goalnote" data-f="base:goalNote" value="${esc(bd.goalNote)}" placeholder="예: 3회기 연속 목표 값 이하"></label>
+      <label class="field"><span>달성 기준</span><textarea rows="1" class="one" id="bl-goalnote" data-f="base:goalNote" placeholder="예: 3회기 연속 목표 값 이하">${esc(bd.goalNote)}</textarea></label>
     </div>
   </section>
   <section class="card"><h2 class="h3">기초선 확정</h2>
@@ -1916,10 +1939,10 @@ function raterRow(d,r,i){
   return `<div class="r-row" id="rr-${r.id}">
     <div class="r-row-head"><b>응답자 ${i+1}</b><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-rrow:${k}">삭제</button></div>
     <div class="r-grid">
-      <label class="field"><span>이름·호칭</span><input id="rr-${r.id}-name" data-f="rrow:${k}:name" value="${esc(r.name)}" placeholder="예: 담임교사 A"></label>
+      <label class="field"><span>이름·호칭</span><textarea rows="1" class="one" id="rr-${r.id}-name" data-f="rrow:${k}:name" placeholder="예: 담임교사 A">${esc(r.name)}</textarea></label>
       <label class="field"><span>관계</span><select id="rr-${r.id}-role" data-f="rrow:${k}:role">${RATING_ROLES.map(x=>`<option value="${x}"${r.role===x?' selected':''}>${x||'선택'}</option>`).join('')}</select></label>
       <label class="field"><span>실시일</span><input type="date" id="rr-${r.id}-date" data-f="rrow:${k}:date" value="${esc(r.date)}"></label>
-      <label class="field"><span>학생을 관찰한 기간</span><input id="rr-${r.id}-period" data-f="rrow:${k}:period" value="${esc(r.period)}" placeholder="예: 3월부터 약 8개월, 주 5일"></label>
+      <label class="field"><span>학생을 관찰한 기간</span><textarea rows="1" class="one" id="rr-${r.id}-period" data-f="rrow:${k}:period" placeholder="예: 3월부터 약 8개월, 주 5일">${esc(r.period)}</textarea></label>
     </div>
     ${ui.confirm==='del-rrow:'+k?confirmBox('이 응답자를 삭제합니다. 이 응답자로 적은 점수 행은 남고 응답자 칸만 비워집니다.','del-rrow',k):''}
   </div>`;
@@ -1928,10 +1951,10 @@ function scoreRow(d,r){
   const k=`row:${r.id}`;
   return `<div class="r-row" id="rs-${r.id}">
     <div class="r-grid score">
-      <label class="field wide2"><span>하위영역</span><input id="rs-${r.id}-domain" data-f="rrow:${k}:domain" value="${esc(r.domain)}" placeholder="예: 주의력 문제"></label>
+      <label class="field wide2"><span>하위영역</span><textarea rows="1" class="one" id="rs-${r.id}-domain" data-f="rrow:${k}:domain" placeholder="예: 주의력 문제">${esc(r.domain)}</textarea></label>
       <label class="field"><span>응답자</span><select id="rs-${r.id}-rater" data-f="rrow:${k}:rater"><option value="">선택</option>${d.raters.map((x,i)=>`<option value="${x.id}"${r.rater===x.id?' selected':''}>${esc(x.name||x.role||`응답자 ${i+1}`)}</option>`).join('')}</select></label>
       <label class="field"><span>원점수</span><input id="rs-${r.id}-raw" data-f="rrow:${k}:raw" value="${esc(r.raw)}" inputmode="decimal" placeholder="예: 14"></label>
-      <label class="field"><span>표준점수·백분위</span><input id="rs-${r.id}-std" data-f="rrow:${k}:std" value="${esc(r.std)}" placeholder="예: T 68, 96%ile"></label>
+      <label class="field"><span>표준점수·백분위</span><textarea rows="1" class="one" id="rs-${r.id}-std" data-f="rrow:${k}:std" placeholder="예: T 68, 96%ile">${esc(r.std)}</textarea></label>
       <label class="field"><span>기준</span><select id="rs-${r.id}-level" data-f="rrow:${k}:level">${RATING_LEVELS.map(x=>`<option value="${x}"${r.level===x?' selected':''}>${x||'선택'}</option>`).join('')}</select></label>
       <div class="r-x"><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-rrow:${k}" title="이 행 삭제">삭제</button></div>
     </div>
@@ -1964,11 +1987,11 @@ function viewRating(p){
   const old=(d.when||'').trim()||(d.scores||'').trim();
   return `
   <section class="card"><h2 class="h3">척도 정보</h2>
-    <label class="field"><span>척도 이름</span><input id="rt-scale" data-f="rating:scale" value="${esc(d.scale)}" placeholder="예: SDQ, K-CBCL, 학교 행동평정척도"></label>
+    <label class="field"><span>척도 이름</span><textarea rows="1" class="one" id="rt-scale" data-f="rating:scale" placeholder="예: SDQ, K-CBCL, 학교 행동평정척도">${esc(d.scale)}</textarea></label>
     <div class="row"><a class="btn small" href="https://sdqinfo.org/py/sdqinfo/b0.py" target="_blank" rel="noopener noreferrer">SDQ 설문 받기 (언어별)</a><small class="muted">SDQ 사이트 새 창 열기</small></div>
     <fieldset class="field"><legend>척도 종류</legend><div class="chips">${RATING_TYPES.map(v=>chip('rtype',v,d.type===v,'b')).join('')}</div>
       <p class="hint" id="rtype-tip">${esc(RATING_TYPE_TIP[d.type]||'종류 고르면 안내 표시')}</p></fieldset>
-    <label class="field"><span>실시 목적</span><input id="rt-purpose" data-f="rating:purpose" value="${esc(d.purpose)}" placeholder="예: 자리 이탈 외에 다른 문제행동 영역이 있는지 선별"></label>
+    <label class="field"><span>실시 목적</span><textarea rows="1" class="one" id="rt-purpose" data-f="rating:purpose" placeholder="예: 자리 이탈 외에 다른 문제행동 영역이 있는지 선별">${esc(d.purpose)}</textarea></label>
   </section>
   <section class="card"><div class="sec-head"><h2 class="h3">응답자</h2><span class="meta">응답자마다 한 줄</span></div>
     <div class="r-list" id="r-raters">${d.raters.length?d.raters.map((r,i)=>raterRow(d,r,i)).join(''):'<p class="rows-empty">아직 응답자가 없습니다.</p>'}</div>
@@ -1982,7 +2005,7 @@ function viewRating(p){
   <section class="card"><h2 class="h3">표적행동과의 연결</h2>
     <label class="field"><span>이 결과가 표적행동에 대해 말해 주는 것</span><textarea id="rt-target" data-f="rating:target" rows="3" placeholder="예: 주의력 문제 영역이 임상 범위 — 자리 이탈이 과제 집중 시간과 관련 있을 수 있음">${esc(d.target)}</textarea></label>
     <fieldset class="field"><legend>기능 가설 단서 <small>해당하면 고르세요</small></legend><div class="chips">${FUNCS.map(v=>chip('rfunc',v,d.funcs.includes(v),'b')).join('')}</div></fieldset>
-    <label class="field"><span>단서가 된 문항·영역</span><input id="rt-funcnote" data-f="rating:funcNote" value="${esc(d.funcNote)}" placeholder="예: '과제를 주면 자리를 뜬다' 문항에 두 응답자 모두 '자주'"></label>
+    <label class="field"><span>단서가 된 문항·영역</span><textarea rows="1" class="one" id="rt-funcnote" data-f="rating:funcNote" placeholder="예: '과제를 주면 자리를 뜬다' 문항에 두 응답자 모두 '자주'">${esc(d.funcNote)}</textarea></label>
     <p class="hint">여기엔 기능 단서만</p>
   </section>
   <section class="card"><h2 class="h3">응답자 간 차이</h2>
@@ -1997,7 +2020,7 @@ function viewRating(p){
     <p class="hint">이 브라우저에만 저장</p>
     <div class="two">
       <label class="field"><span>재실시 예정일 <small>사후 평가</small></span><input type="date" id="rt-retest" data-f="rating:retestDate" value="${esc(d.retestDate)}"></label>
-      <label class="field"><span>재실시 메모</span><input id="rt-retestnote" data-f="rating:retestNote" value="${esc(d.retestNote)}" placeholder="예: 중재 6주 뒤 같은 응답자에게 다시 실시"></label>
+      <label class="field"><span>재실시 메모</span><textarea rows="1" class="one" id="rt-retestnote" data-f="rating:retestNote" placeholder="예: 중재 6주 뒤 같은 응답자에게 다시 실시">${esc(d.retestNote)}</textarea></label>
     </div>
   </section>
   ${old?`<details class="card later"><summary>예전에 적은 내용<small>전용 화면 이전에 적은 칸</small></summary>
@@ -3003,7 +3026,7 @@ function inkSvg(ink){
 function inkInner(spec){
   const t=inkTarget(spec);const ink=t&&inkGet(t);
   if(inkUI.mode!=='ink')return ink?`<button type="button" class="ink-view" data-act="kb-open" title="눌러서 손글씨를 보며 키보드로 쓰기" aria-label="손글씨 (눌러서 보며 키보드로 쓰기)">${inkSvg(ink)}</button>`:'';
-  const host=inkHost(spec);const tall=!!(host&&host.tagName==='TEXTAREA');
+  const host=inkHost(spec);const tall=!!(host&&host.tagName==='TEXTAREA'&&!host.classList.contains('one'));
   return ink
     ?`<button type="button" class="ink-view" data-act="ink-open" title="눌러서 손글씨 고치기" aria-label="손글씨 (눌러서 고치기)">${inkSvg(ink)}</button>`
     :`<button type="button" class="ink-empty${tall?' tall':''}" data-act="ink-open" aria-label="손글씨로 쓰기">✍ 여기에 손글씨로 쓰기</button>`;
@@ -3052,7 +3075,7 @@ function inkSave(pad){
 function inkOpen(box){
   if(inkUI.pad)inkClose();
   const spec=box.dataset.k;const t=inkTarget(spec);if(!t)return;
-  const single=!/^textarea$/i.test((box.previousElementSibling||{}).tagName||'');
+  const prev=box.previousElementSibling;const single=!(prev&&prev.tagName==='TEXTAREA'&&!prev.classList.contains('one'));
   box.innerHTML=`<div class="ink-pad${inkUI.penSeen?' pen-only':''}">
     <canvas aria-label="손글씨 입력 칸"></canvas>
     <div class="ink-grip" role="separator" aria-orientation="horizontal" aria-label="손글씨 칸 높이 조절 (끌어서 늘이기·줄이기)" title="끌어서 칸 높이 조절"></div>
@@ -3359,7 +3382,7 @@ function kbOpen(spec,text){
   const t=inkTarget(spec);if(!t)return;
   const ink=inkGet(t);const host=inkHost(spec);
   const orig=kbValue(spec,t);const val=text!=null?text:orig;
-  const single=!!(host&&host.tagName!=='TEXTAREA');
+  const single=!!(host&&(host.tagName!=='TEXTAREA'||host.classList.contains('one')));
   const d=document.createElement('div');d.className='kb-float';d.id='kb-float';
   d.setAttribute('role','dialog');d.setAttribute('aria-label','손글씨 보며 키보드로 쓰기');
   d.innerHTML=`<div class="kb-head"><span class="kb-name">손글씨 보며 쓰기 · ${esc(kbLabel(host)||'손글씨 옮겨 쓰기')}</span></div>
@@ -3838,7 +3861,7 @@ async function syncFlush(force){
 /* 글 칸·손글씨는 완료(칸 벗어나기·손글씨 '완료'·키보드 '완료')를 누를 때 보내고, 선택·체크·버튼은 바로 */
 document.addEventListener('input',e=>{if(!Sync.cur)return;const el=e.target;if(!(el.matches&&el.matches('textarea,input:not([type]),input[type=text]')))syncFlushSoon(0);});
 document.addEventListener('click',e=>{if(Sync.cur&&e.target.closest&&e.target.closest('[data-ink="done"]'))syncFlushSoon(50);});
-document.addEventListener('keydown',e=>{if(Sync.cur&&e.key==='Enter'&&e.target.matches&&e.target.matches('input:not([type]),input[type=text]'))syncFlushSoon(50,true);});/* 한 줄 칸에서 키보드 '완료'(Enter) */
+document.addEventListener('keydown',e=>{if(Sync.cur&&e.key==='Enter'&&e.target.matches&&e.target.matches('input:not([type]),input[type=text],textarea.one'))syncFlushSoon(50,true);});/* 한 줄 칸에서 키보드 '완료'(Enter) */
 (function(){const vv=window.visualViewport;if(!vv)return;let h=vv.height;vv.addEventListener('resize',()=>{if(Sync.cur&&vv.height-h>120&&!inkUI.kb)setTimeout(()=>{if(pageActive())syncFlushSoon(0,true);},400);h=vv.height;});})();/* 키보드를 내리면(키보드 '완료') 보낸다 */
 document.addEventListener('change',e=>{if(!Sync.cur)return;const el=e.target;if(!(el.matches&&el.matches('textarea,input:not([type]),input[type=text]')))syncFlushSoon(0);});
 document.addEventListener('click',e=>{if(Sync.cur&&e.target.closest&&e.target.closest('[data-act]'))syncFlushSoon(100);});
