@@ -3887,7 +3887,7 @@ function syncStatusUI(){
   el.hidden=false;el.className='sync-state '+cls;el.textContent=t;
 }
 
-/* ---- 화면: 칸 옆 "마지막 수정"·"다른 버전 n개" ---- */
+/* ---- 화면: 칸 옆 "다른 버전 n개" (마지막 수정자는 표시하지 않음) ---- */
 let syncDecQueued=false;
 function syncDecorateSoon(){if(syncDecQueued)return;syncDecQueued=true;Promise.resolve().then(()=>{syncDecQueued=false;syncDecorate();});}
 function syncOther(c,curJson){/* 충돌 기록에서 지금 칸 값과 다른 쪽 */
@@ -3905,14 +3905,13 @@ function syncDecorate(){
     const holder=el.closest('.td')?el.closest('.td').querySelector('.cell-label'):(el.closest('.field')?el.closest('.field').querySelector(':scope > span, :scope > legend'):null);
     if(!holder)return;
     let m=holder.querySelector(':scope > .sync-meta');
-    const c=path&&S.cells.get(path);const nc=path?syncConfFor(path).length:0;
-    const sig=c?[path,c.byName,c.at,nc].join('|'):(nc?path+'|'+nc:'');
+    const nc=path?syncConfFor(path).length:0;
+    const sig=nc?path+'|'+nc:'';
     if(!sig){if(m)m.remove();return;}
     if(m&&m.dataset.sig===sig)return;
     if(!m){m=document.createElement('span');m.className='sync-meta';holder.appendChild(m);}
     m.dataset.sig=sig;
-    m.innerHTML=(c&&c.by?`<button type="button" class="sync-mbtn" data-act="sync-hist" data-path="${esc(path)}" title="수정 기록 보기">마지막 수정: ${esc(c.byName||'이름 없음')}${c.at?' · '+fmtShort(c.at):''}</button>`:'')
-      +(nc?`<button type="button" class="sync-cbtn" data-act="sync-conf" data-path="${esc(path)}">다른 버전 ${nc}개</button>`:'');
+    m.innerHTML=`<button type="button" class="sync-cbtn" data-act="sync-conf" data-path="${esc(path)}">다른 버전 ${nc}개</button>`;
   });
 }
 let syncDecObsQ=false;
