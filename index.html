@@ -20,6 +20,7 @@
   --rec:#BF3628; --rec-soft:#F9DEDA; --ok:#27744A; --ok-soft:#D8EEE0; --warn:#866000; --warn-soft:#F4E9C6;
   --shadow:0 1px 2px rgba(21,36,38,.06),0 6px 18px rgba(21,36,38,.05);
   --tag-ink:#FFFFFF;
+  --qc0:#1B6862; --qc1:#2C52A0; --qc2:#C2540A; --qc3:#8B3FA0; --qc4:#B0305E; --qc5:#5F7414;
   --font-display:"Gowun Batang","Nanum Myeongjo","AppleMyungjo",serif;
   --font-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
   --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
@@ -33,6 +34,7 @@
   --rec:#F27B6C; --rec-soft:#45201B; --ok:#6BC493; --ok-soft:#173327; --warn:#E0BA52; --warn-soft:#382E12;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
   --tag-ink:#0F191A;
+  --qc0:#5DB6AB; --qc1:#91AAEA; --qc2:#F0A060; --qc3:#C99BE0; --qc4:#F08CB0; --qc5:#B5CC5E;
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
@@ -43,6 +45,7 @@
   --rec:#F27B6C; --rec-soft:#45201B; --ok:#6BC493; --ok-soft:#173327; --warn:#E0BA52; --warn-soft:#382E12;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
   --tag-ink:#0F191A;
+  --qc0:#5DB6AB; --qc1:#91AAEA; --qc2:#F0A060; --qc3:#C99BE0; --qc4:#F08CB0; --qc5:#B5CC5E;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -219,6 +222,14 @@ details.card.later summary small{font-weight:400;color:var(--muted);margin-left:
 .bl-val-in{display:flex;gap:6px;align-items:center}
 .bl-val-in input{flex:1 1 60px;min-width:0}
 .bl-val-in .btn{flex-shrink:0;min-width:44px;padding:0 10px}
+.qc-legend{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px}
+.qc-legend li{display:flex;align-items:center;gap:6px}
+.qc-legend small{color:var(--muted)}
+.qc-en{font-size:10px}
+.qc-line{fill:none;stroke:var(--qc);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.qc-dash .qc-line{stroke-dasharray:6 4}
+.qc-dot{fill:var(--qc);stroke:var(--surface-2);stroke-width:2}
+.qc-s0{--qc:var(--qc0)}.qc-s1{--qc:var(--qc1)}.qc-s2{--qc:var(--qc2)}.qc-s3{--qc:var(--qc3)}.qc-s4{--qc:var(--qc4)}.qc-s5{--qc:var(--qc5)}
 .bl-chart{width:100%;height:auto;display:block;background:var(--surface-2);border-radius:10px}
 .bl-grid{stroke:var(--line);stroke-width:1}
 .bl-tick{fill:var(--muted);font-size:11px;font-family:var(--font-body)}
@@ -1437,12 +1448,21 @@ function qResult(f){
   <p class="hint">척도별 합, X 제외</p>`;
 }
 function qCompare(forms){
-  const all=forms.map(f=>qabfScores(f));
-  const maxes=all.map(sc=>Math.max.apply(null,sc.map(s=>s.total)));
-  return `<section class="card"><h2 class="h3">응답자별 비교</h2><div class="table-wrap"><table>
-    <thead><tr><th>하위척도</th>${forms.map(f=>`<th>${esc(f.rater||'응답자 미입력')}${f.role?` <small>${esc(f.role)}</small>`:''}</th>`).join('')}</tr></thead>
-    <tbody>${QABF_SCALES.map((s,i)=>`<tr><td>${s.name}</td>${all.map((sc,j)=>`<td class="num${sc[i].total===maxes[j]&&maxes[j]>0?' top':''}">${sc[i].total}</td>`).join('')}</tr>`).join('')}</tbody>
-  </table></div></section>`;
+  const all=forms.map(f=>qabfScores(f));const n=forms.length;const nm=f=>f.rater||'응답자 미입력';
+  const W=640,H=260,L=40,R=16,T=18,Bm=44;const pw=W-L-R,ph=H-T-Bm;
+  const off=j=>n>1?(j-(n-1)/2)*Math.min(6,24/(n-1)):0;
+  const x=(i,j)=>L+pw*(i+0.5)/QABF_SCALES.length+off(j),y=v=>T+ph-(v/15)*ph;
+  let g='';
+  for(let v=0;v<=15;v+=3)g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" class="bl-grid"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" class="bl-tick">${v}</text>`;
+  QABF_SCALES.forEach((s,i)=>{g+=`<text x="${x(i,0)-off(0)}" y="${H-Bm+18}" text-anchor="middle" class="bl-tick">${s.name}</text><text x="${x(i,0)-off(0)}" y="${H-Bm+32}" text-anchor="middle" class="bl-tick qc-en">${s.en}</text>`;});
+  g+=`<text x="${L}" y="11" class="bl-tick">점</text>`;
+  all.forEach((sc,j)=>{const c=`qc-s${j%6}`;const pts=sc.map((s,i)=>`${x(i,j)},${y(s.total)}`).join(' ');
+    g+=`<g class="qc-ser ${c}${j>=6?' qc-dash':''}"><polyline points="${pts}" class="qc-line"/>${sc.map((s,i)=>`<g><circle cx="${x(i,j)}" cy="${y(s.total)}" r="12" class="bl-hit"/><circle cx="${x(i,j)}" cy="${y(s.total)}" r="4.5" class="qc-dot"/><title>${esc(nm(forms[j]))} · ${s.name}: ${s.total}점</title></g>`).join('')}</g>`;});
+  const lab='응답자별 하위척도 점수 선 그래프: '+forms.map((f,j)=>`${nm(f)} ${all[j].map(s=>s.name+' '+s.total).join(', ')}`).join(' / ');
+  return `<section class="card"><h2 class="h3">응답자별 비교</h2>
+  <ul class="qc-legend">${forms.map((f,j)=>`<li class="qc-s${j%6}${j>=6?' qc-dash':''}"><svg width="22" height="10" aria-hidden="true"><line x1="1" x2="21" y1="5" y2="5" class="qc-line"/><circle cx="11" cy="5" r="3.5" class="qc-dot"/></svg>${esc(nm(f))}${f.role?` <small>${esc(f.role)}</small>`:''}</li>`).join('')}</ul>
+  <svg class="bl-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(lab)}">${g}</svg>
+  <p class="hint">척도별 합(15점 만점)</p></section>`;
 }
 
 /* 4. ABC */
