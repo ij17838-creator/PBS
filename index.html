@@ -888,13 +888,33 @@ function newProject(code,memo){
 function touch(p,key){
   const s=p.procs[key];const t=nowISO();
   s.updatedAt=t;if(s.status==='none')s.status='progress';
+  /* 완료된 절차를 그 화면에서 고치기 시작하면 '진행 중'으로 바꿔 '이 절차 완료'로 다시 저장하게 한다 */
+  else if(s.status==='done'&&ui.view==='proc'&&ui.proc===key&&ui.projectId===p.id){doneSnapKeep(p,key);s.status='progress';}
   p.updatedAt=t;scheduleSave();
   if(ui.view==='proc'&&ui.proc===key&&ui.projectId===p.id)refreshStatus(p);
 }
+/* 완료할 때의 내용 지문(이 기기에만 저장, 서버로 안 보냄): 다시 완료할 때 바뀐 게 없으면 예전 완료 그대로 둔다 */
+function procSig(s){
+  const j=JSON.stringify(s.data);let h1=0xdeadbeef,h2=0x41c6ce57;
+  for(let i=0;i<j.length;i++){const c=j.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677);}
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return j.length+':'+(h2>>>0).toString(36)+(h1>>>0).toString(36);
+}
+function doneSnaps(){return store.settings.doneSnap=store.settings.doneSnap||{};}
+function doneSnapSet(p,key){const s=p.procs[key];if(s&&s.status==='done')doneSnaps()[p.id+'/'+key]={sig:procSig(s),at:s.updatedAt,done:s.completedAt};}
+function doneSnapKeep(p,key){const m=doneSnaps(),k=p.id+'/'+key,o=m[k],s=p.procs[key];if(o&&o.done!==s.completedAt)delete m[k];}/* 다른 완료 기록이면 버린다 */
 function setDone(p,key,done){
   const s=p.procs[key];const t=nowISO();
-  if(done){s.status='done';s.completedAt=t;s.updatedAt=t;}else{s.status='progress';}
-  p.updatedAt=t;saveNow();refreshStatus(p);
+  if(done){
+    const o=doneSnaps()[p.id+'/'+key];
+    if(o&&s.completedAt&&o.done===s.completedAt&&o.sig===procSig(s)){/* 완료 때와 내용이 같음: 시각을 그대로 두어 서버로 보낼 것이 없게 한다 */
+      s.status='done';s.updatedAt=o.at||s.completedAt;saveNow();refreshStatus(p);
+      toast('바뀐 내용이 없어 그대로 둡니다');return;
+    }
+    s.status='done';s.completedAt=t;s.updatedAt=t;
+  }else{s.status='progress';}
+  p.updatedAt=t;if(done)doneSnapSet(p,key);saveNow();refreshStatus(p);
   toast(done?'완료로 표시했습니다. 언제든 다시 고칠 수 있습니다.':'진행 중으로 되돌렸습니다');
 }
 function isEdited(s){return s.status==='done'&&s.completedAt&&s.updatedAt&&(new Date(s.updatedAt)-new Date(s.completedAt)>1500);}
@@ -1111,6 +1131,7 @@ function procCard(p,x){
 /* procedure wrapper */
 function viewProc(p,key){
   const x=PROC[key];const s=p.procs[key];
+  if(s&&s.status==='done')doneSnapSet(p,key);/* 지금 보이는 완료 내용을 기준으로 삼는다(예전 자료·다른 기기 수정 포함) */
   let body;
   switch(key){
     case 'profile':body=viewProfile(p);break;
@@ -1136,7 +1157,7 @@ function viewProc(p,key){
 function statusPill(s){const st=statusInfo(s);return `<span class="status ${st.cls}">${st.label}</span>`;}
 function doneBar(s){
   if(s.status==='done')return `<p>완료 ${fmtDT(s.completedAt)}${isEdited(s)?` · 완료 후 수정 ${fmtDT(s.updatedAt)}`:''}</p><button type="button" class="btn" data-act="undone">진행 중으로 되돌리기</button>`;
-  return `<p>${s.status==='none'?'아직 시작 전':'자동 저장 중'}</p><button type="button" class="btn primary" data-act="done">이 절차 완료</button>`;
+  return `<p>${s.status==='none'?'아직 시작 전':s.completedAt?'완료 후 수정 중':'자동 저장 중'}</p><button type="button" class="btn primary" data-act="done">이 절차 완료</button>`;
 }
 function refreshStatus(p){
   const s=p.procs[ui.proc];if(!s)return;
@@ -3810,7 +3831,7 @@ function syncPending(S){
   /* 예전 판이 서버에 올린 손글씨는 지운다(손글씨는 이 기기에만) */
   S.cells.forEach((c,pa)=>{if(!c.deleted&&INK_PATH.test(pa)&&!Sync.inkGone.has(pa)&&!d.cells.some(w=>w.path===pa))d.cells.push({path:pa,deleted:true});});
   /* 고쳤다가 원래대로 되돌린 경우 내용 칸은 diff에 안 나온다. 그때 남는 수정 시각·진행 상태 칸만으로는 보내지 않는다(다음에 내용이 바뀔 때 함께 감) */
-  if(!d.items.length&&d.cells.every(w=>SYNC_META.test(w.path)))return {cells:[],items:[]};
+  if(!d.items.length&&d.cells.every(w=>SYNC_META.test(w.path)&&!(/\/status$/.test(w.path)&&w.value==='done')))return {cells:[],items:[]};/* 다시 '완료'로 돌린 것은 보낸다 */
   return d;
 }
 function syncFlushSoon(ms,force){clearTimeout(Sync.ft);Sync.ft=setTimeout(()=>syncFlush(force),ms);}
