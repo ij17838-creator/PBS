@@ -1406,7 +1406,7 @@ function viewQabf(p){
   </section>
   ${ui.qItemsOpen?qItemsPanel():''}
   ${f?qFormView(p,f):`<div class="empty">아직 응답지가 없습니다. 교사·보호자 등 응답자마다 응답지를 하나씩 추가하세요.<button type="button" class="btn primary" data-act="qadd">응답지 추가</button></div>`}
-  ${q.forms.length>1?qCompare(q.forms):''}
+  ${q.forms.length?qCompare(q.forms):''}
   <p class="hint">25문항·5척도, 0~3점</p>`;
 }
 function qItemsPanel(){
@@ -1555,7 +1555,7 @@ function obsView(p){
   <div class="obs-bar">
     <button type="button" class="btn primary stamp" data-act="stamp">행동 발생 · 지금 시각 찍기</button>
     <span class="obs-state" id="obs-state">${obsStateText(p)}</span>
-  </div>
+  </div>${natTargetRow(p,'abc')}
   <div class="obs-ctrl">
     <div class="obs-times">
       <label class="field interval"><span>관찰 간격</span><span class="unit"><input type="number" inputmode="numeric" min="1" max="180" step="1" id="obs-interval" data-f="abcset:interval" value="${a.interval}"><span>분</span></span></label>
@@ -4295,10 +4295,12 @@ function natUI(){
     const b=$(`#ses-${s.id} [data-act="ses-nat"]`);if(b){b.textContent=on?'알림창 버튼 끄기':'알림창 ＋1 켜기';b.classList.toggle('primary',on);b.setAttribute('aria-pressed',String(on));}
     const t=$(`#ses-${s.id}-nat`);if(t)t.textContent=natLogText(p,ph,s);
   }));
-  ['bl','iv'].forEach(ph=>{const r=$(`#nat-target-${ph}`);if(r)r.outerHTML=natTargetRow(p,ph);});
+  ['bl','iv','abc'].forEach(ph=>{const r=$(`#nat-target-${ph}`);if(r)r.outerHTML=natTargetRow(p,ph);});
 }
 function natFind(key){
-  const [pid,ph,sid]=String(key||'').split('|');const p=projById(pid);if(!p||(ph!=='bl'&&ph!=='iv'))return null;
+  const [pid,ph,sid]=String(key||'').split('|');const p=projById(pid);
+  if(p&&ph==='abc'){const sh=abcData(p).sheets.find(x=>x.natId&&x.natId===sid);return sh?{p,ph,sh}:null;}
+  if(!p||(ph!=='bl'&&ph!=='iv'))return null;
   const s=sesList(p,ph).find(x=>x.id===sid||(x.natId&&x.natId===sid));return s?{p,ph,s}:null;
 }
 function natHms(t){const dt=new Date(Number(t)||Date.now());return [dt.getHours(),dt.getMinutes(),dt.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');}
@@ -4306,11 +4308,31 @@ function natHms(t){const dt=new Date(Number(t)||Date.now());return [dt.getHours(
 function natResolve(key){
   const f=natFind(key);if(f)return f;
   const [pid,ph,sid]=String(key||'').split('|');const p=projById(pid);
+  if(p&&ph==='abc'&&/^new:\d+$/.test(sid||''))return natAbcSheet(p,sid);
   if(!p||(ph!=='bl'&&ph!=='iv')||!/^new:\d+$/.test(sid||''))return null;
   const list=sesList(p,ph);const st=new Date(Number(sid.slice(4)));
   const prev=blSorted(list).slice(-1)[0]||(ph==='iv'?blSorted(p.procs.baseline.data.sessions).slice(-1)[0]:null);
   const s=blNew(prev);s.natId=sid;s.date=ymdLocal(st);s.time=natHms(st.getTime()).slice(0,5);s.value='0';
   list.push(s);return {p,ph,s,created:true};
+}
+/* ABC: 앱 밖에서 연 관찰은 관찰지 1장(타이머 없이)으로 만든다. 진행 중인 관찰이 없으면 '지금 관찰'로 보이게 한다 */
+function natAbcSheet(p,sid){
+  const a=abcData(p);const ms=Number(sid.slice(4));const st=new Date(ms).toISOString();
+  const sh=makeSheet(p,'nat'+ms,st,null,null,'snat'+ms);sh.natId=sid;sh.endedAt=sh.end;
+  a.sheets.push(sh);
+  if(!(a.session&&a.session.running))a.session={id:'nat'+ms,running:false,activeSheetId:null,endAt:null};
+  return {p,ph:'abc',sh,created:true};
+}
+/* ABC: 버튼 한 번 = 발생 시각 한 행(B는 표적행동 이름, A·C는 나중에 채움), −1 = 마지막으로 찍은 빈 행 지우기 */
+function natAbcTap(f,e){
+  const {p,sh}=f;const d=Number(e.d)>0?1:-1;const t=new Date(Number(e.t)||Date.now()).toISOString();
+  if(d>0){
+    sh.rows.push({id:'w'+uid('n'),time:t,a:'',b:p.procs.define.data.name||'',c:'',nat:1});
+    if(Date.parse(t)>=Date.parse(sh.end)){sh.end=new Date(Date.parse(t)+60000).toISOString();sh.endedAt=sh.end;}
+  }else{
+    for(let i=sh.rows.length-1;i>=0;i--){const r=sh.rows[i];if(r.nat&&!String(r.a||'').trim()&&!String(r.c||'').trim()){sh.rows.splice(i,1);break;}}
+  }
+  sh.updatedAt=nowISO();
 }
 /* 지속시간: durLog('시작-끝' 시각 목록)으로 측정값을 다시 계산. 단위에 '총'이나 '회기'가 없고 '/회'가 있으면 1회 평균, 아니면 총 분 */
 function natDurValue(p,s){
@@ -4338,7 +4360,8 @@ async function natDrain(){
       const f=natResolve(e.key);if(!f){lost++;return;}
       if(f.created){made++;f.created=false;}
       const {s}=f;
-      if(e.k==='b'){/* 회기 시작만 (0회도 기록) */}
+      if(f.ph==='abc'){if(!e.k)natAbcTap(f,e);}
+      else if(e.k==='b'){/* 회기 시작만 (0회도 기록) */}
       else if(e.k==='ds'||e.k==='de'){
         const segs=String(s.durLog||'').split(/\s+/).filter(Boolean);const open=segs.length&&/-$/.test(segs[segs.length-1]);
         if(e.k==='ds'){if(!open)segs.push(natHms(e.t)+'-');}
@@ -4353,16 +4376,17 @@ async function natDrain(){
       }
       hit.set(e.key,f);
     });
-    hit.forEach(f=>touch(f.p,sesProc(f.ph)));
+    hit.forEach(f=>touch(f.p,f.ph==='abc'?'abc':sesProc(f.ph)));
     if(hit.size){
       saveNow();const p=curProject();
+      if(p&&Array.from(hit.values()).some(f=>f.p===p&&f.ph==='abc')&&onAbcPage(p))renderAbcAll();
       if(made&&p&&Array.from(hit.values()).some(f=>f.p===p)&&ui.view==='proc'){const y=window.scrollY;render();window.scrollTo(0,y);}
       else{
-        hit.forEach(f=>{if(f.p!==p)return;const v=$(`#ses-${f.s.id}-value`);if(v&&document.activeElement!==v)v.value=f.s.value;const dl=$(`#ses-${f.s.id}-dur`);if(dl)dl.parentElement.outerHTML=natDurRow(f.s);});
+        hit.forEach(f=>{if(f.p!==p||f.ph==='abc')return;const v=$(`#ses-${f.s.id}-value`);if(v&&document.activeElement!==v)v.value=f.s.value;const dl=$(`#ses-${f.s.id}-dur`);if(dl)dl.parentElement.outerHTML=natDurRow(f.s);});
         if(p&&Array.from(hit.values()).some(f=>f.p===p))refreshBl(p);
       }
-      const cur=nat.key&&hit.get(nat.key);if(cur&&!cur.s.durLog)natSync(cur.p,cur.ph,cur.s);
-      if(made)toast(`앱 밖에서 시작한 회기 ${made}개를 넣었습니다`);
+      const cur=nat.key&&hit.get(nat.key);if(cur&&cur.s&&!cur.s.durLog)natSync(cur.p,cur.ph,cur.s);
+      if(made)toast(`앱 밖에서 시작한 기록 ${made}개를 넣었습니다`);
     }
     if(nat.key&&!natFind(nat.key)&&!/\|new:\d+$/.test(nat.key)){await PCN.stop();nat.key=null;}/* 회기가 지워졌으면 알림도 끈다 */
     if(nat.target&&!projById(nat.target.pid)){await PCN.clearTarget();nat.target=null;}/* 프로젝트가 지워졌으면 대상도 끈다 */
@@ -4371,27 +4395,27 @@ async function natDrain(){
   finally{nat.busy=false;natUI();if(nat.again){nat.again=false;natDrain();}}
 }
 /* 기초선·중재 화면의 '앱 밖 측정' 줄 (빈도·지속시간만) */
-function natMode(p){const m=p.procs.define.data.measure;return m==='빈도'?'freq':m==='지속시간'?'dur':null;}
-function natTargetOn(p,ph){const t=nat.target;return !!(t&&t.pid===p.id&&t.ph===ph&&t.mode===natMode(p));}
+function natMode(p,ph){if(ph==='abc')return 'freq';const m=p.procs.define.data.measure;return m==='빈도'?'freq':m==='지속시간'?'dur':null;}
+function natTargetOn(p,ph){const t=nat.target;return !!(t&&t.pid===p.id&&t.ph===ph&&t.mode===natMode(p,ph));}
 function natTargetRow(p,ph){
   if(!PCN)return '';
-  const m=natMode(p);
+  const m=natMode(p,ph);
   if(!m)return `<div class="bl-nat nat-target" id="nat-target-${ph}"><span class="muted">앱 밖 측정 미지원</span></div>`;
   const on=natTargetOn(p,ph);
   return `<div class="bl-nat nat-target" id="nat-target-${ph}">
     <button type="button" class="btn small${on?' primary':''}" data-act="nat-target" data-ph="${ph}" aria-pressed="${on}">${on?'앱 밖 측정 끄기':'앱 밖 측정 켜기'}</button>
     ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>`:''}
-    <span class="muted">${on?'앱이 꺼져도 기록돼요':'위젯·알림창에서 기록'}</span>
+    <span class="muted">${on?(ph==='abc'?'＋1마다 시각 한 행':'앱이 꺼져도 기록돼요'):'위젯·알림창에서 기록'}</span>
   </div>`;
 }
 async function natTargetToggle(el){
-  const p=curProject();if(!p||!PCN)return;const ph=el.dataset.ph;const m=natMode(p);if(!m)return;
+  const p=curProject();if(!p||!PCN)return;const ph=el.dataset.ph;const m=natMode(p,ph);if(!m)return;
   await natDrain();
   try{
     if(natTargetOn(p,ph)){const r=await PCN.clearTarget();nat.key=r.active?r.key:null;nat.target=null;toast('앱 밖 측정을 껐습니다');}
     else{
       const had=nat.target&&(nat.target.pid!==p.id||nat.target.ph!==ph);
-      const r=await PCN.setTarget({pid:p.id,ph,mode:m,title:`${p.code||'학생'} · ${ph==='iv'?'중재':'기초선'} · ${m==='dur'?'지속시간':'빈도'}`});
+      const r=await PCN.setTarget({pid:p.id,ph,mode:m,title:ph==='abc'?`${p.code||'학생'} · ABC 발생 시각`:`${p.code||'학생'} · ${ph==='iv'?'중재':'기초선'} · ${m==='dur'?'지속시간':'빈도'}`});
       nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;
       toast(had?'다른 대상은 끄고 이 대상으로 바꿨습니다':(r.enabled?'위젯·빠른 설정·알림창에서 누르세요':'알림이 꺼져 있어 위젯·빠른 설정만 됩니다'));
     }
@@ -4417,7 +4441,7 @@ function natInit(){
   try{PCN.addListener('tap',()=>natDrain());}catch(e){}
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible'){natDrain();return;}
-    const f=nat.key&&natFind(nat.key);if(f)natSync(f.p,f.ph,f.s);/* 손으로 고친 값도 알림 숫자에 맞춘다 */
+    const f=nat.key&&natFind(nat.key);if(f&&f.s)natSync(f.p,f.ph,f.s);/* 손으로 고친 값도 알림 숫자에 맞춘다 */
   });
   window.addEventListener('focus',()=>natDrain());
   setInterval(()=>{if(nat.key)natDrain();},3000);
