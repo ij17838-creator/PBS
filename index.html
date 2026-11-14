@@ -224,6 +224,8 @@ details.card.later summary small{font-weight:400;color:var(--muted);margin-left:
 .bl-val-in{display:flex;gap:6px;align-items:center}
 .bl-val-in input{flex:1 1 60px;min-width:0}
 .bl-val-in .btn{flex-shrink:0;min-width:44px;padding:0 10px}
+.bl-nat{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:8px}
+.bl-nat .muted{font-size:.9em}
 .qc-legend{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px}
 .qc-legend li{display:flex;align-items:center;gap:6px}
 .qc-legend small{color:var(--muted)}
@@ -651,6 +653,9 @@ const RATING_LEVELS=['','정상','경계 · 위험','임상','해당 없음'];
 const FUNCS=['관심 얻기','과제·요구 피하기','물건·활동 얻기','감각 자극 얻기','신체적 불편 줄이기'];
 const CONF=['낮음','보통','높음'];
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition||null;
+/* 설치형 앱(안드로이드)으로 열렸는지. 브라우저에서는 둘 다 false/null */
+const NATIVE_APP=!!(window.Capacitor&&typeof window.Capacitor.isNativePlatform==='function'&&window.Capacitor.isNativePlatform());
+const PCN=NATIVE_APP&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PbsCounter||null;
 
 /* ---------- storage ---------- */
 const LS_KEY='pbs-observe:v1';
@@ -1876,6 +1881,7 @@ function sesRow(p,ph,s,i){
       <label class="field"><span>관찰자</span><textarea rows="1" class="one" id="ses-${s.id}-observer" data-f="ses:${k}:observer" placeholder="예: 담임">${esc(s.observer)}</textarea></label>
       <label class="field wide2"><span>메모</span><textarea rows="1" class="one" id="ses-${s.id}-note" data-f="ses:${k}:note" placeholder="예: 시험 주간, 결석 후 첫날">${esc(s.note)}</textarea></label>
     </div>
+    ${freq&&(PCN||s.tapLog)?natRow(p,ph,s,i):''}
     ${ui.confirm==='del-ses:'+k?confirmBox('이 회기 기록을 삭제합니다.','del-ses',k):''}
   </div>`;
 }
@@ -2268,6 +2274,10 @@ async function offerFile(filename,blob){
       }
     }
   }catch(e){}
+  if(PCN){/* 설치형 앱: 웹 다운로드가 안 되므로 기기의 '다운로드/PBS' 폴더에 바로 저장한다 */
+    try{const r=await PCN.saveFile({filename,mime:blob.type||'application/octet-stream',data:await blobToB64(blob)});toast('저장했습니다: '+r.path);return true;}
+    catch(e){toast('파일을 저장하지 못했습니다'+(e&&e.message?': '+e.message:''));return false;}
+  }
   try{
     const url=URL.createObjectURL(blob);const a=document.createElement('a');
     a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
@@ -2727,8 +2737,9 @@ const actions={
   'ses-inc':el=>{
     const p=curProject();const ph=el.dataset.ph;const s=sesList(p,ph).find(x=>x.id===el.dataset.id);if(!s)return;
     const v=Math.max(0,(blNum(s.value)||0)+Number(el.dataset.d));s.value=String(v);
-    const f=$(`#ses-${s.id}-value`);if(f)f.value=s.value;touch(p,sesProc(ph));refreshBl(p);
+    const f=$(`#ses-${s.id}-value`);if(f)f.value=s.value;touch(p,sesProc(ph));refreshBl(p);natSync(p,ph,s);
   },
+  'ses-nat':el=>natToggle(el),
   'bl-goal':()=>{
     const p=curProject();const bd=p.procs.baseline.data;const st=blStats(blVals(bd.sessions));
     if(!st.n){toast('기초선 값이 있어야 제안할 수 있습니다');return;}
@@ -3748,6 +3759,7 @@ function syncOnAuth(u){
 }
 async function syncEnsureUser(){
   const ad=await syncAdapter();
+  if(NATIVE_APP&&!Sync.user&&!window.__pbsSyncAdapter)throw new Error('설치형 앱에서는 아직 구글 로그인이 안 됩니다. 공유는 브라우저에서 해 주세요');
   if(!Sync.user){await ad.signIn();for(let i=0;i<50&&!Sync.user;i++)await new Promise(r=>setTimeout(r,100));}
   if(!Sync.user)throw new Error('로그인하지 못했습니다');
   return ad;
@@ -4218,12 +4230,96 @@ document.addEventListener('input',e=>{
 });
 if(window.__pbsEmu)window.__pbsSync={Sync,syncFlat,syncUnflat,syncDiff,syncPending,syncFlush,store:()=>store};
 
+/* ---------- 설치형 앱(안드로이드): 알림창 ＋1 버튼 ----------
+   android/ 폴더의 PbsCounterPlugin이 알림창에 '＋1 · −1 · 끝' 버튼을 띄운다. 버튼은 앱을 열지 않고 기기에 기록만 쌓고,
+   앱이 앞에 나오거나 신호(tap)가 오면 natDrain이 그 기록을 해당 회기 측정값과 tapLog(누른 시각)에 옮긴다.
+   브라우저에서는 PCN이 null이라 아무것도 하지 않는다. */
+const nat={key:null,busy:false,again:false};
+function natKey(p,ph,s){return `${p.id}|${ph}|${s.id}`;}
+function natTimes(s){return String(s.tapLog||'').split(/\s+/).filter(Boolean);}
+function natLogText(p,ph,s){
+  const t=natTimes(s);const on=nat.key===natKey(p,ph,s);
+  if(!t.length)return on?'알림창을 내려 누르세요':'';
+  return `알림창 기록 ${t.length}건: ${t.map(x=>x.slice(0,5)).join(', ')}`;
+}
+function natRow(p,ph,s,i){
+  const on=nat.key===natKey(p,ph,s);
+  return `<div class="bl-nat">${PCN?`<button type="button" class="btn small${on?' primary':''}" data-act="ses-nat" data-ph="${ph}" data-id="${s.id}" aria-pressed="${on}">${on?'알림창 버튼 끄기':'알림창 ＋1 켜기'}</button>`:''}<span class="muted" id="ses-${s.id}-nat">${esc(natLogText(p,ph,s))}</span></div>`;
+}
+function natUI(){
+  const p=curProject();if(!p)return;
+  ['bl','iv'].forEach(ph=>sesList(p,ph).forEach(s=>{
+    const on=nat.key===natKey(p,ph,s);
+    const b=$(`#ses-${s.id} [data-act="ses-nat"]`);if(b){b.textContent=on?'알림창 버튼 끄기':'알림창 ＋1 켜기';b.classList.toggle('primary',on);b.setAttribute('aria-pressed',String(on));}
+    const t=$(`#ses-${s.id}-nat`);if(t)t.textContent=natLogText(p,ph,s);
+  }));
+}
+function natFind(key){
+  const [pid,ph,sid]=String(key||'').split('|');const p=projById(pid);if(!p||(ph!=='bl'&&ph!=='iv'))return null;
+  const s=sesList(p,ph).find(x=>x.id===sid);return s?{p,ph,s}:null;
+}
+function natSync(p,ph,s){if(PCN&&nat.key===natKey(p,ph,s))PCN.setCount({key:nat.key,count:blNum(s.value)||0}).catch(()=>{});}
+async function natDrain(){
+  if(!PCN)return;
+  if(nat.busy){nat.again=true;return;}
+  nat.busy=true;
+  try{
+    const r=await PCN.drain();nat.key=r.active?r.key:null;
+    const hit=new Map();let lost=0;
+    (r.events||[]).forEach(e=>{
+      const f=natFind(e.key);if(!f){lost++;return;}
+      const {s}=f;const d=Number(e.d)>0?1:-1;
+      s.value=String(Math.max(0,(blNum(s.value)||0)+d));
+      const t=natTimes(s);
+      if(d>0){const dt=new Date(Number(e.t)||Date.now());t.push([dt.getHours(),dt.getMinutes(),dt.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':'));}
+      else t.pop();
+      s.tapLog=t.join(' ');hit.set(e.key,f);
+    });
+    hit.forEach(f=>touch(f.p,sesProc(f.ph)));
+    if(hit.size){
+      saveNow();const p=curProject();
+      hit.forEach(f=>{if(f.p!==p)return;const v=$(`#ses-${f.s.id}-value`);if(v&&document.activeElement!==v)v.value=f.s.value;});
+      if(p&&Array.from(hit.values()).some(f=>f.p===p))refreshBl(p);
+      const cur=nat.key&&hit.get(nat.key);if(cur)natSync(cur.p,cur.ph,cur.s);
+    }
+    if(nat.key&&!natFind(nat.key)){await PCN.stop();nat.key=null;}/* 회기가 지워졌으면 알림도 끈다 */
+    if(lost)toast(`지워진 회기의 알림창 기록 ${lost}건은 버렸습니다`);
+  }catch(e){console.error(e);}
+  finally{nat.busy=false;natUI();if(nat.again){nat.again=false;natDrain();}}
+}
+async function natToggle(el){
+  const p=curProject();if(!p||!PCN)return;
+  const ph=el.dataset.ph;const list=blSorted(sesList(p,ph));const i=list.findIndex(x=>x.id===el.dataset.id);const s=list[i];if(!s)return;
+  const key=natKey(p,ph,s);
+  await natDrain();
+  try{
+    if(nat.key===key){await PCN.stop();nat.key=null;toast('알림창 버튼을 껐습니다');}
+    else{
+      const r=await PCN.start({key,title:`${p.code||'학생'} · ${ph==='iv'?'중재':'기초선'} ${i+1}회기`,count:blNum(s.value)||0});
+      nat.key=r.key;toast('알림창을 내려 ＋1을 누르세요');
+    }
+  }catch(e){toast(e&&e.code==='denied'?'알림 권한을 켜야 쓸 수 있습니다':(e&&e.message)||'알림을 켜지 못했습니다');}
+  natUI();
+}
+function natInit(){
+  if(!PCN)return;
+  try{PCN.addListener('tap',()=>natDrain());}catch(e){}
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'){natDrain();return;}
+    const f=nat.key&&natFind(nat.key);if(f)natSync(f.p,f.ph,f.s);/* 손으로 고친 값도 알림 숫자에 맞춘다 */
+  });
+  window.addEventListener('focus',()=>natDrain());
+  setInterval(()=>{if(nat.key)natDrain();},3000);
+  natDrain().then(()=>{if(nat.key)render();});
+}
+
 /* ---------- boot ---------- */
 if(firstRun&&!store.projects.length){store.projects.push(exampleProject());}
 AudioDB.open().then(()=>{audioOK=true;}).catch(()=>{audioOK=false;});
 updateStorageBanner();
 render();
 resumeBoot();
+natInit();
 updateUsage();
 if(storageOK)setSaveState('');
 tick();setInterval(tick,1000);

@@ -1,0 +1,17 @@
+{
+  "name": "pbs-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PBS 웹앱(index.html)을 안드로이드 설치형 앱으로 감싸는 설정",
+  "scripts": {
+    "build:web": "node scripts/build-web.mjs",
+    "sync": "npm run build:web && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.2",
+    "@capacitor/core": "8.6.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2"
+  }
+}

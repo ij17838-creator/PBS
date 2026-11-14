@@ -1,0 +1,74 @@
+# 안드로이드 설치 파일(.apk)을 자동으로 만든다.
+# - main에 index.html이나 android 폴더가 바뀌어 올라가면 실행된다(Actions 탭에서 손으로도 실행 가능).
+# - main에서 만든 .apk는 Releases의 'apk-latest'에 올라가서 휴대폰·태블릿에서 바로 내려받을 수 있다.
+name: 안드로이드 앱 빌드
+
+on:
+  push:
+    paths:
+      - 'index.html'
+      - 'android/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - 'scripts/**'
+      - '.github/workflows/android-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: 웹앱을 앱 폴더로 복사
+        run: |
+          npm ci
+          npm run build:web
+          npx cap sync android
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: .apk 만들기
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/PBS-기록.apk"
+
+      - name: 빌드 결과 보관(Actions 화면에서 내려받기)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PBS-apk-${{ github.run_number }}
+          path: PBS-기록.apk
+
+      - name: main이면 Releases 'apk-latest'에 올리기
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTE="main ${GITHUB_SHA::7} · 빌드 ${GITHUB_RUN_NUMBER} · $(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M') (한국 시각)"
+          gh release delete apk-latest --yes --cleanup-tag || true
+          gh release create apk-latest "PBS-기록.apk#PBS-기록.apk" \
+            --title "PBS 기록 앱 (최신 시험판)" \
+            --notes "$NOTE
+
+          휴대폰·태블릿에서 이 페이지를 열고 PBS-기록.apk를 눌러 내려받은 뒤 설치하세요. 처음에는 '출처를 알 수 없는 앱 설치'를 허용해야 합니다." \
+            --target "$GITHUB_SHA" --latest
