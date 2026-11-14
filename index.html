@@ -656,6 +656,7 @@ const SR=window.SpeechRecognition||window.webkitSpeechRecognition||null;
 /* 설치형 앱(안드로이드)으로 열렸는지. 브라우저에서는 둘 다 false/null */
 const NATIVE_APP=!!(window.Capacitor&&typeof window.Capacitor.isNativePlatform==='function'&&window.Capacitor.isNativePlatform());
 const PCN=NATIVE_APP&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PbsCounter||null;
+const PAUTH=NATIVE_APP&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PbsAuth||null;
 
 /* ---------- storage ---------- */
 const LS_KEY='pbs-observe:v1';
@@ -3504,6 +3505,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTi
    store.sync[pid] = {base: 마지막으로 서버와 맞춘 프로젝트 자료, revs: {경로: 그때 본 rev}}
    서버에는 칸 하나 = 문서 하나(cells), id 목록 항목은 items, 덮인 내용은 history, 충돌은 conflicts. */
 const FIREBASE_CONFIG={apiKey:"AIzaSyClV4aC9gg2KURwNFgKOKYk6fXv9HcarbU",authDomain:"pbs-project-10874.firebaseapp.com",projectId:"pbs-project-10874",storageBucket:"pbs-project-10874.firebasestorage.app",messagingSenderId:"837954569078",appId:"1:837954569078:web:446b835e053fe54c61b057"};/* Firebase 콘솔 → 프로젝트 설정 → 내 앱 → firebaseConfig 값을 그대로 붙여 넣는다. 비어 있으면 공유 기능을 숨긴다 */
+const GOOGLE_WEB_CLIENT_ID='';/* 설치형 앱 구글 로그인용. Firebase 콘솔 → Authentication → 로그인 방법 → Google → 웹 SDK 구성의 '웹 클라이언트 ID'. 비어 있으면 앱에서는 로그인을 막는다 */
 const FIREBASE_VER='12.19.0';
 const SYNC_ON=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.projectId);
 const SYNC_SKIP_TOP=new Set(['id','shared','lastBackupAt','example']);/* 이 기기에만 두는 칸 */
@@ -3660,11 +3662,16 @@ async function makeFirestoreAdapter(){
     },
     async signIn(){
       if(emu&&emu.user){await U.signInWithCredential(auth,U.GoogleAuthProvider.credential(JSON.stringify(Object.assign({email_verified:true},emu.user))));return;}
+      if(PAUTH&&GOOGLE_WEB_CLIENT_ID){/* 설치형 앱: 안드로이드 계정 선택 창 → ID 토큰으로 Firebase 로그인 */
+        let r;try{r=await PAUTH.googleSignIn({clientId:GOOGLE_WEB_CLIENT_ID});}
+        catch(e){if(e&&e.code==='cancelled')return;throw new Error((e&&e.message)||'구글 로그인 실패');}
+        await U.signInWithCredential(auth,U.GoogleAuthProvider.credential(r.idToken));return;
+      }
       const pr=new U.GoogleAuthProvider();
       try{await U.signInWithPopup(auth,pr);}
       catch(e){if(e&&/popup-blocked|operation-not-supported|popup-closed-by-user/.test(e.code||'')&&e.code!=='auth/popup-closed-by-user'){await U.signInWithRedirect(auth,pr);return;}throw e;}
     },
-    signOut(){return U.signOut(auth);},
+    signOut(){if(PAUTH)PAUTH.googleSignOut().catch(()=>{});return U.signOut(auth);},
     async createProject(pid,meta,me,inviteKey,flat){
       await F.setDoc(pd(pid),{code:meta.code||'',owner:me.uid,createdAt:ts(),updatedAt:ts()});
       await F.setDoc(sub(pid,'members',me.uid),{name:me.name,role:'owner',joinedAt:ts(),inviteKey});
@@ -3759,7 +3766,7 @@ function syncOnAuth(u){
 }
 async function syncEnsureUser(){
   const ad=await syncAdapter();
-  if(NATIVE_APP&&!Sync.user&&!window.__pbsSyncAdapter)throw new Error('설치형 앱에서는 아직 구글 로그인이 안 됩니다. 공유는 브라우저에서 해 주세요');
+  if(NATIVE_APP&&!Sync.user&&!window.__pbsSyncAdapter&&!(PAUTH&&GOOGLE_WEB_CLIENT_ID))throw new Error('설치형 앱에서는 아직 구글 로그인이 안 됩니다. 공유는 브라우저에서 해 주세요');
   if(!Sync.user){await ad.signIn();for(let i=0;i<50&&!Sync.user;i++)await new Promise(r=>setTimeout(r,100));}
   if(!Sync.user)throw new Error('로그인하지 못했습니다');
   return ad;
