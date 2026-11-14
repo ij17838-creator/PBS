@@ -2709,6 +2709,7 @@ const actions={
       touch(p,key);
       if(key==='define')refreshDefine(p);
       if(key==='baseline')refreshBl(p);
+      if(g==='measure')natFollow();
       if(g==='rtype'){const t=$('#rtype-tip');if(t)t.textContent=RATING_TYPE_TIP[obj[field]]||'종류 고르면 안내 표시';}
     }
   },
@@ -4457,6 +4458,7 @@ async function natDrain(){
     if(nat.key&&!natFind(nat.key)&&!/\|new:\d+$/.test(nat.key)){await PCN.stop();nat.key=null;}/* 회기가 지워졌으면 알림도 끈다 */
     if(nat.target&&!projById(nat.target.pid)){await PCN.clearTarget();nat.target=null;}/* 프로젝트가 지워졌으면 대상도 끈다 */
     if(lost)toast(`지워진 회기의 앱 밖 기록 ${lost}건은 버렸습니다`);
+    setTimeout(natFollow,0);/* 측정 방법이 바뀌었으면 위젯도 맞춘다(공유로 바뀐 경우 포함) */
   }catch(e){console.error(e);}
   finally{nat.busy=false;natUI();if(nat.again){nat.again=false;natDrain();}}
 }
@@ -4505,14 +4507,40 @@ async function natChkSet(){
   if(document.activeElement)document.activeElement.blur();
   natUI();
 }
+function natTitle(p,ph,m){return ph==='abc'?`${p.code||'학생'} · ABC 발생 시각`:`${p.code||'학생'} · ${ph==='iv'?'중재':'기초선'} · ${m==='dur'?'지속시간':'빈도'}`;}
+/* 표적행동 정의의 측정 방법이 바뀌면 위젯·알림·타일도 따라간다(빈도↔지속시간).
+   위젯이 못 하는 방법(지연시간 등)으로 바뀌면 잠시 끄고 기억해 두었다가, 빈도·지속시간으로 돌아오면 다시 켠다.
+   앱을 열 때(natDrain)와 측정 방법 칩을 누를 때 확인한다. 사람이 직접 켜기/끄기를 누르면 기억은 지운다. */
+const NAT_FOLLOW_KEY='pbs-nat-follow';
+function natFollowGet(){try{return JSON.parse(localStorage.getItem(NAT_FOLLOW_KEY)||'null');}catch(e){return null;}}
+function natFollowSet(v){try{if(v)localStorage.setItem(NAT_FOLLOW_KEY,JSON.stringify(v));else localStorage.removeItem(NAT_FOLLOW_KEY);}catch(e){}}
+async function natFollow(){
+  if(!PCN||nat.following)return;
+  const t=nat.target;const ref=t?{pid:t.pid,ph:t.ph}:natFollowGet();
+  if(!ref||ref.ph==='abc')return;
+  const p=projById(ref.pid);if(!p){if(!t)natFollowSet(null);return;}
+  const m=natMode(p,ref.ph);
+  if(t&&m===t.mode)return;
+  if(!t&&!m)return;
+  nat.following=true;
+  try{
+    if(!m){const r=await PCN.clearTarget();nat.key=r.active?r.key:null;nat.target=null;natFollowSet(ref);toast('이 방법은 위젯 미지원');}
+    else{
+      const r=await PCN.setTarget({pid:p.id,ph:ref.ph,mode:m,title:natTitle(p,ref.ph,m)});
+      nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;natFollowSet(null);
+      toast(`위젯: ${m==='dur'?'지속시간':'빈도'}으로 바뀜`);
+    }
+  }catch(e){console.error(e);}
+  finally{nat.following=false;natUI();}
+}
 async function natTargetToggle(el){
   const p=curProject();if(!p||!PCN)return;const ph=el.dataset.ph;const m=natMode(p,ph);if(!m)return;
-  await natDrain();
+  await natDrain();natFollowSet(null);
   try{
     if(natTargetOn(p,ph)){const r=await PCN.clearTarget();nat.key=r.active?r.key:null;nat.target=null;toast('앱 밖 측정을 껐습니다');}
     else{
       const had=nat.target&&(nat.target.pid!==p.id||nat.target.ph!==ph);
-      const r=await PCN.setTarget({pid:p.id,ph,mode:m,title:ph==='abc'?`${p.code||'학생'} · ABC 발생 시각`:`${p.code||'학생'} · ${ph==='iv'?'중재':'기초선'} · ${m==='dur'?'지속시간':'빈도'}`});
+      const r=await PCN.setTarget({pid:p.id,ph,mode:m,title:natTitle(p,ph,m)});
       nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;
       toast(had?'다른 대상은 끄고 이 대상으로 바꿨습니다':(r.enabled?'위젯·빠른 설정·알림창에서 누르세요':'알림이 꺼져 있어 위젯·빠른 설정만 됩니다'));
     }
