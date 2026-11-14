@@ -3642,7 +3642,7 @@ async function makeFirestoreAdapter(){
   const [A,F,U]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-firestore.js'),import(base+'firebase-auth.js')]);
   const app=A.initializeApp(FIREBASE_CONFIG);
   let db;
-  try{db=F.initializeFirestore(app,{localCache:F.persistentLocalCache({tabManager:F.persistentMultipleTabManager()})});}catch(e){db=F.getFirestore(app);}
+  try{db=F.initializeFirestore(app,Object.assign({localCache:F.persistentLocalCache({tabManager:F.persistentMultipleTabManager()})},NATIVE_APP?{experimentalForceLongPolling:true}:{}));}/* 설치형 앱(WebView)은 실시간 연결이 끊기기 쉬워 롱 폴링을 쓴다 */catch(e){db=F.getFirestore(app);}
   const auth=U.getAuth(app);
   const emu=window.__pbsEmu;/* 시험용(에뮬레이터)일 때만 */
   if(emu){F.connectFirestoreEmulator(db,emu.host,emu.fs);U.connectAuthEmulator(auth,`http://${emu.host}:${emu.auth}`,{disableWarnings:true});}
@@ -3658,7 +3658,7 @@ async function makeFirestoreAdapter(){
     for(let i=0;i<ops.length;i+=450){const b=F.writeBatch(db);ops.slice(i,i+450).forEach(o=>b.set(o[0],o[1]));await b.commit();count(Math.min(450,ops.length-i));}
   }
   async function getAll(pid){
-    const [c,it]=await Promise.all([F.getDocs(sub(pid,'cells')),F.getDocs(sub(pid,'items'))]);
+    const [c,it]=await Promise.all([F.getDocsFromServer(sub(pid,'cells')),F.getDocsFromServer(sub(pid,'items'))]);/* 서버에서만 받는다(연결이 불안하면 기기 캐시의 일부만 받아 빈 사본이 생기므로 실패로 알린다) */
     return {cells:c.docs.map(d=>d.data()),items:it.docs.map(d=>d.data())};
   }
   return {
@@ -3880,6 +3880,7 @@ function syncPending(S){
   /* 예전 판이 서버에 올린 손글씨는 지운다(손글씨는 이 기기에만) */
   S.cells.forEach((c,pa)=>{if(!c.deleted&&INK_PATH.test(pa)&&!Sync.inkGone.has(pa)&&!d.cells.some(w=>w.path===pa))d.cells.push({path:pa,deleted:true});});
   /* 완료했던 절차를 다시 고치는 중이면 그 절차의 변경은 '이 절차 완료'를 누를 때까지 보내지 않는다 */
+  if(S.forceAll)return d;/* '서버를 이 기기 내용으로 맞추기': 붙잡아 둔 절차·상태 칸까지 모두 보낸다 */
   const held=PROCS.filter(x=>procHeld(p.procs[x.key])).map(x=>'procs/'+x.key+'/');
   if(held.length){const keep=w=>!held.some(h=>w.path.startsWith(h));d.cells=d.cells.filter(keep);d.items=d.items.filter(keep);}
   /* 고쳤다가 원래대로 되돌린 경우 내용 칸은 diff에 안 나온다. 그때 남는 수정 시각·진행 상태 칸만으로는 보내지 않는다(다음에 내용이 바뀔 때 함께 감) */
@@ -3927,6 +3928,7 @@ async function syncFlush(force){
   }finally{
     S.flushing=false;
     const d2=syncPending(S);S.pendingN=d2.cells.length+d2.items.length;
+    if(S.forceAll&&!S.pendingN){S.forceAll=false;toast('서버를 이 기기 내용으로 맞췄습니다');}
     if(S.again||S.pendingN&&Sync.online&&!S.error){S.again=false;syncFlushSoon(300);}
     syncStatusUI();
   }
@@ -4110,7 +4112,9 @@ function syncProjectCardInner(p){
     ${S&&(S.error==='removed'||S.error==='denied')?`<p class="banner warn">이 프로젝트의 공유 멤버가 아니어서 동기화를 멈췄습니다. 이 기기의 사본은 그대로 남아 있습니다.</p>`:''}
     ${mem.length?`<div><h3 class="sub-label">멤버 ${mem.length}명</h3><ul class="sync-members">${mem.map(m=>`<li><span>${esc(m.name||'이름 없음')}${m.role==='owner'?' <small>소유자</small>':''}${me&&m.uid===me.uid?' <small>(나)</small>':''}</span><span class="meta">${m.joinedAt?fmtShort(m.joinedAt):''}</span>${owner&&me&&m.uid!==me.uid?`<button type="button" class="btn small ghost danger" data-act="ask" data-key="sync-kick:${esc(m.uid)}">내보내기</button>`:''}
       ${ui.confirm==='sync-kick:'+m.uid?confirmBox(`<b>${esc(m.name||'이 멤버')}</b>님을 공유에서 내보냅니다. 내보낸 뒤에는 공유 코드도 바꾸세요.`,'sync-kick',m.uid):''}</li>`).join('')}</ul></div>`:''}
-    ${owner?`<div class="new-form"><label class="field"><span>공유 코드 바꾸기 <small>6자 이상, 언제든 변경</small></span><input id="sync-code-change" autocomplete="off" maxlength="60" placeholder="새 공유 코드"></label><button type="button" class="btn" data-act="sync-recode">바꾸기</button></div>`:''}`;
+    ${owner?`<div class="new-form"><label class="field"><span>공유 코드 바꾸기 <small>6자 이상, 언제든 변경</small></span><input id="sync-code-change" autocomplete="off" maxlength="60" placeholder="새 공유 코드"></label><button type="button" class="btn" data-act="sync-recode">바꾸기</button></div>`:''}
+    ${S&&S.gotCells&&S.gotItems&&!S.error&&me?`<div><button type="button" class="btn small" data-act="ask" data-key="sync-reup:${esc(p.id)}">서버를 이 기기 내용으로 맞추기</button><p class="hint">다른 기기가 비어 보일 때</p>
+      ${ui.confirm==='sync-reup:'+p.id?confirmBox('이 기기의 지금 내용(완료 상태 포함)을 서버에 그대로 올립니다. 서버에만 있고 이 기기에 없는 내용은 지워지고, 다른 기기에도 반영됩니다. 손글씨·녹음은 올라가지 않습니다.','sync-reup',p.id):''}</div>`:''}`;
 }
 function syncConflictCard(p){
   const S=Sync.cur&&Sync.cur.localId===p.id?Sync.cur:null;
@@ -4168,6 +4172,20 @@ Object.assign(actions,{
       const st=syncState(p.id);st.base=syncBaseOf(p);st.revs={};flat.cells.forEach((v,pa)=>{st.revs[pa]=1;});
       saveNow();render();toast('공유를 시작했습니다. 공유 ID와 공유 코드를 함께 쓸 사람에게 알려 주세요.');
     }catch(e){console.error(e);toast(syncErrMsg(e));el.disabled=false;}
+  },
+  'sync-reup':async()=>{
+    const p=curProject();const S=Sync.cur;ui.confirm=null;
+    if(!p||!S||S.localId!==p.id||!S.gotCells||!S.gotItems||S.error||!Sync.user){rerenderForConfirm();toast('서버에 연결된 뒤 다시 누르세요');return;}
+    /* 기준을 '지금 서버 내용'으로 바꾸면, 이 기기와 다른 칸이 모두 보낼 목록에 들어간다 */
+    const tc=new Map(),ti=new Map();
+    S.cells.forEach((c,pa)=>{if(!c.deleted)tc.set(pa,c.v);});
+    S.items.forEach((it,pa)=>{if(!it.deleted)ti.set(pa,{parent:it.parent,order:it.order});});
+    const st=syncState(S.pid);st.base=syncBaseOf(syncUnflat(tc,ti));
+    S.cells.forEach((c,pa)=>{if(!((st.revs[pa]||0)>c.rev))st.revs[pa]=c.rev;});
+    S.forceAll=true;saveNow();rerenderForConfirm();
+    const n=syncPending(S);const k=n.cells.length+n.items.length;
+    if(!k){S.forceAll=false;toast('서버와 이 기기 내용이 이미 같습니다');return;}
+    toast(`서버로 ${k}개 칸을 올리는 중…`);syncFlush(true);
   },
   'sync-join':async el=>{
     const id=($('#sync-join-id').value||'').trim();const code=($('#sync-join-code').value||'').trim();
