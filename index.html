@@ -1051,7 +1051,13 @@ function viewHome(){
       <button type="button" class="btn" data-act="export-all">전체 백업 내보내기</button>
       <label class="btn">백업 불러오기<input type="file" accept=".json,application/json" id="import-file" hidden></label>
     </div>
-  </section>`;
+  </section>${NATIVE_APP?'':`
+  <section class="card tools">
+    <div><h2 class="h3">안드로이드 앱</h2><p class="hint">알림창 ＋1로 바로 기록</p></div>
+    <div class="tool-row">
+      <a class="btn" href="${APP_DL_URL}" target="_blank" rel="noopener">앱 설치 파일 받기</a>
+    </div>
+  </section>`}`;
 }
 function projCard(p){
   const done=PROCS.filter(x=>p.procs[x.key].status==='done').length;
@@ -3505,6 +3511,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTi
    store.sync[pid] = {base: 마지막으로 서버와 맞춘 프로젝트 자료, revs: {경로: 그때 본 rev}}
    서버에는 칸 하나 = 문서 하나(cells), id 목록 항목은 items, 덮인 내용은 history, 충돌은 conflicts. */
 const FIREBASE_CONFIG={apiKey:"AIzaSyClV4aC9gg2KURwNFgKOKYk6fXv9HcarbU",authDomain:"pbs-project-10874.firebaseapp.com",projectId:"pbs-project-10874",storageBucket:"pbs-project-10874.firebasestorage.app",messagingSenderId:"837954569078",appId:"1:837954569078:web:446b835e053fe54c61b057"};/* Firebase 콘솔 → 프로젝트 설정 → 내 앱 → firebaseConfig 값을 그대로 붙여 넣는다. 비어 있으면 공유 기능을 숨긴다 */
+const APP_DL_URL='https://github.com/ij17838-creator/PBS/releases/tag/apk-latest';/* 설치형 앱(.apk) 내려받기 페이지 */
 const GOOGLE_WEB_CLIENT_ID='837954569078-45r5mt6mjd43lo8nsqb8tl39rrtt0kcq.apps.googleusercontent.com';/* 설치형 앱 구글 로그인용. Firebase 콘솔 → Authentication → 로그인 방법 → Google → 웹 SDK 구성의 '웹 클라이언트 ID'. 비어 있으면 앱에서는 로그인을 막는다 */
 const FIREBASE_VER='12.19.0';
 const SYNC_ON=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.projectId);

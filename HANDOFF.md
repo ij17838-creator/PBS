@@ -9,6 +9,7 @@
 ### 한 일
 - 앱에서 "구글로 로그인"을 누르면 안드로이드 계정 선택 창이 뜨고, 그 계정으로 Firebase에 로그인(기존 공유 기능 그대로 사용).
 - 연동 방법: 브라우저에서 "공유 시작" → 앱에서 로그인 후 "공유 ID·코드로 받기" → 이후 실시간 맞춤.
+- 웹앱 홈 맨 아래(전체 백업 아래)에 "안드로이드 앱 · 앱 설치 파일 받기" 카드(브라우저에서만, 앱 안에서는 숨김).
 - 사용자가 Firebase에 안드로이드 앱(패키지 io.github.ij17838creator.pbs, SHA-1 9E:52:…:9D:79) 등록, 웹 클라이언트 ID 받음.
 
 ### 확인한 것
@@ -20,7 +21,7 @@
 - 로그인 실패 시 "이 기기에 구글 계정이 없거나 앱이 Firebase에 등록되지 않았습니다"가 뜨면 SHA-1 등록부터 확인.
 
 ### 코드 위치
-- index.html: `GOOGLE_WEB_CLIENT_ID`, `PAUTH`, firestore 어댑터 `signIn`·`signOut`, `syncEnsureUser`
+- index.html: `APP_DL_URL`, `viewHome`(설치 카드), `GOOGLE_WEB_CLIENT_ID`, `PAUTH`, firestore 어댑터 `signIn`·`signOut`, `syncEnsureUser`
 - android: `PbsAuthPlugin`(Credential Manager), app/build.gradle credentials·googleid 의존성
 
 ### 다음에 할 일
