@@ -209,6 +209,35 @@ details.card[open]{gap:14px}
 .def-warn:empty{display:none}
 .measure-tip{background:var(--sunk);border-radius:10px;padding:10px 12px;font-size:.86rem;color:var(--ink)}
 .measure-tip:empty{display:none}
+/* 측정 방법 움직이는 안내(지금은 빈도만). SVG SMIL로 8초 반복, 단계 글은 mdemoTick이 맞춰 강조 */
+.mdemo{border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);margin-top:8px}
+.mdemo>summary{cursor:pointer;padding:9px 12px;font-weight:600;font-size:.9rem;color:var(--accent);list-style:none;display:flex;align-items:center;gap:6px}
+.mdemo>summary::-webkit-details-marker{display:none}
+.mdemo>summary::before{content:"▶";font-size:.7rem;transition:transform .15s}
+.mdemo[open]>summary::before{transform:rotate(90deg)}
+.mdemo-body{padding:0 12px 12px}
+.mdemo-svg{display:block;width:100%;max-width:460px;height:auto;margin:0 auto;background:var(--surface);border-radius:10px;border:1px solid var(--line)}
+.mdemo-svg text{font-family:var(--font-body);fill:var(--ink)}
+.mdemo-svg .md-mut{fill:var(--muted);font-size:11px}
+.mdemo-svg .md-line{stroke:var(--line-strong);stroke-width:2}
+.mdemo-svg .md-head{stroke:var(--accent);stroke-width:2;stroke-dasharray:3 3}
+.mdemo-svg .md-beh{fill:var(--rec)}
+.mdemo-svg .md-iv{fill:var(--accent-soft);stroke:var(--accent)}
+.mdemo-svg .md-ivt{fill:var(--accent);font-size:10px;font-weight:700}
+.mdemo-svg .md-panel{fill:var(--surface-2);stroke:var(--line-strong)}
+.mdemo-svg .md-num{font-family:var(--font-mono);font-size:30px;font-weight:600;fill:var(--ink)}
+.mdemo-svg .md-btn{fill:var(--accent)}
+.mdemo-svg .md-btnt{fill:var(--accent-ink);font-size:13px;font-weight:700}
+.mdemo-svg .md-finger{fill:var(--c);fill-opacity:.55;stroke:var(--c);stroke-width:1.5}
+.mdemo-svg .md-end{fill:var(--ok-soft);stroke:var(--ok)}
+.mdemo-svg .md-endt{fill:var(--ok);font-size:11px;font-weight:700}
+.mdemo-steps{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:4px;counter-reset:md}
+.mdemo-steps li{counter-increment:md;display:flex;gap:8px;align-items:center;padding:4px 8px;border-radius:8px;font-size:.88rem;color:var(--muted);transition:background .2s,color .2s}
+.mdemo-steps li::before{content:counter(md);flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:.75rem;font-weight:700;background:var(--sunk);color:var(--muted)}
+.mdemo-steps li.on{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.mdemo-steps li.on::before{background:var(--accent);color:var(--accent-ink)}
+.mdemo-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;margin-top:8px}
+.mdemo-note{margin:0;font-size:.82rem;color:var(--muted)}
 .stage-tag{font-size:.7rem;font-weight:700;color:var(--warn);background:var(--warn-soft);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle}
 .three{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
 details.card.later summary small{font-weight:400;color:var(--muted);margin-left:6px}
@@ -1307,6 +1336,71 @@ function pfRef(p,kind){
 
 /* 1. define */
 function measureTip(d){const g=MEASURE_GUIDE[d.measure];return g?esc(g.tip):'';}
+/* 측정 방법 움직이는 안내. 지금은 빈도만 있음(다른 방법은 정해지면 MDEMO에 추가).
+   장면은 SVG SMIL(<animate>)로 D초 반복. steps: [시작 초, 강조할 단계 번호] 순서 목록 */
+const MDEMO_D=8;
+function mdA(attr,pts){const D=MDEMO_D;const P=pts.slice();if(P[0][0]>0)P.unshift([0,P[0][1]]);if(P[P.length-1][0]<D)P.push([D,P[P.length-1][1]]);
+  return `<animate attributeName="${attr}" dur="${D}s" repeatCount="indefinite" keyTimes="${P.map(q=>(q[0]/D).toFixed(4)).join(';')}" values="${P.map(q=>q[1]).join(';')}"/>`;}
+/* 보이는 구간 목록 [[a,b],...] 동안만 보이게 */
+function mdShow(...wins){const e=.12,pts=[[0,0]];wins.forEach(([a,b])=>{pts.push([a,0],[a+e,1]);if(b<MDEMO_D)pts.push([b,1],[b+e,0]);});return mdA('opacity',pts);}
+const MDEMO={
+  '빈도':{
+    label:'빈도 기록 방법: 행동이 보이면 먼저 중재하고, 틈날 때 ＋1을 눌러 회기 끝에 횟수를 확인합니다.',
+    steps:['행동 보면 먼저 중재','틈날 때 ＋1 누르기','회기 끝 횟수 확인'],
+    seq:[[0,0],[2.8,1],[5.3,0],[5.75,1],[6.3,0],[6.6,1],[7.1,2]],
+    note:'늦게 몰아 눌러도 돼요',nativeNote:'위젯·알림창도 돼요',
+    svg:()=>{
+      const dot=(x,t)=>`<g opacity="0">${mdShow([t,MDEMO_D])}<circle cx="${x}" cy="62" r="7" class="md-beh"/></g>`;
+      const iv=(x,a,b,w)=>`<g opacity="0">${mdShow([a,b])}<rect x="${x-w/2}" y="22" width="${w}" height="20" rx="10" class="md-iv"/><text x="${x}" y="36" text-anchor="middle" class="md-ivt">${w>40?'먼저 중재':'중재'}</text></g>`;
+      const num=(n,a,b)=>`<text x="263" y="80" text-anchor="middle" class="md-num" opacity="0">${mdShow([a,b])}${n}</text>`;
+      const taps=[3.1,5.8,6.7];
+      return `<line x1="20" y1="62" x2="200" y2="62" class="md-line"/>
+      <text x="20" y="84" class="md-mut">시작</text><text x="200" y="84" text-anchor="end" class="md-mut">끝</text>
+      <g><animateTransform attributeName="transform" type="translate" dur="${MDEMO_D}s" repeatCount="indefinite" keyTimes="0;0.9;1" values="0 0;180 0;180 0"/><line x1="20" y1="48" x2="20" y2="76" class="md-head"/></g>
+      ${dot(35,.6)}${dot(155,5.4)}${dot(178,6.3)}
+      <g opacity="0">${mdShow([.6,2.5])}<text x="35" y="100" text-anchor="middle" class="md-mut">학생 행동</text></g>
+      ${iv(48,.9,2.6,58)}${iv(155,5.55,6.15,34)}${iv(178,6.45,7.0,34)}
+      <g opacity="0">${mdShow([7.1,MDEMO_D])}<rect x="66" y="98" width="98" height="24" rx="12" class="md-end"/><text x="115" y="114" text-anchor="middle" class="md-endt">회기 끝 · 3회</text></g>
+      <rect x="218" y="12" width="90" height="116" rx="12" class="md-panel"/>
+      <text x="263" y="34" text-anchor="middle" class="md-mut">측정값</text>
+      ${num(0,0,3.15)}${num(1,3.15,5.85)}${num(2,5.85,6.75)}${num(3,6.75,MDEMO_D)}
+      <rect x="236" y="92" width="54" height="26" rx="8" class="md-btn">${mdA('opacity',taps.flatMap(t=>[[t-.05,1],[t,.45],[t+.25,1]]))}</rect>
+      <text x="263" y="110" text-anchor="middle" class="md-btnt">＋1</text>
+      <g opacity="0">${mdShow(...taps.map(t=>[t-.45,t+.3]))}<circle cx="287" cy="118" r="8" class="md-finger">${mdA('cy',taps.flatMap(t=>[[t-.45,128],[t,116],[t+.3,128]]))}</circle></g>`;
+    }
+  }
+};
+/* where: 'def'(표적행동 정의, 처음에 펼침·접은 상태 기억) | 'ses'(기초선·중재, 처음엔 접힘) */
+function mdemoClosedPref(){try{return localStorage.getItem('pbs-mdemo-closed')==='1';}catch(e){return false;}}
+function measureDemo(m,where){
+  const g=MDEMO[m];const id=where==='def'?' id="measure-demo"':'';
+  if(!g)return `<div${id} data-m="${esc(m||'')}" hidden></div>`;
+  const open=where==='def'?!mdemoClosedPref():false;
+  const note=[g.note,NATIVE_APP?g.nativeNote:''].filter(Boolean).map(esc).join(' · ');
+  return `<div${id} data-m="${esc(m)}"><details class="mdemo"${where==='def'?' data-mdemo-pref':''}${open?' open':''}>
+    <summary>${esc(m)} 이렇게 재요</summary>
+    <div class="mdemo-body">
+      <svg class="mdemo-svg" viewBox="0 0 320 140" role="img" aria-label="${esc(g.label)}" data-mdemo="${esc(m)}">${g.svg()}</svg>
+      <ol class="mdemo-steps">${g.steps.map(t=>`<li>${esc(t)}</li>`).join('')}</ol>
+      <div class="mdemo-foot"><p class="mdemo-note">${note}</p><button type="button" class="btn small ghost" data-act="mdemo-replay">다시 보기</button></div>
+    </div></details></div>`;
+}
+/* 단계 글 강조를 장면 시간에 맞춤. 움직임 줄이기 설정이면 마지막 장면에서 멈춤 */
+function mdemoTick(){
+  const list=document.querySelectorAll('svg.mdemo-svg');if(!list.length)return;
+  const still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  list.forEach(svg=>{
+    const g=MDEMO[svg.dataset.mdemo];if(!g||typeof svg.getCurrentTime!=='function')return;
+    const lis=svg.parentNode.querySelectorAll('.mdemo-steps li');
+    if(still){if(!svg.dataset.still){svg.pauseAnimations();svg.setCurrentTime(MDEMO_D-.3);svg.dataset.still='1';}lis.forEach(li=>li.classList.remove('on'));return;}
+    const t=svg.getCurrentTime()%MDEMO_D;let k=0;g.seq.forEach(([a,i])=>{if(t>=a)k=i;});
+    lis.forEach((li,i)=>li.classList.toggle('on',i===k));
+  });
+}
+setInterval(mdemoTick,200);
+document.addEventListener('toggle',e=>{const d=e.target;if(!d||!d.matches||!d.matches('details.mdemo'))return;
+  if(d.open){const svg=d.querySelector('svg.mdemo-svg');if(svg&&!svg.dataset.still&&svg.setCurrentTime)svg.setCurrentTime(0);}
+  if(d.hasAttribute('data-mdemo-pref')){try{localStorage.setItem('pbs-mdemo-closed',d.open?'0':'1');}catch(e){}}},true);
 /* 정의 점검 자동 경고: 칸이 비었거나 마음 상태를 추측하는 말이 있으면 알려 준다 */
 function defWarnings(d){
   const w={};
@@ -1325,6 +1419,7 @@ function refreshDefine(p){
   DEF_CHECKS.forEach((c,i)=>{const el=$('#defwarn-'+i);if(el)el.textContent=w[i]?'⚠ '+w[i]:'';});
   const c=$('#check-count');if(c){const n=Object.keys(w).length;c.textContent=`${d.checks.length}/${DEF_CHECKS.length} 확인${n?` · 경고 ${n}`:''}`;}
   const t=$('#measure-tip');if(t)t.innerHTML=measureTip(d);
+  const md=$('#measure-demo');if(md&&md.dataset.m!==(d.measure||''))md.outerHTML=measureDemo(d.measure,'def');
   const u=$('#def-unit');if(u){const g=MEASURE_GUIDE[d.measure];u.placeholder=g?g.unit:'측정 방법을 먼저 고르세요';}
   const st=$('#stage-tip');if(st)st.textContent=DEF_STAGE_TIP[d.stage]||'';
 }
@@ -1374,6 +1469,7 @@ function viewDefine(p){
     </fieldset>
     <fieldset class="field"><legend>측정 방법 (예정 1개)</legend><div class="chips">${MEASURES.map(m=>chip('measure',m,d.measure===m,'b')).join('')}</div></fieldset>
     <p class="measure-tip" id="measure-tip">${measureTip(d)}</p>
+    ${measureDemo(d.measure,'def')}
     <div class="two">
       <label class="field"><span>측정 단위</span><textarea rows="1" class="one" id="def-unit" data-f="define:unit" placeholder="${esc(g?g.unit:'측정 방법을 먼저 고르세요')}">${esc(d.unit)}</textarea></label>
       <label class="field"><span>이 방법을 고른 이유</span><textarea rows="1" class="one" id="def-mwhy" data-f="define:measureWhy" placeholder="예: 한 번 일어나면 짧게 끝나서 횟수로 셀 수 있음">${esc(d.measureWhy)}</textarea></label>
@@ -1904,7 +2000,7 @@ function measureLine(p){
   const d=p.procs.define.data;
   if(!d.measure)return `<div class="target-banner empty"><span>측정 방법을 아직 정하지 않았습니다. 표적행동 정의에서 예정 측정 방법과 단위를 먼저 고르세요.</span><button type="button" class="btn small" data-act="open-proc" data-key="define">표적행동 정의 열기</button></div>`;
   const plan=[d.planWhen,d.planLength].filter(x=>String(x||'').trim()).map(esc).join(' · ');
-  return `<p class="bl-measure"><span class="pill">${esc(d.measure)}</span>${d.unit?` 단위 <b>${esc(d.unit)}</b>`:''}${plan?` <span class="muted">· 관찰 계획: ${plan}</span>`:''}${d.measureFixed?'':' <span class="pill warn">측정 방법 미확정</span>'}</p>`;
+  return `<p class="bl-measure"><span class="pill">${esc(d.measure)}</span>${d.unit?` 단위 <b>${esc(d.unit)}</b>`:''}${plan?` <span class="muted">· 관찰 계획: ${plan}</span>`:''}${d.measureFixed?'':' <span class="pill warn">측정 방법 미확정</span>'}</p>`+measureDemo(d.measure,'ses');
 }
 function blLive(p){
   const bd=p.procs.baseline.data;const j=blJudge(p);const st=blStats(blVals(bd.sessions));
@@ -2796,6 +2892,7 @@ const actions={
     try{const r=await AudioDB.getBlob(f.id);if(!r){toast('이 브라우저에 파일이 없습니다');return;}offerFile(f.name||`${safeName(p.code)}_평정척도`,r.blob);}
     catch(e){toast('파일을 읽지 못했습니다');}
   },
+  'mdemo-replay':el=>{const svg=el.closest('.mdemo').querySelector('svg.mdemo-svg');if(!svg||!svg.setCurrentTime)return;delete svg.dataset.still;svg.unpauseAnimations();svg.setCurrentTime(0);},
   'def-revlog':()=>{
     const p=curProject();const d=p.procs.define.data;const t=new Date();
     const line=`${t.getMonth()+1}/${t.getDate()} `;
