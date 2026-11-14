@@ -47,6 +47,16 @@
             </intent-filter>
         </service>
 
+        <!-- 끝 확인 시계: 지속시간 행동이 진행 중일 때만 돈다(앱이 꺼져 있어도 '아직 행동 중인가요?'를 띄우려고) -->
+        <service
+            android:name=".DurWatch"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="교사가 학생 행동의 지속시간을 재는 동안 일정 간격으로 '아직 진행 중인지' 묻는 알림" />
+        </service>
+
         <!-- 재부팅·앱 업데이트 뒤 측정 알림·위젯 다시 그리기 -->
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>
@@ -75,6 +85,9 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- 재부팅 뒤 측정 알림 다시 띄우기 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- 끝 확인 시계(지속시간 진행 중에만) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- 관찰 중 녹음 (웹앱의 마이크 기능) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />

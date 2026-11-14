@@ -12,7 +12,7 @@ import android.widget.RemoteViews;
 
 /**
  * 홈 화면 위젯. 버튼은 CounterReceiver로 바로 가서 기록되므로 앱이 꺼져 있어도 된다.
- * 빈도: ＋1(크게) · −1 · 회기 끝 / 지속시간: 행동 시작·끝(크게) · 회기 끝. 열린 회기가 없으면 '회기 시작'.
+ * 빈도: ＋1(크게) · −1 · 회기 끝 / 지속시간: 행동 시작·끝(크게, 같은 버튼) · 회기 끝, 진행 중엔 −10초·−30초·−1분(늦은 시작 보정). 열린 회기가 없으면 '회기 시작'.
  */
 public class CounterWidget extends AppWidgetProvider {
 
@@ -49,6 +49,7 @@ public class CounterWidget extends AppWidgetProvider {
         v.setViewVisibility(R.id.w_chrono, View.GONE);
         v.setViewVisibility(R.id.w_sub1, View.GONE);
         v.setViewVisibility(R.id.w_sub2, View.GONE);
+        v.setViewVisibility(R.id.w_adj, View.GONE);
         if (!CounterStore.anything(c)) {
             v.setTextViewText(R.id.w_title, "PBS 기록");
             v.setTextViewText(R.id.w_status, "앱에서 측정 대상을 고르세요");
@@ -69,6 +70,12 @@ public class CounterWidget extends AppWidgetProvider {
                 long base = SystemClock.elapsedRealtime() - Math.max(0L, System.currentTimeMillis() - CounterStore.runStart(c));
                 v.setChronometer(R.id.w_chrono, base, null, true);
                 v.setViewVisibility(R.id.w_chrono, View.VISIBLE);
+                if (CounterStore.adjOn(c)) {
+                    v.setViewVisibility(R.id.w_adj, View.VISIBLE);
+                    button(c, v, R.id.w_adj10, "−10초", CounterReceiver.ADJ10, 7);
+                    button(c, v, R.id.w_adj30, "−30초", CounterReceiver.ADJ30, 8);
+                    button(c, v, R.id.w_adj60, "−1분", CounterReceiver.ADJ60, 12);
+                }
             }
             if (on) button(c, v, R.id.w_sub1, "회기 끝", CounterReceiver.END, 3);
             else button(c, v, R.id.w_sub1, "회기 시작", CounterReceiver.BEGIN, 6);

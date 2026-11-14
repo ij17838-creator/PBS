@@ -226,6 +226,19 @@ details.card.later summary small{font-weight:400;color:var(--muted);margin-left:
 .bl-val-in .btn{flex-shrink:0;min-width:44px;padding:0 10px}
 .bl-nat{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:8px}
 .bl-nat .muted{font-size:.9em}
+/* 지속시간 에피소드 목록(회기 끝에 시각 고치기) · 끝 확인 설정 */
+.dur-ed,.nat-chk{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:var(--surface-2)}
+.dur-ed>summary,.nat-chk>summary{cursor:pointer;min-height:36px;display:flex;align-items:center;font-weight:600;font-size:.92rem}
+.dur-ed.warn>summary{color:var(--rec)}
+.dur-ep{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:6px 8px;align-items:start;padding:8px 0;border-top:1px solid var(--line)}
+.dur-ep .dur-n{font-weight:700;padding-top:10px;min-width:1.4em}
+.dur-ep .dur-to{padding-top:10px}
+.dur-ep .dur-meta{grid-column:2 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:.88rem}
+.dur-ep.auto .dur-meta b{color:var(--rec)}
+.dur-ep .dur-run{padding-top:10px}
+.dur-ed .dur-foot,.nat-chk .dur-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 0 4px}
+.bl-nat .nat-chk{flex:1 1 100%}
+.nat-chk .nat-chk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 10px;padding-top:6px}
 .qc-legend{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px}
 .qc-legend li{display:flex;align-items:center;gap:6px}
 .qc-legend small{color:var(--muted)}
@@ -1891,7 +1904,7 @@ function sesRow(p,ph,s,i){
       <label class="field"><span>관찰자</span><textarea rows="1" class="one" id="ses-${s.id}-observer" data-f="ses:${k}:observer" placeholder="예: 담임">${esc(s.observer)}</textarea></label>
       <label class="field wide2"><span>메모</span><textarea rows="1" class="one" id="ses-${s.id}-note" data-f="ses:${k}:note" placeholder="예: 시험 주간, 결석 후 첫날">${esc(s.note)}</textarea></label>
     </div>
-    ${freq&&(PCN||s.tapLog)?natRow(p,ph,s,i):''}${s.durLog?natDurRow(s):''}
+    ${freq&&(PCN||s.tapLog)?natRow(p,ph,s,i):''}${p.procs.define.data.measure==='지속시간'||s.durLog?durEd(p,ph,s):''}
     ${ui.confirm==='del-ses:'+k?confirmBox('이 회기 기록을 삭제합니다.','del-ses',k):''}
   </div>`;
 }
@@ -2753,6 +2766,8 @@ const actions={
   'web-apply':()=>webApply(),
   'web-later':()=>{const b=$('#web-upd');if(b)b.hidden=true;},
   'nat-target':el=>natTargetToggle(el),
+  'dur-add':el=>durAdd(el),
+  'dur-del':el=>durDel(el),
   'nat-pin':async()=>{try{const r=await PCN.pinWidget();if(!r.ok)toast('홈 화면을 길게 눌러 위젯 → PBS 기록');}catch(e){toast('홈 화면을 길게 눌러 위젯 → PBS 기록');}},
   'nat-tile':async()=>{try{const r=await PCN.addTile();toast(r.already?'이미 빠른 설정에 있습니다':r.ok?'빠른 설정에 추가했습니다':'빠른 설정 편집에서 PBS 측정을 끌어 놓으세요');}catch(e){toast('빠른 설정 편집에서 PBS 측정을 끌어 놓으세요');}},
   'bl-goal':()=>{
@@ -2991,9 +3006,10 @@ function setPlanTime(el){
   toast(v?`${k==='start'?'관찰 시작 시간':'최종 종료 시간'}을 ${v}(으)로 정했습니다`:`${k==='start'?'관찰 시작 시간':'최종 종료 시간'}을 지웠습니다`);
 }
 document.addEventListener('input',e=>{const el=e.target.closest('[data-f]');if(el&&el.id!=='obs-interval'&&!el.matches('.t24-in'))onField(el);});
-document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.matches&&d.matches('details[data-hy-memo]'))ui.hyMemoOpen=d.open;if(d&&d.matches&&d.matches('details[data-sheet]')){if(d.open)ui.openSheets.add(d.dataset.sheet);else ui.openSheets.delete(d.dataset.sheet);}},true);
+document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.matches&&d.matches('details[data-dur-box]')){if(d.open)durOpen.add(d.dataset.durBox);else durOpen.delete(d.dataset.durBox);}if(d&&d.matches&&d.matches('details[data-nat-chk]'))nat.chkOpen=d.open;if(d&&d.matches&&d.matches('details[data-hy-memo]'))ui.hyMemoOpen=d.open;if(d&&d.matches&&d.matches('details[data-sheet]')){if(d.open)ui.openSheets.add(d.dataset.sheet);else ui.openSheets.delete(d.dataset.sheet);}},true);
 document.addEventListener('change',async e=>{
   const el=e.target;
+  if(el.matches('[data-chk]')){natChkSet();return;}
   if(el.matches('.t24-native')){/* 시계로 고른 값을 24시간 글자로 옮긴다 */
     const tx=el.parentNode.querySelector('.t24-in');if(!tx||!el.value)return;
     tx.value=el.value.length===5&&tx.dataset.t24==='s'?el.value+':00':el.value.slice(0,tx.dataset.t24==='s'?8:5);
@@ -3009,6 +3025,7 @@ document.addEventListener('change',async e=>{
     el.defaultValue=el.value;
     if(el.matches('[data-plan]')){setPlanTime(el);return;}
     if(el.matches('[data-shdt]')){setSheetTime(el);return;}
+    if(el.matches('[data-dur]')){durEdit(el);return;}
     if(el.matches('[data-f]')){onField(el);return;}
     return;
   }
@@ -4276,7 +4293,7 @@ if(window.__pbsEmu)window.__pbsSync={Sync,syncFlat,syncUnflat,syncDiff,syncPendi
    앱 밖 측정: 기초선/중재 화면에서 측정 대상(프로젝트·단계·빈도/지속시간)을 정해 두면 첫 버튼에서 새 회기가 열린다.
    그 회기의 key는 '프로젝트|단계|new:시작ms'이고, 앱이 그 기록을 받으면 그 날짜·시각으로 회기를 만들고 s.natId에 'new:시작ms'를 남긴다.
    브라우저에서는 PCN이 null이라 아무것도 하지 않는다. */
-const nat={key:null,busy:false,again:false,target:null};
+const nat={key:null,busy:false,again:false,target:null,ver:1,chk:null,chkOpen:false};
 function natKey(p,ph,s){return `${p.id}|${ph}|${s.natId||s.id}`;}
 function natTimes(s){return String(s.tapLog||'').split(/\s+/).filter(Boolean);}
 function natLogText(p,ph,s){
@@ -4295,7 +4312,7 @@ function natUI(){
     const b=$(`#ses-${s.id} [data-act="ses-nat"]`);if(b){b.textContent=on?'알림창 버튼 끄기':'알림창 ＋1 켜기';b.classList.toggle('primary',on);b.setAttribute('aria-pressed',String(on));}
     const t=$(`#ses-${s.id}-nat`);if(t)t.textContent=natLogText(p,ph,s);
   }));
-  ['bl','iv','abc'].forEach(ph=>{const r=$(`#nat-target-${ph}`);if(r)r.outerHTML=natTargetRow(p,ph);});
+  ['bl','iv','abc'].forEach(ph=>{const r=$(`#nat-target-${ph}`);const ae=document.activeElement;if(r&&!(r.contains(ae)&&ae.matches('select,input')))r.outerHTML=natTargetRow(p,ph);});
 }
 function natFind(key){
   const [pid,ph,sid]=String(key||'').split('|');const p=projById(pid);
@@ -4334,19 +4351,67 @@ function natAbcTap(f,e){
   }
   sh.updatedAt=nowISO();
 }
-/* 지속시간: durLog('시작-끝' 시각 목록)으로 측정값을 다시 계산. 단위에 '총'이나 '회기'가 없고 '/회'가 있으면 1회 평균, 아니면 총 분 */
+/* 지속시간 에피소드: durLog 한 칸 = '시작-끝'(시:분:초). 끝이 비면 진행 중.
+   뒤에 '/a'(끝 확인에 응답이 없어 자동으로 끝냄: 끝 = 마지막 확인 시각)·'/b'(늦은 시작 보정으로 시작을 당김)가 붙을 수 있다. */
+function durParse(log){return String(log||'').split(/\s+/).filter(Boolean).map(x=>{const m=/^(\d\d:\d\d:\d\d)-(\d\d:\d\d:\d\d)?(?:\/([a-z]+))?$/.exec(x);return m?{a:m[1],b:m[2]||'',f:m[3]||''}:null;}).filter(Boolean);}
+function durStr(list){return list.map(e=>`${e.a}-${e.b||''}${e.f?'/'+e.f:''}`).join(' ');}
+function durSec(x){const [h,m,z]=String(x).split(':').map(Number);return h*3600+m*60+(z||0);}
+function durHms(n){n=((Math.round(n)%86400)+86400)%86400;return [Math.floor(n/3600),Math.floor(n/60)%60,n%60].map(v=>String(v).padStart(2,'0')).join(':');}
+function durLen(e){if(!e.b)return null;let d=durSec(e.b)-durSec(e.a);if(d<0)d+=86400;return d;}
+function durFmt(sec){sec=Math.round(sec);return sec>=60?`${Math.floor(sec/60)}분 ${sec%60}초`:`${sec}초`;}
+/* 지속시간: durLog로 측정값을 다시 계산. 단위에 '총'이나 '회기'가 없고 '/회'가 있으면 1회 평균, 아니면 총 분 (끝난 에피소드만) */
 function natDurValue(p,s){
-  const segs=String(s.durLog||'').split(/\s+/).filter(x=>/^\d\d:\d\d:\d\d-\d\d:\d\d:\d\d$/.test(x));
-  const sec=x=>{const [h,m,z]=x.split(':').map(Number);return h*3600+m*60+z;};
-  let tot=0;segs.forEach(x=>{const [a,b]=x.split('-');let d=sec(b)-sec(a);if(d<0)d+=86400;tot+=d;});
+  const segs=durParse(s.durLog).filter(e=>e.b);
+  let tot=0;segs.forEach(e=>{tot+=durLen(e);});
   const unit=String(p.procs.define.data.unit||'');
   const avg=/\/\s*회(?!기)/.test(unit)&&!/총|회기/.test(unit);
   const min=tot/60;return String(rnd(avg&&segs.length?min/segs.length:min));
 }
-function natDurRow(s){
-  const segs=String(s.durLog||'').split(/\s+/).filter(Boolean);
-  const txt=segs.map(x=>{const [a,b]=x.split('-');return `${a.slice(0,5)}~${b?b.slice(0,5):'진행 중'}`;}).join(', ');
-  return `<div class="bl-nat"><span class="muted" id="ses-${s.id}-dur">${esc(`앱 밖 기록 ${segs.length}건: ${txt}`)}</span></div>`;
+/* 회기 끝 에피소드 목록: 요약(횟수·총·평균) + 에피소드마다 시작·끝 시각 고치기·지우기 */
+const durOpen=new Set();
+function durEd(p,ph,s){
+  const L=durParse(s.durLog);const done=L.filter(e=>e.b);const tot=done.reduce((t,e)=>t+durLen(e),0);
+  const warn=L.some(e=>e.f.includes('a'));
+  const sum=L.length?`${done.length}회 · 총 ${durFmt(tot)}${done.length?` · 평균 ${durFmt(tot/done.length)}`:''}${L.length>done.length?' · 진행 중':''}`:'없음';
+  const rows=L.map((e,i)=>{
+    const tag=[e.f.includes('a')?'<b>자동 끝 · 확인</b>':'',e.f.includes('b')?'<span>시작 당김</span>':''].filter(Boolean).join(' ');
+    return `<div class="dur-ep${e.f.includes('a')?' auto':''}">
+      <span class="dur-n">${i+1}</span>${t24(`data-dur="${ph}|${s.id}|${i}|a"`,e.a,true,`${i+1}번 시작`)}<span class="dur-to" aria-hidden="true">~</span>${e.b?t24(`data-dur="${ph}|${s.id}|${i}|b"`,e.b,true,`${i+1}번 끝`):'<span class="muted dur-run">진행 중</span>'}
+      <div class="dur-meta"><span class="muted">${e.b?durFmt(durLen(e)):''}</span>${tag}<button type="button" class="btn small ghost danger" data-act="dur-del" data-ph="${ph}" data-id="${s.id}" data-i="${i}" aria-label="${i+1}번 에피소드 지우기">지우기</button></div>
+    </div>`;}).join('');
+  const open=durOpen.has(s.id)||warn;
+  return `<details class="dur-ed${warn?' warn':''}" id="ses-${s.id}-dur" data-dur-box="${s.id}"${open?' open':''}><summary>에피소드 ${esc(sum)}${warn?' · 확인 필요':''}</summary>${rows}
+    <div class="dur-foot"><button type="button" class="btn small" data-act="dur-add" data-ph="${ph}" data-id="${s.id}">+ 에피소드</button><span class="muted">${warn?'자동 끝은 시각 확인':'고치면 값도 바뀌어요'}</span></div></details>`;
+}
+function durApply(p,ph,s,L){
+  s.durLog=durStr(L);s.value=natDurValue(p,s);
+  const v=$(`#ses-${s.id}-value`);if(v)v.value=s.value;
+  const ae=document.activeElement;const old=$(`#ses-${s.id}-dur`);if(old&&ae&&old.contains(ae))ae.blur();/* blur가 change를 한 번 더 부를 수 있어 다시 찾는다 */
+  const box=$(`#ses-${s.id}-dur`);if(box&&box.isConnected)box.outerHTML=durEd(p,ph,s);
+  touch(p,sesProc(ph));refreshBl(p);saveNow();
+}
+function durEdit(el){
+  const [ph,id,i,which]=String(el.dataset.dur).split('|');const p=curProject();if(!p)return;
+  const s=sesList(p,ph).find(x=>x.id===id);if(!s)return;
+  const L=durParse(s.durLog);const e=L[Number(i)];if(!e)return;
+  const v=el.value.trim();
+  if(!/^\d\d:\d\d:\d\d$/.test(v)){toast('시각을 비울 수 없습니다');durApply(p,ph,s,L);return;}
+  const n={...e,[which]:v};
+  if(n.b&&durLen(n)>12*3600){toast('끝이 시작보다 빠릅니다');durApply(p,ph,s,L);return;}
+  /* 사람이 고친 시각은 확인한 것으로 본다: 끝을 고치면 '자동 끝', 시작을 고치면 '시작 당김' 표시를 뗀다 */
+  n.f=n.f.replace(which==='b'?'a':'b','');
+  L[Number(i)]=n;durApply(p,ph,s,L);
+}
+function durAdd(el){
+  const p=curProject();if(!p)return;const ph=el.dataset.ph;const s=sesList(p,ph).find(x=>x.id===el.dataset.id);if(!s)return;
+  const L=durParse(s.durLog);const last=L[L.length-1];
+  if(last&&!last.b){toast('진행 중인 에피소드의 끝을 먼저 적으세요');return;}
+  const a=last?last.b:(/^\d\d:\d\d$/.test(s.time||'')?s.time+':00':natHms(Date.now()));
+  L.push({a,b:durHms(durSec(a)+60),f:''});durOpen.add(s.id);durApply(p,ph,s,L);
+}
+function durDel(el){
+  const p=curProject();if(!p)return;const ph=el.dataset.ph;const s=sesList(p,ph).find(x=>x.id===el.dataset.id);if(!s)return;
+  const L=durParse(s.durLog);L.splice(Number(el.dataset.i),1);durOpen.add(s.id);durApply(p,ph,s,L);toast('에피소드를 지웠습니다');
 }
 function natSync(p,ph,s){if(PCN&&nat.key===natKey(p,ph,s))PCN.setCount({key:nat.key,count:blNum(s.value)||0}).catch(()=>{});}
 async function natDrain(){
@@ -4354,7 +4419,7 @@ async function natDrain(){
   if(nat.busy){nat.again=true;return;}
   nat.busy=true;
   try{
-    const r=await PCN.drain();nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;
+    const r=await PCN.drain();nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;nat.ver=r.ver||1;nat.chk=r.chk||null;
     const hit=new Map();let lost=0,made=0;
     (r.events||[]).forEach(e=>{
       const f=natResolve(e.key);if(!f){lost++;return;}
@@ -4362,11 +4427,12 @@ async function natDrain(){
       const {s}=f;
       if(f.ph==='abc'){if(!e.k)natAbcTap(f,e);}
       else if(e.k==='b'){/* 회기 시작만 (0회도 기록) */}
-      else if(e.k==='ds'||e.k==='de'){
-        const segs=String(s.durLog||'').split(/\s+/).filter(Boolean);const open=segs.length&&/-$/.test(segs[segs.length-1]);
-        if(e.k==='ds'){if(!open)segs.push(natHms(e.t)+'-');}
-        else if(open)segs[segs.length-1]+=natHms(e.t);
-        s.durLog=segs.join(' ');s.value=natDurValue(f.p,s);
+      else if(e.k==='ds'||e.k==='de'||e.k==='adj'){
+        const L=durParse(s.durLog);const last=L[L.length-1];const open=!!(last&&!last.b);
+        if(e.k==='ds'){if(!open)L.push({a:natHms(e.t),b:'',f:''});}
+        else if(e.k==='adj'){if(open){last.a=natHms(e.s);if(!last.f.includes('b'))last.f+='b';}}/* 늦은 시작 보정 */
+        else if(open){last.b=natHms(e.t);if(e.f==='a'&&!last.f.includes('a'))last.f+='a';}/* f:'a' = 응답 없어 자동 끝 */
+        s.durLog=durStr(L);s.value=natDurValue(f.p,s);
       }else{
         const d=Number(e.d)>0?1:-1;
         s.value=String(Math.max(0,(blNum(s.value)||0)+d));
@@ -4382,7 +4448,7 @@ async function natDrain(){
       if(p&&Array.from(hit.values()).some(f=>f.p===p&&f.ph==='abc')&&onAbcPage(p))renderAbcAll();
       if(made&&p&&Array.from(hit.values()).some(f=>f.p===p)&&ui.view==='proc'){const y=window.scrollY;render();window.scrollTo(0,y);}
       else{
-        hit.forEach(f=>{if(f.p!==p||f.ph==='abc')return;const v=$(`#ses-${f.s.id}-value`);if(v&&document.activeElement!==v)v.value=f.s.value;const dl=$(`#ses-${f.s.id}-dur`);if(dl)dl.parentElement.outerHTML=natDurRow(f.s);});
+        hit.forEach(f=>{if(f.p!==p||f.ph==='abc')return;const v=$(`#ses-${f.s.id}-value`);if(v&&document.activeElement!==v)v.value=f.s.value;const dl=$(`#ses-${f.s.id}-dur`);if(dl&&!dl.contains(document.activeElement))dl.outerHTML=durEd(f.p,f.ph,f.s);});
         if(p&&Array.from(hit.values()).some(f=>f.p===p))refreshBl(p);
       }
       const cur=nat.key&&hit.get(nat.key);if(cur&&cur.s&&!cur.s.durLog)natSync(cur.p,cur.ph,cur.s);
@@ -4406,7 +4472,38 @@ function natTargetRow(p,ph){
     <button type="button" class="btn small${on?' primary':''}" data-act="nat-target" data-ph="${ph}" aria-pressed="${on}">${on?'앱 밖 측정 끄기':'앱 밖 측정 켜기'}</button>
     ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>`:''}
     <span class="muted">${on?(ph==='abc'?'＋1마다 시각 한 행':'앱이 꺼져도 기록돼요'):'위젯·알림창에서 기록'}</span>
+    ${on&&m==='dur'&&nat.ver>=2?natChkBox():''}
   </div>`;
+}
+/* 지속시간 끝 확인(끝 깜빡 방지) 설정: 간격·알림 방식·응답 없을 때·늦은 시작 보정 버튼. 값은 기기(앱)에 저장된다 */
+const CHK_MODES=[['vib','진동'],['sound','소리'],['both','소리+진동'],['quiet','무음 알림'],['off','끄기']];
+function natChkBox(){
+  const k=nat.chk||{sec:30,mode:'vib',miss:3,adj:true};
+  const secs=[[15,'15초'],[30,'30초(기본)'],[60,'1분'],[120,'2분'],[300,'5분']];
+  if(!secs.some(x=>x[0]===Number(k.sec)))secs.push([Number(k.sec),`${k.sec}초`]);
+  const misses=[[0,'계속 재기'],[2,'2번 뒤 자동 끝'],[3,'3번 뒤 자동 끝(기본)'],[5,'5번 뒤 자동 끝'],[10,'10번 뒤 자동 끝']];
+  if(!misses.some(x=>x[0]===Number(k.miss)))misses.push([Number(k.miss),`${k.miss}번 뒤 자동 끝`]);
+  const opt=(arr,v)=>arr.map(([x,l])=>`<option value="${x}"${String(x)===String(v)?' selected':''}>${l}</option>`).join('');
+  const ml=(CHK_MODES.find(x=>x[0]===k.mode)||CHK_MODES[0])[1];
+  const sl=(secs.find(x=>x[0]===Number(k.sec))||[0,k.sec+'초'])[1].replace('(기본)','');
+  return `<details class="nat-chk" data-nat-chk${nat.chkOpen?' open':''}><summary>끝 확인 · ${k.mode==='off'?'끔':`${esc(sl)}마다 ${esc(ml)}`}</summary>
+    <div class="nat-chk-grid">
+      <label class="field"><span>확인 간격</span><select data-chk="sec">${opt(secs,k.sec)}</select></label>
+      <label class="field"><span>알림 방식</span><select data-chk="mode">${opt(CHK_MODES,k.mode)}</select></label>
+      <label class="field"><span>응답 없을 때</span><select data-chk="miss">${opt(misses,k.miss)}</select></label>
+    </div>
+    <div class="dur-foot"><label class="check"><input type="checkbox" data-chk="adj"${k.adj?' checked':''}> <span>늦은 시작 보정 버튼</span></label><span class="muted">끝 시각은 마지막 확인</span></div>
+  </details>`;
+}
+async function natChkSet(){
+  const box=$('[data-nat-chk]');if(!box||!PCN)return;
+  const g=n=>box.querySelector(`[data-chk="${n}"]`);
+  try{
+    const r=await PCN.setCheck({sec:Number(g('sec').value),mode:g('mode').value,miss:Number(g('miss').value),adj:!!g('adj').checked});
+    nat.chk=r.chk||nat.chk;toast('끝 확인 설정을 바꿨습니다');
+  }catch(e){toast('새 앱을 설치해야 바꿀 수 있습니다');}
+  if(document.activeElement)document.activeElement.blur();
+  natUI();
 }
 async function natTargetToggle(el){
   const p=curProject();if(!p||!PCN)return;const ph=el.dataset.ph;const m=natMode(p,ph);if(!m)return;

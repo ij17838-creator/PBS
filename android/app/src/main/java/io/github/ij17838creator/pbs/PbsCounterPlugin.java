@@ -75,6 +75,14 @@ public class PbsCounterPlugin extends Plugin {
         t.put("mode", CounterStore.tMode(c));
         t.put("title", CounterStore.tTitle(c));
         o.put("target", t);
+        // 2 = 끝 확인·늦은 시작 보정이 있는 앱 (웹 화면이 먼저 업데이트돼도 옛 앱에선 설정 칸을 숨기려고)
+        o.put("ver", 2);
+        JSObject k = new JSObject();
+        k.put("sec", CounterStore.chkSec(c));
+        k.put("mode", CounterStore.chkMode(c));
+        k.put("miss", CounterStore.chkMiss(c));
+        k.put("adj", CounterStore.adjOn(c));
+        o.put("chk", k);
         return o;
     }
 
@@ -153,6 +161,16 @@ public class PbsCounterPlugin extends Plugin {
         if (pid == null || pid.isEmpty() || ph == null || ph.isEmpty()) { call.reject("측정 대상이 없습니다"); return; }
         Context c = getContext();
         CounterStore.setTarget(c, pid, ph, call.getString("title", "PBS 기록"), call.getString("mode", CounterStore.FREQ));
+        CounterNotifier.refreshAll(c);
+        call.resolve(state());
+    }
+
+    /** 끝 확인 설정: {sec:간격(초), mode:'vib'|'sound'|'both'|'quiet'|'off', miss:응답 없이 몇 번이면 자동 끝(0=안 끝냄), adj:늦은 시작 보정 버튼} */
+    @PluginMethod
+    public void setCheck(PluginCall call) {
+        Context c = getContext();
+        CounterStore.setCheck(c, call.getInt("sec", 30), call.getString("mode", CounterStore.CHK_VIB),
+            call.getInt("miss", 3), Boolean.TRUE.equals(call.getBoolean("adj", true)));
         CounterNotifier.refreshAll(c);
         call.resolve(state());
     }
