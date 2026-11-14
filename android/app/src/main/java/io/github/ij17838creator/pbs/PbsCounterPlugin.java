@@ -206,6 +206,40 @@ public class PbsCounterPlugin extends Plugin {
         }
     }
 
+    /* ---------- 화면 자동 업데이트 (WebUpdater) ---------- */
+
+    /** 인터넷에서 새 화면이 있는지 보고 받아 둔다: {force} → {pending, version} */
+    @PluginMethod
+    public void webCheck(PluginCall call) {
+        boolean force = Boolean.TRUE.equals(call.getBoolean("force", false));
+        Context c = getContext();
+        new Thread(() -> {
+            String p = WebUpdater.check(c, force);
+            JSObject o = new JSObject();
+            o.put("pending", !p.isEmpty());
+            o.put("version", WebUpdater.version(c));
+            call.resolve(o);
+        }).start();
+    }
+
+    /** 받아 둔 새 화면을 지금 바로 쓴다(화면을 다시 불러옴) */
+    @PluginMethod
+    public void webApply(PluginCall call) {
+        JSObject o = new JSObject();
+        o.put("ok", WebUpdater.applyNow(getContext(), getBridge()));
+        call.resolve(o);
+    }
+
+    /** 웹 화면이 다 열렸다는 신호 (받은 화면이 고장 나면 설치본으로 돌아가는 안전장치용) */
+    @PluginMethod
+    public void webReady(PluginCall call) {
+        WebUpdater.ready(getContext());
+        JSObject o = new JSObject();
+        o.put("version", WebUpdater.version(getContext()));
+        o.put("pending", !WebUpdater.pending(getContext()).isEmpty());
+        call.resolve(o);
+    }
+
     @PluginMethod
     public void drain(PluginCall call) {
         JSONArray ev = CounterStore.drain(getContext());

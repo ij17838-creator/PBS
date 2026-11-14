@@ -454,6 +454,8 @@ td.top{color:var(--accent);font-weight:700}
   .sheet-meta{grid-template-columns:1fr 1fr}
 }
 .foot{border-top:1px solid var(--line);padding-block:16px 28px;color:var(--muted);font-size:.82rem;display:flex;flex-direction:column;gap:4px}
+.web-upd{position:fixed;left:50%;top:calc(var(--tb,56px) + 8px);transform:translateX(-50%);display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;background:var(--surface);border:1px solid var(--accent);color:var(--ink);padding:8px 12px;border-radius:12px;box-shadow:var(--shadow);z-index:19;max-width:calc(100% - 32px);font-weight:600;font-size:.92rem}
+.web-upd[hidden]{display:none}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 18px;border-radius:10px;font-size:.9rem;font-weight:600;z-index:20;max-width:calc(100% - 32px);box-shadow:var(--shadow);text-align:center}
 
 @media (max-width:560px){
@@ -563,6 +565,7 @@ html.in-ink .ink-host{caret-color:transparent}
   </footer>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<div class="web-upd" id="web-upd" role="status" hidden><span>새 화면 버전이 있어요</span><button type="button" class="btn small primary" data-act="web-apply">지금 적용</button><button type="button" class="btn small ghost" data-act="web-later">나중에</button></div>
 
 <script>
 (function(){
@@ -2747,6 +2750,8 @@ const actions={
     const f=$(`#ses-${s.id}-value`);if(f)f.value=s.value;touch(p,sesProc(ph));refreshBl(p);natSync(p,ph,s);
   },
   'ses-nat':el=>natToggle(el),
+  'web-apply':()=>webApply(),
+  'web-later':()=>{const b=$('#web-upd');if(b)b.hidden=true;},
   'nat-target':el=>natTargetToggle(el),
   'nat-pin':async()=>{try{const r=await PCN.pinWidget();if(!r.ok)toast('홈 화면을 길게 눌러 위젯 → PBS 기록');}catch(e){toast('홈 화면을 길게 눌러 위젯 → PBS 기록');}},
   'nat-tile':async()=>{try{const r=await PCN.addTile();toast(r.already?'이미 빠른 설정에 있습니다':r.ok?'빠른 설정에 추가했습니다':'빠른 설정 편집에서 PBS 측정을 끌어 놓으세요');}catch(e){toast('빠른 설정 편집에서 PBS 측정을 끌어 놓으세요');}},
@@ -4419,6 +4424,22 @@ function natInit(){
   natDrain().then(()=>{if(nat.key)render();});
 }
 
+/* ---------- 설치형 앱: 화면 자동 업데이트 ----------
+   앱(android WebUpdater)이 GitHub Pages의 index.html을 받아 두었다가 다음에 앱을 열 때 쓴다. 주소가 그대로라 자료는 남는다.
+   여기서는 '다 열렸음' 신호(webReady: 받은 화면이 고장 나면 설치본으로 돌아가는 안전장치)와 새 버전 알림 막대만 다룬다. */
+function webShow(r){const b=$('#web-upd');if(b&&r&&r.pending)b.hidden=false;}
+function webCheck(force){if(PCN&&PCN.webCheck)PCN.webCheck({force:!!force}).then(webShow).catch(()=>{});}
+async function webApply(){
+  try{saveNow();}catch(e){}
+  try{const r=await PCN.webApply();if(!r.ok)toast('다음에 앱을 열 때 적용됩니다');}catch(e){toast('다음에 앱을 열 때 적용됩니다');}
+}
+function webInit(){
+  if(!PCN||!PCN.webReady)return;
+  PCN.webReady().then(webShow).catch(()=>{});
+  setTimeout(()=>webCheck(false),4000);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')webCheck(false);});
+}
+
 /* ---------- boot ---------- */
 if(firstRun&&!store.projects.length){store.projects.push(exampleProject());}
 AudioDB.open().then(()=>{audioOK=true;}).catch(()=>{audioOK=false;});
@@ -4426,6 +4447,7 @@ updateStorageBanner();
 render();
 resumeBoot();
 natInit();
+webInit();
 updateUsage();
 if(storageOK)setSaveState('');
 tick();setInterval(tick,1000);
