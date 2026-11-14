@@ -1,6 +1,10 @@
 package io.github.ij17838creator.pbs;
 
 import android.Manifest;
+import android.app.StatusBarManager;
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
+import android.graphics.drawable.Icon;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -28,7 +32,7 @@ import org.json.JSONArray;
 
 /**
  * 웹앱(index.html)이 window.Capacitor.Plugins.PbsCounter 로 부르는 기능.
- * start/stop/status/setCount/drain: 알림창 ＋1 버튼, saveFile: 백업 파일을 '다운로드/PBS'에 저장.
+ * start/stop/status/setCount/drain: 알림창 ＋1 버튼, setTarget/clearTarget/pinWidget/addTile: 앱 밖 측정(위젯·타일), saveFile: 백업 파일을 '다운로드/PBS'에 저장.
  */
 @CapacitorPlugin(
     name = "PbsCounter",
@@ -41,7 +45,7 @@ public class PbsCounterPlugin extends Plugin {
     public void load() {
         live = this;
         // 앱이 꺼졌다 다시 켜져도 측정 중이면 알림을 다시 띄운다
-        if (CounterStore.active(getContext())) CounterNotifier.show(getContext());
+        CounterNotifier.refreshAll(getContext());
     }
 
     @Override
@@ -62,6 +66,15 @@ public class PbsCounterPlugin extends Plugin {
         o.put("key", CounterStore.key(c));
         o.put("count", CounterStore.count(c));
         o.put("enabled", NotificationManagerCompat.from(c).areNotificationsEnabled());
+        o.put("mode", CounterStore.mode(c));
+        o.put("running", CounterStore.running(c));
+        JSObject t = new JSObject();
+        t.put("on", CounterStore.hasTarget(c));
+        t.put("pid", CounterStore.tPid(c));
+        t.put("ph", CounterStore.tPh(c));
+        t.put("mode", CounterStore.tMode(c));
+        t.put("title", CounterStore.tTitle(c));
+        o.put("target", t);
         return o;
     }
 
@@ -91,16 +104,18 @@ public class PbsCounterPlugin extends Plugin {
         boolean shown = CounterNotifier.show(c);
         if (!shown) {
             CounterStore.stop(c);
+            CounterNotifier.refreshAll(c);
             call.reject("알림을 띄울 수 없습니다. 설정에서 이 앱의 알림을 켜 주세요", "blocked");
             return;
         }
+        CounterNotifier.refreshAll(c);
         call.resolve(state());
     }
 
     @PluginMethod
     public void stop(PluginCall call) {
         CounterStore.stop(getContext());
-        CounterNotifier.cancel(getContext());
+        CounterNotifier.refreshAll(getContext());
         call.resolve(state());
     }
 
@@ -115,6 +130,80 @@ public class PbsCounterPlugin extends Plugin {
         CounterStore.setCount(c, call.getString("key", ""), call.getInt("count", 0));
         if (CounterStore.active(c)) CounterNotifier.show(c);
         call.resolve(state());
+    }
+
+    /** 앱 밖 측정 대상 정하기: {pid, ph:'bl'|'iv', title, mode:'freq'|'dur'}. 알림 권한이 없어도 위젯·타일은 된다 */
+    @PluginMethod
+    public void setTarget(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= 33 && getPermissionState("notifications") != PermissionState.GRANTED) {
+            requestPermissionForAlias("notifications", call, "targetPerm");
+            return;
+        }
+        doTarget(call);
+    }
+
+    @PermissionCallback
+    private void targetPerm(PluginCall call) {
+        doTarget(call);
+    }
+
+    private void doTarget(PluginCall call) {
+        String pid = call.getString("pid", "");
+        String ph = call.getString("ph", "");
+        if (pid == null || pid.isEmpty() || ph == null || ph.isEmpty()) { call.reject("측정 대상이 없습니다"); return; }
+        Context c = getContext();
+        CounterStore.setTarget(c, pid, ph, call.getString("title", "PBS 기록"), call.getString("mode", CounterStore.FREQ));
+        CounterNotifier.refreshAll(c);
+        call.resolve(state());
+    }
+
+    @PluginMethod
+    public void clearTarget(PluginCall call) {
+        CounterStore.clearTarget(getContext());
+        CounterNotifier.refreshAll(getContext());
+        call.resolve(state());
+    }
+
+    /** 홈 화면에 위젯 놓기 창 띄우기 (런처가 지원할 때만) */
+    @PluginMethod
+    public void pinWidget(PluginCall call) {
+        JSObject o = new JSObject();
+        boolean ok = false;
+        try {
+            if (Build.VERSION.SDK_INT >= 26) {
+                AppWidgetManager m = getContext().getSystemService(AppWidgetManager.class);
+                if (m != null && m.isRequestPinAppWidgetSupported()) {
+                    ok = m.requestPinAppWidget(new ComponentName(getContext(), CounterWidget.class), null, null);
+                }
+            }
+        } catch (Exception ignored) {}
+        o.put("ok", ok);
+        call.resolve(o);
+    }
+
+    /** 빠른 설정에 타일 추가 창 띄우기 (안드로이드 13 이상) */
+    @PluginMethod
+    public void addTile(PluginCall call) {
+        JSObject o = new JSObject();
+        if (Build.VERSION.SDK_INT < 33) { o.put("ok", false); call.resolve(o); return; }
+        try {
+            StatusBarManager sb = getContext().getSystemService(StatusBarManager.class);
+            if (sb == null) { o.put("ok", false); call.resolve(o); return; }
+            sb.requestAddTileService(
+                new ComponentName(getContext(), CounterTile.class),
+                getContext().getString(R.string.tile_label),
+                Icon.createWithResource(getContext(), R.drawable.ic_stat_pbs),
+                getContext().getMainExecutor(),
+                r -> {
+                    JSObject res = new JSObject();
+                    res.put("ok", r == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED || r == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED);
+                    res.put("already", r == StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED);
+                    call.resolve(res);
+                });
+        } catch (Exception e) {
+            o.put("ok", false);
+            call.resolve(o);
+        }
     }
 
     @PluginMethod

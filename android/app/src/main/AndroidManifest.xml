@@ -24,8 +24,37 @@
 
         </activity>
 
-        <!-- 알림창 ＋1 · −1 · 끝 버튼을 받는 곳 (앱을 열지 않고 기록) -->
+        <!-- 알림창·위젯의 ＋1 · −1 · 회기 끝 등 버튼을 받는 곳 (앱을 열지 않고 기록) -->
         <receiver android:name=".CounterReceiver" android:exported="false" />
+
+        <!-- 홈 화면 위젯: 앱이 꺼져 있어도 바로 기록 -->
+        <receiver android:name=".CounterWidget" android:exported="false" android:label="PBS 측정">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_counter_info" />
+        </receiver>
+
+        <!-- 빠른 설정 타일 'PBS 측정' -->
+        <service
+            android:name=".CounterTile"
+            android:exported="true"
+            android:icon="@drawable/ic_stat_pbs"
+            android:label="@string/tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- 재부팅·앱 업데이트 뒤 측정 알림·위젯 다시 그리기 -->
+        <receiver android:name=".BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -44,6 +73,8 @@
     <!-- 알림창 측정 버튼 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 재부팅 뒤 측정 알림 다시 띄우기 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- 관찰 중 녹음 (웹앱의 마이크 기능) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />

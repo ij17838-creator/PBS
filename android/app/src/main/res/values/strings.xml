@@ -4,4 +4,6 @@
     <string name="title_activity_main">PBS 기록</string>
     <string name="package_name">io.github.ij17838creator.pbs</string>
     <string name="custom_url_scheme">io.github.ij17838creator.pbs</string>
+    <string name="widget_desc">앱을 열지 않고 바로 측정</string>
+    <string name="tile_label">PBS 측정</string>
 </resources>
