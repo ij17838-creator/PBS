@@ -4,6 +4,29 @@
 
 ---
 
+## 2026-11-14 · 설치형 앱 화면 자동 업데이트(재설치 줄이기)
+### 한 일
+- 앱이 열릴 때·앞으로 나올 때(5분에 한 번까지) GitHub Pages의 index.html을 받아 두고, 다음 실행부터 그 화면을 씀. 위에 "새 화면 버전이 있어요 · 지금 적용/나중에" 막대.
+- 화면(index.html)만 바뀐 업데이트는 재설치 불필요. android 폴더가 바뀐 때만 새 apk 필요.
+- 받은 화면이 열리다 멈추면 다음 실행에 설치본 화면으로 돌아가고 그 버전은 다시 받지 않음.
+- 사용 안내: docs/android-app.md "화면 자동 업데이트".
+### 데이터
+- 앱 주소(https://localhost)는 그대로라 localStorage 등 앱 자료 유지. 받은 화면은 앱 안 files/web/(sha 16자리)/.
+### 확인한 것
+- Playwright+가짜 플러그인: 새 버전 막대 표시, 지금 적용 호출, 앱 밖 측정 시험 다시 통과, 콘솔 오류 없음.
+- GitHub Actions 빌드 성공(브랜치 run 15). 자바 코드 컴파일됨.
+- 시험하지 못한 것: 실기기에서 실제 받기·적용·오프라인 동작·되돌리기. 이 환경에서는 github.io 접속이 막혀 있어 받기 자체도 못 봄.
+### 알려진 한계
+- 새 화면이 예전 apk에 없는 안드로이드 기능을 부르면 그 버튼만 안 됨(오류 알림).
+- Pages 캐시 때문에 main 반영 후 최대 10분쯤 늦게 받을 수 있음.
+- main에 올린 index.html은 시험 전에도 앱에 바로 퍼짐(웹과 같음).
+### 코드 위치 (index.html)
+- `webInit`, `webCheck`, `webShow`, `webApply`, 동작 `web-apply`·`web-later`, CSS `.web-upd`
+- android: `WebUpdater`(boot·check·applyNow·ready, PAGES_URL), `MainActivity.onCreate`(boot), `PbsCounterPlugin`(webCheck·webApply·webReady). Capacitor `CapWebViewSettings.serverBasePath` 사용.
+### 다음에 할 일
+- 사용자: 이번 apk 한 번 설치 → 앱 열고 인터넷 연결 확인. 다음 화면 수정 때 막대가 뜨는지 봐 주기.
+- 앱 밖 측정 실기기 확인(바로 아래 항목 참고).
+
 ## 2026-11-14 · 앱이 꺼져 있어도 측정(위젯·빠른 설정·알림창)
 ### 한 일
 - 기초선·중재 화면 회기 목록 아래 "앱 밖 측정 켜기/끄기"(빈도·지속시간만, 그 밖은 "앱 밖 측정 미지원"). 켜면 "위젯 놓기"·"빠른 설정 추가" 버튼.
