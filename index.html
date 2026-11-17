@@ -3030,10 +3030,11 @@ function setPlanTime(el){
   toast(v?`${k==='start'?'관찰 시작 시간':'최종 종료 시간'}을 ${v}(으)로 정했습니다`:`${k==='start'?'관찰 시작 시간':'최종 종료 시간'}을 지웠습니다`);
 }
 document.addEventListener('input',e=>{const el=e.target.closest('[data-f]');if(el&&el.id!=='obs-interval'&&!el.matches('.t24-in'))onField(el);});
-document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.matches&&d.matches('details[data-dur-box]')){if(d.open)durOpen.add(d.dataset.durBox);else durOpen.delete(d.dataset.durBox);}if(d&&d.matches&&d.matches('details[data-nat-chk]'))nat.chkOpen=d.open;if(d&&d.matches&&d.matches('details[data-hy-memo]'))ui.hyMemoOpen=d.open;if(d&&d.matches&&d.matches('details[data-sheet]')){if(d.open)ui.openSheets.add(d.dataset.sheet);else ui.openSheets.delete(d.dataset.sheet);}},true);
+document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.matches&&d.matches('details[data-dur-box]')){if(d.open)durOpen.add(d.dataset.durBox);else durOpen.delete(d.dataset.durBox);}if(d&&d.matches&&d.matches('details[data-nat-chk]'))nat.chkOpen=d.open;if(d&&d.matches&&d.matches('details[data-nat-btn]'))nat.btnOpen=d.open;if(d&&d.matches&&d.matches('details[data-hy-memo]'))ui.hyMemoOpen=d.open;if(d&&d.matches&&d.matches('details[data-sheet]')){if(d.open)ui.openSheets.add(d.dataset.sheet);else ui.openSheets.delete(d.dataset.sheet);}},true);
 document.addEventListener('change',async e=>{
   const el=e.target;
   if(el.matches('[data-chk]')){natChkSet();return;}
+  if(el.matches('[data-btn3]')){natBtnSet();return;}
   if(el.matches('.t24-native')){/* 시계로 고른 값을 24시간 글자로 옮긴다 */
     const tx=el.parentNode.querySelector('.t24-in');if(!tx||!el.value)return;
     tx.value=el.value.length===5&&tx.dataset.t24==='s'?el.value+':00':el.value.slice(0,tx.dataset.t24==='s'?8:5);
@@ -4319,7 +4320,7 @@ if(window.__pbsEmu)window.__pbsSync={Sync,syncFlat,syncUnflat,syncDiff,syncPendi
    앱 밖 측정: 기초선/중재 화면에서 측정 대상(프로젝트·단계·빈도/지속시간)을 정해 두면 첫 버튼에서 새 회기가 열린다.
    그 회기의 key는 '프로젝트|단계|new:시작ms'이고, 앱이 그 기록을 받으면 그 날짜·시각으로 회기를 만들고 s.natId에 'new:시작ms'를 남긴다.
    브라우저에서는 PCN이 null이라 아무것도 하지 않는다. */
-const nat={key:null,busy:false,again:false,target:null,ver:1,chk:null,chkOpen:false};
+const nat={key:null,busy:false,again:false,target:null,ver:1,chk:null,chkOpen:false,btn:null,btnOpen:false};
 function natKey(p,ph,s){return `${p.id}|${ph}|${s.natId||s.id}`;}
 function natTimes(s){return String(s.tapLog||'').split(/\s+/).filter(Boolean);}
 function natLogText(p,ph,s){
@@ -4625,7 +4626,7 @@ async function natDrain(){
   if(nat.busy){nat.again=true;return;}
   nat.busy=true;
   try{
-    const r=await PCN.drain();nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;nat.ver=r.ver||1;nat.chk=r.chk||null;
+    const r=await PCN.drain();nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;nat.ver=r.ver||1;nat.chk=r.chk||null;nat.btn=r.btn||null;
     const hit=new Map();let lost=0,made=0;
     (r.events||[]).forEach(e=>{
       const f=natResolve(e.key);if(!f){lost++;return;}
@@ -4711,6 +4712,7 @@ function natTargetRow(p,ph){
     ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>`:''}
     <span class="muted">${on?(ph==='abc'?'＋1마다 시각 한 행':({lat:'지시·반응을 눌러요',lvl:'1·2·3을 눌러요',int:'신호 때 있음·없음'}[m]||'앱이 꺼져도 기록돼요')):'위젯·알림창에서 기록'}</span>
     ${on&&m==='dur'&&nat.ver>=2?natChkBox():''}
+    ${on&&nat.ver>=4?natBtnBox(m):''}
   </div>`;
 }
 /* 지속시간 끝 확인(끝 깜빡 방지) 설정: 간격·알림 방식·응답 없을 때·늦은 시작 보정 버튼. 값은 기기(앱)에 저장된다 */
@@ -4732,6 +4734,28 @@ function natChkBox(){
     </div>
     <div class="dur-foot"><label class="check"><input type="checkbox" data-chk="adj"${k.adj?' checked':''}> <span>늦은 시작 보정 버튼</span></label><span class="muted">끝 시각은 마지막 확인</span></div>
   </details>`;
+}
+/* 버튼 3번: 화면이 꺼진 채 전원·음량을 3번 빠르게 누르면 측정 시작(앱 밖 측정 대상 기준). 값은 기기(앱)에 저장된다 */
+function natBtnBox(m){
+  const b=nat.btn||{on:false,vol:true};
+  const next={freq:'다음부턴 ＋1',dur:'다음부턴 시작·끝',lat:'다음부턴 지시·반응'}[m]||'회기 시작만';
+  return `<details class="nat-chk" data-nat-btn${nat.btnOpen?' open':''}><summary>버튼 3번 · ${b.on?(b.vol?'전원·음량':'전원만'):'끔'}</summary>
+    <div class="dur-foot">
+      <label class="check"><input type="checkbox" data-btn3="on"${b.on?' checked':''}> <span>3번 눌러 시작</span></label>
+      <label class="check"><input type="checkbox" data-btn3="vol"${b.vol?' checked':''}${b.on?'':' disabled'}> <span>음량 버튼도 세기</span></label>
+    </div>
+    <div class="dur-foot muted"><span>회기 없으면 시작</span><span>${next}</span><span>4번째 누름=취소</span><span>측면 두 번 누르기 끄기</span></div>
+  </details>`;
+}
+async function natBtnSet(){
+  const box=$('[data-nat-btn]');if(!box||!PCN)return;
+  const g=n=>box.querySelector(`[data-btn3="${n}"]`);
+  try{
+    const r=await PCN.setButtons({on:!!g('on').checked,vol:!!g('vol').checked});
+    nat.btn=r.btn||nat.btn;toast(nat.btn&&nat.btn.on?'버튼 3번: 화면 꺼진 채 눌러요':'버튼 3번을 껐습니다');
+  }catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
+  if(document.activeElement)document.activeElement.blur();
+  natUI();
 }
 async function natChkSet(){
   const box=$('[data-nat-chk]');if(!box||!PCN)return;

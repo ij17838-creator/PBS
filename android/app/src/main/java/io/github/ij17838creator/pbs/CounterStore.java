@@ -119,6 +119,15 @@ final class CounterStore {
     /** 버튼을 보여 줄 게 있는지 */
     static boolean anything(Context c) { return active(c) || hasTarget(c); }
 
+    /** 버튼 3번(전원·음량)으로 측정 시작을 켰는지, 음량 버튼도 셀지(기본 셈) */
+    static boolean btnOn(Context c) { return prefs(c).getBoolean("btnOn", false); }
+    static boolean btnVol(Context c) { return prefs(c).getBoolean("btnVol", true); }
+    /** 버튼 3번 감시가 지금 돌아야 하는지 */
+    static boolean pressOn(Context c) { return btnOn(c) && anything(c); }
+    static void setBtn(Context c, boolean on, boolean vol) {
+        prefs(c).edit().putBoolean("btnOn", on).putBoolean("btnVol", vol).commit();
+    }
+
     /* ---------- 내부 도우미 ---------- */
     private static JSONArray events(SharedPreferences p) {
         try { return new JSONArray(p.getString("events", "[]")); }

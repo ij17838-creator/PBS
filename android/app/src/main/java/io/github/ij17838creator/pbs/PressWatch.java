@@ -1,0 +1,232 @@
+package io.github.ij17838creator.pbs;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
+import android.media.ToneGenerator;
+import android.media.VolumeProvider;
+import android.media.session.MediaSession;
+import android.media.session.PlaybackState;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.PowerManager;
+import android.os.SystemClock;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import androidx.core.content.ContextCompat;
+
+/**
+ * '버튼 3번' — 기기를 주머니에 넣고 화면이 꺼진 채로 전원·음량 버튼을 섞어 3번 빠르게 누르면 측정을 시작한다.
+ * DurWatch(포그라운드 서비스) 안에서 돈다. 켜 두면 측정 알림이 있는 동안 계속 돈다.
+ *
+ * 전원 버튼: 앱이 직접 받을 수 없어서 '화면 켜짐/꺼짐'이 바뀐 횟수를 센다(누를 때마다 화면이 켜졌다 꺼졌다 하므로).
+ *   갤럭시 '측면 버튼 두 번 누르기(카메라 빠른 실행)'가 켜져 있으면 두 번째 누름이 카메라를 열어 세지 못한다 → 꺼야 한다.
+ * 음량 버튼: 화면이 꺼져 있는 동안에만 '원격 음량' 미디어 세션을 켜서 받는다(화면이 켜져 있으면 음량은 평소처럼).
+ *   화면 꺼짐 상태에서 음량 버튼이 앱에 오는지는 기기·안드로이드 버전마다 다르다[추정].
+ *
+ * 3번째 누름 뒤 GRACE 동안 한 번 더 누르면 취소(짧게 2번 떨림). 아니면 기록하고 떨림으로 알린다.
+ *   회기가 없으면 '회기 시작'(길게 1번). 회기가 열려 있으면 그 방법의 기본 버튼:
+ *   빈도 ＋1(짧게 1번), 지속시간·지연시간 시작(길게 1번)/끝(길게 2번). 강도·간격 기록은 회기 시작만(이미 열려 있으면 짧게 3번 = 기록 안 함).
+ */
+final class PressWatch {
+    /** 누름 사이 최대 간격, 3번 전체 최대 길이, 3번째 뒤 취소를 기다리는 시간(ms) */
+    static final long GAP = 1200L, SPAN = 3000L, GRACE = 1200L;
+    /** 음량 버튼을 꾹 누를 때 반복되는 신호 간격보다 짧으면 '꾹 누름'으로 보고 세지 않는다 */
+    static final long VOL_REPEAT = 120L;
+
+    static final int FB_START = 1, FB_TICK = 2, FB_END = 3, FB_CANCEL = 4, FB_NONE = 5;
+
+    private final Context c;
+    private final Handler h = new Handler(Looper.getMainLooper());
+    private BroadcastReceiver scr;
+    private MediaSession ms;
+    private boolean msOn;
+    private boolean vol;
+    private Boolean lastScreen;
+    private final long[] ts = new long[3];
+    private int n;
+    private long lastPress, lastVolRaw, ignoreUntil;
+    private boolean pending;
+    private final Runnable commit = this::commit;
+    private final Runnable idle = this::onIdle;
+
+    PressWatch(Context c) { this.c = c.getApplicationContext(); }
+
+    /** 켜기·설정 바꾸기 (여러 번 불러도 된다) */
+    void start(boolean volOn) {
+        vol = volOn;
+        if (scr == null) {
+            scr = new BroadcastReceiver() {
+                @Override public void onReceive(Context x, Intent i) {
+                    String a = i.getAction();
+                    boolean on = Intent.ACTION_SCREEN_ON.equals(a);
+                    if (!on && !Intent.ACTION_SCREEN_OFF.equals(a)) return;
+                    if (lastScreen != null && lastScreen == on) { updateSession(); return; } // 같은 상태가 두 번 오면 한 번만
+                    lastScreen = on;
+                    press();
+                }
+            };
+            IntentFilter f = new IntentFilter();
+            f.addAction(Intent.ACTION_SCREEN_ON);
+            f.addAction(Intent.ACTION_SCREEN_OFF);
+            try { ContextCompat.registerReceiver(c, scr, f, ContextCompat.RECEIVER_EXPORTED); }
+            catch (Exception e) { scr = null; }
+            lastScreen = interactive();
+        }
+        updateSession();
+    }
+
+    void stop() {
+        h.removeCallbacks(commit);
+        h.removeCallbacks(idle);
+        pending = false;
+        n = 0;
+        if (scr != null) { try { c.unregisterReceiver(scr); } catch (Exception ignored) {} scr = null; }
+        if (ms != null) { try { ms.setActive(false); ms.release(); } catch (Exception ignored) {} ms = null; msOn = false; }
+    }
+
+    private boolean interactive() {
+        try {
+            PowerManager pm = (PowerManager) c.getSystemService(Context.POWER_SERVICE);
+            return pm == null || pm.isInteractive();
+        } catch (Exception e) { return true; }
+    }
+
+    /** 음량 세션은 화면이 꺼져 있을 때와 누르는 도중에만 켠다(화면이 켜져 있으면 음량 버튼은 평소처럼) */
+    private void updateSession() {
+        boolean want = vol && (!interactive() || n > 0 || pending);
+        if (want == msOn) return;
+        try {
+            if (want) {
+                if (ms == null) {
+                    ms = new MediaSession(c, "pbs-press");
+                    ms.setPlaybackToRemote(new VolumeProvider(VolumeProvider.VOLUME_CONTROL_RELATIVE, 10, 5) {
+                        @Override public void onAdjustVolume(int direction) {
+                            if (direction == 0) return;
+                            h.post(PressWatch.this::volPress);
+                        }
+                    });
+                    ms.setPlaybackState(new PlaybackState.Builder().setState(PlaybackState.STATE_PLAYING, 0, 1f).build());
+                }
+                ms.setActive(true);
+            } else if (ms != null) {
+                ms.setActive(false);
+            }
+            msOn = want;
+        } catch (Exception e) {
+            msOn = false;
+        }
+    }
+
+    private void volPress() {
+        long now = SystemClock.elapsedRealtime();
+        long gap = now - lastVolRaw;
+        lastVolRaw = now;
+        if (gap < VOL_REPEAT) { // 꾹 누르는 중: 지금까지 센 것도 버린다
+            if (pending) { h.removeCallbacks(commit); pending = false; }
+            n = 0;
+            ignoreUntil = now + GAP;
+            return;
+        }
+        press();
+    }
+
+    /** 누름 한 번 (전원 = 화면 상태 바뀜, 음량 = 버튼 신호) */
+    private void press() {
+        long now = SystemClock.elapsedRealtime();
+        if (n > 0 && now - lastPress > GAP) n = 0;
+        lastPress = now;
+        if (pending) { // 3번 뒤 한 번 더 = 취소
+            pending = false;
+            h.removeCallbacks(commit);
+            n = 0;
+            ignoreUntil = now + GAP;
+            feedback(c, FB_CANCEL);
+            scheduleIdle();
+            return;
+        }
+        if (now < ignoreUntil) { ignoreUntil = now + GAP; scheduleIdle(); return; } // 취소 뒤 이어진 누름(5번 등)은 무시
+        if (n < 3) ts[n++] = now;
+        if (n >= 3) {
+            if (now - ts[0] <= SPAN) {
+                pending = true;
+                n = 0;
+                h.postDelayed(commit, GRACE);
+            } else { // 너무 느렸다: 앞의 것을 버리고 뒤 두 번만 남긴다
+                ts[0] = ts[1]; ts[1] = ts[2]; n = 2;
+            }
+        }
+        updateSession();
+        scheduleIdle();
+    }
+
+    private void scheduleIdle() {
+        h.removeCallbacks(idle);
+        h.postDelayed(idle, GAP + GRACE + 100L);
+    }
+
+    /** 누름이 멈췄으면 센 것을 비우고, 화면이 켜져 있으면 음량 세션을 끈다 */
+    private void onIdle() {
+        if (!pending && SystemClock.elapsedRealtime() - lastPress > GAP) n = 0;
+        updateSession();
+    }
+
+    private void commit() {
+        pending = false;
+        n = 0;
+        ignoreUntil = SystemClock.elapsedRealtime() + GAP;
+        feedback(c, act(c));
+        CounterNotifier.refreshAll(c);
+        PbsCounterPlugin.fire();
+        updateSession();
+    }
+
+    /** 3번 눌렸을 때 할 일. 반환값: 떨림 종류 */
+    static int act(Context c) {
+        if (!CounterStore.anything(c)) return FB_NONE;
+        if (CounterStore.begin(c)) return FB_START; // 열린 회기가 없으면(어제 것 포함) 측정 대상으로 새 회기
+        if (!CounterStore.active(c)) return FB_NONE;
+        switch (CounterStore.mode(c)) {
+            case CounterStore.FREQ: return CounterStore.add(c, 1) > 0 ? FB_TICK : FB_NONE;
+            case CounterStore.DUR: return CounterStore.durToggle(c) ? FB_START : FB_END;
+            case CounterStore.LAT: return CounterStore.latToggle(c) ? FB_START : FB_END;
+            default: return FB_NONE; // 강도(단계를 골라야 함)·간격 기록(신호에 답함)은 알림창에서
+        }
+    }
+
+    /** 주머니 속에서도 알 수 있게 떨림으로 알린다. 떨림이 없는 기기(태블릿 등)는 짧은 소리 */
+    @SuppressWarnings("deprecation")
+    static void feedback(Context c, int kind) {
+        long[] pat;
+        switch (kind) {
+            case FB_START: pat = new long[] { 0, 500 }; break;
+            case FB_TICK: pat = new long[] { 0, 120 }; break;
+            case FB_END: pat = new long[] { 0, 400, 200, 400 }; break;
+            case FB_CANCEL: pat = new long[] { 0, 80, 120, 80 }; break;
+            default: pat = new long[] { 0, 80, 120, 80, 120, 80 }; break;
+        }
+        try {
+            Vibrator v = (Vibrator) c.getSystemService(Context.VIBRATOR_SERVICE);
+            if (v != null && v.hasVibrator()) {
+                if (Build.VERSION.SDK_INT >= 26) {
+                    AudioAttributes aa = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build();
+                    v.vibrate(VibrationEffect.createWaveform(pat, -1), aa);
+                } else {
+                    v.vibrate(pat, -1);
+                }
+                return;
+            }
+        } catch (Exception ignored) {}
+        try {
+            final ToneGenerator tg = new ToneGenerator(AudioManager.STREAM_NOTIFICATION, 50);
+            int tone = kind == FB_START || kind == FB_TICK ? ToneGenerator.TONE_PROP_BEEP
+                : kind == FB_END ? ToneGenerator.TONE_PROP_BEEP2 : ToneGenerator.TONE_PROP_NACK;
+            tg.startTone(tone, 300);
+            new Handler(Looper.getMainLooper()).postDelayed(tg::release, 600L);
+        } catch (Exception ignored) {}
+    }
+}

@@ -17,19 +17,26 @@ import androidx.core.content.ContextCompat;
  * 앱이 꺼져 있어도 시간을 재도록 '포그라운드 서비스'로 돌리고(알림창의 측정 알림을 그대로 같이 씀),
  * 서비스를 못 띄우는 기기·상황에 대비해 알람(정확하지 않을 수 있음)도 같이 걸어 둔다.
  * 두 쪽이 같은 때를 두 번 알려도 CounterStore.checkTick이 시각을 보고 한 번만 처리한다.
- * 하드웨어 버튼(전원·음량·이어폰)은 쓰지 않는다.
+ * '버튼 3번'(PressWatch, 전원·음량)을 켜 두면 측정 알림이 있는 동안 계속 돌며 누름을 센다. 이어폰 버튼은 쓰지 않는다.
  */
 public class DurWatch extends Service {
     private static volatile boolean alive;
     private static volatile DurWatch inst;
     private final Handler h = new Handler(Looper.getMainLooper());
     private final Runnable tick = this::onTick;
+    private PressWatch press;
 
     /** 상태가 바뀔 때마다 부른다: 필요하면 시계를 켜고, 아니면 끈다 */
     static void sync(Context c) {
         Context a = c.getApplicationContext();
-        if (CounterStore.watching(a)) {
+        boolean watch = CounterStore.watching(a);
+        if (watch) {
             alarm(a, true);
+        } else {
+            alarm(a, false);
+            CounterNotifier.cancelCheck(a);
+        }
+        if (watch || CounterStore.pressOn(a)) {
             DurWatch w = inst;
             if (alive && w != null) {
                 w.h.post(w::schedule); // 간격이 바뀌었을 수 있으니 다시 잰다
@@ -38,8 +45,6 @@ public class DurWatch extends Service {
                 catch (Exception ignored) { /* 서비스를 못 띄우면 알람만으로 */ }
             }
         } else {
-            alarm(a, false);
-            CounterNotifier.cancelCheck(a);
             if (alive) {
                 try { a.stopService(new Intent(a, DurWatch.class)); } catch (Exception ignored) {}
             }
@@ -84,7 +89,15 @@ public class DurWatch extends Service {
     private void schedule() {
         h.removeCallbacks(tick);
         Context c = getApplicationContext();
-        if (!CounterStore.watching(c)) { stopSelf(); return; }
+        boolean pr = CounterStore.pressOn(c);
+        if (pr) {
+            if (press == null) press = new PressWatch(c);
+            press.start(CounterStore.btnVol(c));
+        } else if (press != null) {
+            press.stop();
+            press = null;
+        }
+        if (!CounterStore.watching(c)) { if (!pr) stopSelf(); return; }
         long wait = CounterStore.nextCheck(c) - System.currentTimeMillis();
         h.postDelayed(tick, Math.max(500L, wait));
     }
@@ -99,6 +112,7 @@ public class DurWatch extends Service {
         alive = false;
         if (inst == this) inst = null;
         h.removeCallbacks(tick);
+        if (press != null) { press.stop(); press = null; }
         try {
             if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_DETACH);
             else stopForeground(false);
