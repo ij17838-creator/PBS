@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-11-17 · 지연시간·강도·간격 기록 측정 기능
+### 한 일
+- 방법별 최적 방식 선정(점수표 /70): 지연시간=정한 지시만 '지시→반응' 시각 찍기+최대 대기 자동 마감(59), 강도=1건마다 단계 버튼(57), 간격=순간 표집 2분+진동 신호+정각 맞춤(54). 문서: 프로젝트 파일 발표/지연시간·강도·간격기록-측정방식-설계.md
+- 정의 화면: 측정 방법을 고르면 설정 칸(지연시간 신호·반응 기준·최대 대기·회기당 지시 수 / 강도 단계 기준 3줄·평균·최고 / 간격 방식·길이·신호 방식·정각 맞춤).
+- 회기 줄: 지연시간 '지시·반응 시작·중단' 버튼(경과 초, 최대 넘으면 자동)+시도 목록, 강도 '1 약·2 중·3 강'+건별 목록(단계·시각 고치기), 간격 칸 표('칸 만들기'=시작 시각·관찰 시간으로, 누르면 있음→없음→빈칸). 측정값 자동 계산.
+- 앱 밖 측정(새 apk): 세 방법도 위젯·알림창·타일. 지연시간 지시/반응·중단, 강도 1·2·3·되돌리기, 간격 관찰 시작→신호 알림 있음/없음(다음 신호까지 답), 10분 넘게 무응답이면 회기 자동 닫힘. 옛 앱이면 '새 앱 설치 필요'.
+### 데이터
+- 회기: latLog(durLog 꼴, /m 최대·/x 중단 값 제외), lvlLog('시:분:초=단계'), ivLog('시:분:초=1|0|?'). 정의: latCue·latResp·latMax·latPlan·lvl1~3·lvlAgg·ivType·ivSec·ivAlign·ivAlert.
+- 앱 밖 이벤트: ls·le(f m/x), lv(v)·lu, iv(v). 플러그인 ver 3, setTarget에 latMax·ivSec·ivAlign·ivMode.
+### 확인한 것
+- Playwright(브라우저): 세 방법 버튼·목록·값(지연 16.5초, 강도 2.5, 간격 67%), 칸 만들기 정각 맞춤, 콘솔 오류 없음.
+- 가짜 플러그인: 이벤트 → 새 회기·값 맞음, 정의의 최대 대기 바꾸면 setTarget 다시 보냄, 방법 바꾸면 위젯 따라감.
+- GitHub Actions 빌드 성공(브랜치 run 26): 자바 코드 컴파일됨.
+- 시험하지 못한 것: 실기기 전부(신호 진동 정확도·절전, 알림 버튼 표시, 위젯 크기).
+### 알려진 한계
+- 간격 신호는 포그라운드 서비스+예비 알람이라 기기 따라 늦을 수 있음[추정]. 회기 중 간격 길이를 바꾸면 다음 신호부터 적용.
+- 강도 타일은 회기 시작만(회기 중엔 앱 열기). 브라우저에선 신호 없음(벽시계로).
+### 코드 위치 (index.html)
+- `measureOpts`, `measEds`, `latEd`·`latAct`·`latEdit`·`latTick`·`latValue`, `lvlEd`·`lvlAct`·`lvlEdit`·`lvlValue`, `ivEd`·`ivAct`·`ivSlots`·`ivValue`, `edApply`·`edRedraw`, `NAT_MODES`·`natTargetArgs`·`natOptsPush`·`natNeedsApp`, natDrain(ls·le·lv·lu·iv), CSS `.meas-ed`·`.lvl-row`·`.iv-grid`·`.iv-cell`
+- android: CounterStore(latToggle·latStop·lvlAdd·lvlUndo·ivAnswer·ivTickLocked·firstSignal), CounterReceiver(LAT·LAT_X·LV1~3·LV_UNDO·IV_YES·IV_NO), CounterNotifier(showLatMax·showIvSignal·showIvAutoEnd·alertChannel), CounterWidget·widget_counter.xml `w_lvl`, CounterTile
+### 다음에 할 일
+- 사용자: 새 apk 설치 → 간격 기록 프로젝트로 2분 신호 10회 받아 늦은 횟수, 알림창 1·2·3 버튼 표시, 지연시간 지시→60초 자동 마감 확인.
+- 학생 정해지면 설계 문서 '확인할 질문'으로 재채점. 다섯 방법 모션 안내 일괄 제작.
+
 ## 2026-11-14 · 위젯이 정의의 측정 방법을 따라감
 ### 한 일
 - 표적행동 정의에서 측정 방법을 바꾸면 위젯·알림·타일도 빈도↔지속시간으로 자동 전환(토스트 "위젯: 지속시간으로 바뀜"). 앱 밖 측정을 다시 켤 필요 없음.
