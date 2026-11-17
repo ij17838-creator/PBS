@@ -588,6 +588,34 @@ html.in-ink .ink-host{caret-color:transparent}
 .sync-pick{gap:8px}
 .sync-flash{outline:3px solid var(--warn)!important;outline-offset:2px}
 @media (max-width:560px){.sync-state{white-space:normal;text-align:right;max-width:46vw}}
+/* 전자칠판·큰 화면: 아래쪽 버튼 모음, 화면 가리기 */
+.bigdock{display:none}
+@media (min-width:1240px){.bigdock{position:fixed;right:max(12px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:18;display:flex;flex-direction:column;gap:8px;width:108px}.bigdock .btn{width:100%;min-height:52px;padding:0 10px;box-shadow:var(--shadow)}.bigdock .btn[hidden]{display:none}}
+.cover{position:fixed;inset:0;z-index:200;background:var(--bg);color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.cover[hidden]{display:none}
+.cover-clock{font-family:var(--font-mono);font-weight:700;font-size:clamp(64px,16vw,240px);line-height:1;letter-spacing:.02em}
+.cover-date{font-size:clamp(18px,2.4vw,36px);color:var(--muted);font-weight:600}
+.cover-foot{position:absolute;left:0;right:0;bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 18px;padding:0 16px}
+.cover-open{position:relative;overflow:hidden;min-width:180px;min-height:56px}
+.cover-open .fill{position:absolute;inset:0 auto 0 0;width:0;background:var(--accent-soft);pointer-events:none}
+.cover-open.hold .fill{width:100%;transition:width .7s linear}
+.cover-open span{position:relative}
+.cover-auto{display:flex;align-items:center;gap:8px;min-height:44px;color:var(--muted);font-size:.92rem;cursor:pointer}
+.cover-auto input{width:22px;height:22px;min-height:0}
+/* 작게 띄워 세기: 화면은 가리고 ＋1 표시만 */
+.mini-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:8px}
+.mini{position:fixed;z-index:210;display:flex;flex-direction:column;align-items:center;gap:6px;touch-action:none;user-select:none;-webkit-user-select:none;transition:left .18s ease,top .18s ease}
+.mini[hidden]{display:none}
+.mini.drag{transition:none}
+.mini-mark{width:104px;height:104px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:800;font-size:30px;line-height:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(0,0,0,.25);cursor:pointer;touch-action:none}
+.mini-mark small{font-size:15px;font-weight:700;opacity:.9;color:inherit}
+.mini-mark.hit{animation:mini-hit .35s ease}
+@keyframes mini-hit{0%{transform:scale(1)}40%{transform:scale(1.15)}100%{transform:scale(1)}}
+.mini-tools{display:flex;gap:6px}
+.mini-tools .btn{min-height:44px;min-width:52px;padding:0 10px;box-shadow:var(--shadow)}
+.mini.tuck .mini-tools{display:none}
+.mini.tuck .mini-mark{width:44px;height:104px;border-radius:12px;font-size:16px}
+.mini.tuck .mini-mark .mini-plus{display:none}
 @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important;scroll-behavior:auto!important} }
 </style>
 
@@ -609,6 +637,23 @@ html.in-ink .ink-host{caret-color:transparent}
     <p id="sync-foot" hidden>공유 글자는 서버에도 저장</p>
     <p id="usage"></p>
   </footer>
+</div>
+<div class="bigdock" id="bigdock" aria-label="큰 화면 바로가기">
+  <button type="button" class="btn primary" data-act="cover-on" title="단축키 B">화면 가리기</button>
+  <button type="button" class="btn" data-act="dock-up" id="dock-up">한 단계 위</button>
+  <button type="button" class="btn" data-act="dock-top">맨 위로</button>
+</div>
+<div class="cover" id="cover" hidden aria-label="화면 가림">
+  <div class="cover-clock" id="cover-clock">00:00</div>
+  <div class="cover-date" id="cover-date"></div>
+  <div class="cover-foot">
+    <button type="button" class="btn cover-open" id="cover-open"><span class="fill"></span><span>길게 눌러 열기</span></button>
+    <label class="cover-auto"><input type="checkbox" id="cover-auto">나갔다 오면 가리기</label>
+  </div>
+</div>
+<div class="mini" id="mini" hidden>
+  <button type="button" class="mini-mark" id="mini-mark" aria-label="1 더하기"><span class="mini-plus">＋1</span><small id="mini-n">0</small></button>
+  <div class="mini-tools"><button type="button" class="btn" id="mini-dec" aria-label="1 빼기">−1</button><button type="button" class="btn" id="mini-out">펼치기</button></div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="web-upd" id="web-upd" role="status" hidden><span>새 화면 버전이 있어요</span><button type="button" class="btn small primary" data-act="web-apply">지금 적용</button><button type="button" class="btn small ghost" data-act="web-later">나중에</button></div>
@@ -1941,6 +1986,7 @@ function sesRow(p,ph,s,i){
       <label class="field"><span>관찰자</span><textarea rows="1" class="one" id="ses-${s.id}-observer" data-f="ses:${k}:observer" placeholder="예: 담임">${esc(s.observer)}</textarea></label>
       <label class="field wide2"><span>메모</span><textarea rows="1" class="one" id="ses-${s.id}-note" data-f="ses:${k}:note" placeholder="예: 시험 주간, 결석 후 첫날">${esc(s.note)}</textarea></label>
     </div>
+    ${freq?`<div class="mini-row"><button type="button" class="btn small" data-act="mini-on" data-ph="${ph}" data-id="${s.id}">작게 띄워 세기</button><span class="muted">화면 가리고 ＋1만</span></div>`:''}
     ${freq&&(PCN||s.tapLog)?natRow(p,ph,s,i):''}${p.procs.define.data.measure==='지속시간'||s.durLog?durEd(p,ph,s):''}${measEds(p,ph,s)}
     ${ui.confirm==='del-ses:'+k?confirmBox('이 회기 기록을 삭제합니다.','del-ses',k):''}
   </div>`;
@@ -4908,6 +4954,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-17-7',d:'2026-11-17',k:'web',t:'전자칠판·큰 화면',items:['화면 가리기(B 키·길게 눌러 열기)','큰 화면 오른쪽 아래 바로가기','빈도 회기: 작게 띄워 세기','표시를 밀면 가장자리로 숨음']},
   {id:'2026-11-17-6',d:'2026-11-17',k:'web',t:'앱 안 공지',items:['바뀐 점을 여기서 확인','설치 앱이 옛 버전이면 홈에 알림']},
   {id:'2026-11-17-5',d:'2026-11-17',k:'apk',need:5.1,t:'음량 버튼 누를 횟수',items:['누를 횟수 1·2·3번 선택(기본 1번)','1번이면 누를 때마다 바로 ＋1','꾹 누름은 세지 않음']},
   {id:'2026-11-17-4',d:'2026-11-17',k:'apk',need:5,t:'측정 시간·자동 갱신',items:['회기 시작 때 ＋1 저절로 안 셈','측정 시간이 끝나면 새 회기로 갱신','갱신 때 횟수 0으로 고르기']},
@@ -4971,6 +5018,125 @@ function noticeInit(){
     const d=$('#notice-dlg');if(d&&!d.hidden)noticeOpen();
   }).catch(()=>{});
 }
+
+/* ---------- 전자칠판·큰 화면: 화면 가리기, 아래쪽 바로가기 ---------- */
+const COVER_KEY='pbs-cover-auto';
+const cover={on:false,title:'',t:null};
+function coverClock(){if(!cover.on)return;const d=new Date();$('#cover-clock').textContent=pad(d.getHours())+':'+pad(d.getMinutes());$('#cover-date').textContent=`${d.getMonth()+1}월 ${d.getDate()}일 ${WD[d.getDay()]}요일`;}
+function coverSet(on){
+  const c=$('#cover');if(!c||cover.on===on)return;cover.on=on;c.hidden=!on;
+  $$('body > .topbar, body > .wrap, #bigdock, #toast, #web-upd, .sync-dlg, .kb-float').forEach(el=>{try{el.inert=on;}catch(e){}if(on)el.setAttribute('aria-hidden','true');else el.removeAttribute('aria-hidden');});
+  if(on){try{document.activeElement&&document.activeElement.blur&&document.activeElement.blur();}catch(e){}cover.title=document.title;document.title='시계';coverClock();cover.t=setInterval(coverClock,5000);}
+  else{clearInterval(cover.t);cover.t=null;document.title=cover.title||document.title;}
+}
+(function(){
+  const b=$('#cover-open'),ck=$('#cover-auto');if(!b)return;
+  try{ck.checked=localStorage.getItem(COVER_KEY)==='1';}catch(e){}
+  ck.addEventListener('change',()=>{try{localStorage.setItem(COVER_KEY,ck.checked?'1':'0');}catch(e){}});
+  let tm=null;
+  const stop=()=>{clearTimeout(tm);tm=null;b.classList.remove('hold');};
+  b.addEventListener('pointerdown',e=>{e.preventDefault();stop();void b.offsetWidth;b.classList.add('hold');tm=setTimeout(()=>{stop();if(mini.on)miniOff();else coverSet(false);},700);});
+  ['pointerup','pointerleave','pointercancel'].forEach(t=>b.addEventListener(t,stop));
+  b.addEventListener('contextmenu',e=>e.preventDefault());
+  b.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();if(mini.on)miniOff();else coverSet(false);}});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&ck.checked)coverSet(true);});
+  /* 발표용 리모컨·키보드: B 또는 . 으로 가리기/열기, 가린 상태에서 Esc로 열기 */
+  const hot=k=>k==='b'||k==='B'||k==='.'||k==='ㅠ';
+  document.addEventListener('keydown',e=>{
+    if(e.ctrlKey||e.metaKey||e.altKey||e.isComposing)return;
+    if(cover.on){if(e.key==='Escape'||hot(e.key)){e.preventDefault();e.stopPropagation();if(mini.on)miniOff();else coverSet(false);}return;}
+    const t=e.target;const typing=t&&t.closest&&t.closest('input,textarea,select,[contenteditable="true"],canvas');
+    if(!typing&&hot(e.key)){e.preventDefault();coverSet(true);}
+  },true);
+  const up=$('#dock-up');
+  const dockSync=()=>{if(up)up.hidden=ui.view==='home';};
+  dockSync();try{new MutationObserver(dockSync).observe($('#crumbs'),{childList:true});}catch(e){}
+})();
+Object.assign(actions,{
+  'cover-on':()=>coverSet(true),
+  'dock-top':()=>window.scrollTo({top:0,behavior:'smooth'}),
+  'dock-up':()=>{if(ui.view==='proc')go('project',{proc:null});else if(ui.view==='project'&&ui.cat)go('project',{proc:null,cat:null});else if(ui.view==='project')go('home',{projectId:null,proc:null});}
+});
+
+/* ---------- 작게 띄워 세기: 회기 하나를 골라 화면은 가리고 ＋1 표시만 띄운다 ----------
+   표시는 끌어 옮길 수 있고, 화면 밖으로 밀면 가장자리에 손잡이만 남는다(누르면 다시 나옴).
+   크롬(윈도우 등)에서 '다른 창 위에 띄우기'(Document Picture-in-Picture)가 되면 작은 창으로 띄워 수업 자료 위에도 보인다. */
+const MINI_POS='pbs-mini-pos';
+const mini={on:false,ph:null,id:null,pip:null,tuck:false,x:0,y:0};
+function miniSes(){const p=curProject();if(!p||!mini.id)return null;const s=sesList(p,mini.ph).find(x=>x.id===mini.id);return s?{p,s}:null;}
+function miniCount(){const r=miniSes();const n=r?(blNum(r.s.value)||0):0;$('#mini-n').textContent=n+'회';if(mini.pip){const e=mini.pip.document.getElementById('mini-n');if(e)e.textContent=n+'회';}}
+function miniInc(d){
+  const r=miniSes();if(!r){toast('회기를 찾지 못했습니다');miniOff();return;}
+  actions['ses-inc']({dataset:{ph:mini.ph,id:mini.id,d:String(d)}});miniCount();
+  const mk=mini.pip?mini.pip.document.getElementById('mini-mark'):$('#mini-mark');
+  if(mk&&d>0){mk.classList.remove('hit');void mk.offsetWidth;mk.classList.add('hit');}
+  try{if(d>0&&navigator.vibrate)navigator.vibrate(30);}catch(e){}
+}
+function miniPlace(){
+  const m=$('#mini');const w=m.offsetWidth||104,h=m.offsetHeight||160;const W=innerWidth,H=innerHeight;
+  if(mini.tuck){mini.x=mini.x+w/2<W/2?0:W-44;m.style.left=mini.x+'px';}
+  else{mini.x=Math.min(Math.max(8,mini.x),W-w-8);m.style.left=mini.x+'px';}
+  mini.y=Math.min(Math.max(8,mini.y),H-h-8);m.style.top=mini.y+'px';
+  m.classList.toggle('tuck',mini.tuck);
+  try{localStorage.setItem(MINI_POS,JSON.stringify({x:mini.x,y:mini.y,t:mini.tuck}));}catch(e){}
+}
+function miniOff(){
+  if(!mini.on)return;mini.on=false;$('#mini').hidden=true;
+  if(mini.pip){const w=mini.pip;mini.pip=null;try{w.close();}catch(e){}}
+  coverSet(false);
+  const r=miniSes();if(r&&ui.view==='proc'){const el=$('#ses-'+mini.id);if(el)el.scrollIntoView({block:'center'});}
+}
+async function miniOn(el){
+  const p=curProject();if(!p)return;const s=sesList(p,el.dataset.ph).find(x=>x.id===el.dataset.id);if(!s)return;
+  Object.assign(mini,{on:true,ph:el.dataset.ph,id:s.id});
+  coverSet(true);
+  /* 다른 창 위에 띄우기(되는 브라우저만) */
+  if(window.documentPictureInPicture&&matchMedia('(min-width:900px)').matches){
+    try{
+      const req=documentPictureInPicture.requestWindow({width:180,height:200});
+      const w=await Promise.race([req,new Promise((_,no)=>setTimeout(()=>no(new Error('late')),2500))]).catch(e=>{req.then(x=>{try{x.close();}catch(y){}}).catch(()=>{});throw e;});
+      if(!mini.on){try{w.close();}catch(e){}return;}
+      const st=getComputedStyle(document.documentElement);const v=k=>st.getPropertyValue(k);
+      w.document.head.innerHTML=`<meta charset="utf-8"><title>＋1</title><style>
+        body{margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:${v('--bg')};font-family:system-ui,sans-serif;user-select:none}
+        button{font:inherit;cursor:pointer;touch-action:manipulation}
+        #mini-mark{width:110px;height:110px;border-radius:50%;border:0;background:${v('--accent')};color:${v('--accent-ink')};font-size:30px;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
+        #mini-mark small{font-size:15px;font-weight:700;color:inherit}
+        #mini-mark.hit{animation:h .35s ease}@keyframes h{40%{transform:scale(1.12)}}
+        .t{display:flex;gap:6px}.t button{min-height:40px;min-width:52px;border:1px solid ${v('--line-strong')};border-radius:10px;background:${v('--surface')};color:${v('--ink')};font-weight:700}
+      </style>`;
+      w.document.body.innerHTML='<button id="mini-mark" aria-label="1 더하기">＋1<small id="mini-n">0</small></button><div class="t"><button id="mini-dec" aria-label="1 빼기">−1</button><button id="mini-out">펼치기</button></div>';
+      w.document.getElementById('mini-mark').addEventListener('click',()=>miniInc(1));
+      w.document.getElementById('mini-dec').addEventListener('click',()=>miniInc(-1));
+      w.document.getElementById('mini-out').addEventListener('click',()=>{miniOff();try{window.focus();}catch(e){}});
+      w.addEventListener('pagehide',()=>{if(mini.pip===w){mini.pip=null;if(mini.on){$('#mini').hidden=false;miniPlace();}}});
+      mini.pip=w;miniCount();toast('작은 창 ＋1을 누르세요');return;
+    }catch(e){mini.pip=null;}
+  }
+  $('#mini').hidden=false;
+  try{const o=JSON.parse(localStorage.getItem(MINI_POS)||'null');if(o){mini.x=o.x;mini.y=o.y;mini.tuck=!!o.t;}else{mini.x=innerWidth-140;mini.y=innerHeight-260;mini.tuck=false;}}catch(e){mini.x=innerWidth-140;mini.y=innerHeight-260;}
+  miniCount();miniPlace();
+}
+(function(){
+  const m=$('#mini'),mk=$('#mini-mark');if(!m)return;
+  let d=null;
+  mk.addEventListener('pointerdown',e=>{e.preventDefault();try{mk.setPointerCapture(e.pointerId);}catch(x){}d={id:e.pointerId,sx:e.clientX,sy:e.clientY,x:mini.x,y:mini.y,moved:false};});
+  mk.addEventListener('pointermove',e=>{if(!d||e.pointerId!==d.id)return;const dx=e.clientX-d.sx,dy=e.clientY-d.sy;
+    if(!d.moved&&Math.hypot(dx,dy)<10)return;
+    if(!d.moved){d.moved=true;m.classList.add('drag');if(mini.tuck){mini.tuck=false;m.classList.remove('tuck');}}
+    mini.x=d.x+dx;mini.y=Math.min(Math.max(8,d.y+dy),innerHeight-60);m.style.left=mini.x+'px';m.style.top=mini.y+'px';});
+  const end=e=>{if(!d||e.pointerId!==d.id)return;const was=d;d=null;m.classList.remove('drag');
+    if(e.type==='pointercancel')return miniPlace();
+    if(!was.moved){if(mini.tuck){mini.tuck=false;mini.x=mini.x<innerWidth/2?12:innerWidth-120;miniPlace();}else miniInc(1);return;}
+    const w=m.offsetWidth;mini.tuck=mini.x<-w*0.3||mini.x+w>innerWidth+w*0.3;miniPlace();};
+  mk.addEventListener('pointerup',end);mk.addEventListener('pointercancel',end);
+  mk.addEventListener('click',e=>e.preventDefault());
+  mk.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();miniInc(1);}});
+  $('#mini-dec').addEventListener('click',()=>miniInc(-1));
+  $('#mini-out').addEventListener('click',()=>miniOff());
+  addEventListener('resize',()=>{if(mini.on&&!m.hidden)miniPlace();});
+})();
+Object.assign(actions,{'mini-on':el=>miniOn(el)});
 
 /* ---------- boot ---------- */
 if(firstRun&&!store.projects.length){store.projects.push(exampleProject());}
