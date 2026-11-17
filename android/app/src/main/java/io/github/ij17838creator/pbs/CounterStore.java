@@ -99,17 +99,9 @@ final class CounterStore {
     static int sesMin(Context c) { return Math.max(0, Math.min(240, prefs(c).getInt("sesMin", 0))); }
     static boolean sesRenew(Context c) { return prefs(c).getBoolean("sesRenew", false); }
     static boolean sesReset(Context c) { return prefs(c).getBoolean("sesReset", true); }
-    /** 지금 버튼이 ABC 관찰을 다루는지 (ABC는 앱의 관찰 간격·시작/종료 시간 규칙을 따른다) */
-    static boolean isAbc(Context c) {
-        SharedPreferences p = prefs(c);
-        if (p.getBoolean("active", false)) return p.getString("key", "").contains("|abc|");
-        return "abc".equals(p.getString("tPh", ""));
-    }
-
-    /** 이번 측정 시간이 끝나는 시각(ms), 측정 시간이 없으면 0. ABC 관찰에는 쓰지 않는다 */
+    /** 이번 측정 시간이 끝나는 시각(ms), 측정 시간이 없으면 0 */
     static long sesEnd(Context c) {
         SharedPreferences p = prefs(c);
-        if (isAbc(c)) return 0L;
         int m = sesMin(c);
         long st = p.getLong("sesStart", 0L);
         if (!p.getBoolean("active", false) || m <= 0 || st <= 0) return 0L;
