@@ -26,6 +26,9 @@ import androidx.core.content.ContextCompat;
  * 음량 버튼: 화면이 꺼져 있는 동안에만 '원격 음량' 미디어 세션을 켜서 받는다(화면이 켜져 있으면 음량은 평소처럼).
  *   화면 꺼짐 상태에서 음량 버튼이 앱에 오는지는 기기·안드로이드 버전마다 다르다[추정].
  *   화면 상태는 DisplayListener와 화면 켜짐/꺼짐 방송으로 받아 세션을 켜고 끄는 데만 쓴다.
+ *   2026-11-17 실기기(갤럭시 탭): 화면 꺼짐에선 세션으로 음량 키가 오지 않았음 → 화면이 꺼져 있는 동안 '소리 없는 재생'(0으로 채운
+ *   AudioTrack)을 틀어 두면 음량 키가 미디어 음량을 바꾸므로, 음량 바뀜 방송(VOLUME_CHANGED_ACTION)으로 누름을 세고 곧바로 원래 칸(base)으로 되돌린다.
+ *   다른 앱이 재생을 시작하면(재생 목록 수가 늘면) 소리 없는 재생을 멈추고 '재생 중'으로 본다.
  * 전원 버튼은 세지 않는다(2026-11-17 실기기: 갤럭시 탭이 빠른 전원 누름을 5초에 한 번만 화면에 반영해 셀 수 없었음).
  * 기록 대기(GRACE) 동안 기기가 잠들지 않게 잠깐 깨움 잠금(WakeLock)을 건다.
  * 진단: 최근 누름과 처리 결과를 btnLog에 남겨 앱의 '버튼 3번' 칸에서 보여 준다.
@@ -54,6 +57,11 @@ final class PressWatch {
     private boolean msOn;
     private boolean vol;
     private Boolean lastScreen;
+    /** 소리 없는 재생과 음량 바뀜으로 세기 */
+    private android.media.AudioTrack silent;
+    private BroadcastReceiver volRx;
+    private int base = -1, orig = -1, cfgBase = -1;
+    private boolean others;
     private final long[] ts = new long[3];
     private int n;
     private long lastPress, lastVolRaw, ignoreUntil;
@@ -100,6 +108,18 @@ final class PressWatch {
                 };
                 dm.registerDisplayListener(disp, h);
             } catch (Exception e) { disp = null; }
+            volRx = new BroadcastReceiver() {
+                @Override public void onReceive(Context x, Intent i) {
+                    if (silent == null || base < 0) return;
+                    if (i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1) != AudioManager.STREAM_MUSIC) return;
+                    int v = i.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", base);
+                    if (v == base) return; // 되돌린 것
+                    try { ((AudioManager) c.getSystemService(Context.AUDIO_SERVICE)).setStreamVolume(AudioManager.STREAM_MUSIC, base, 0); } catch (Exception ignored) {}
+                    volPress();
+                }
+            };
+            try { ContextCompat.registerReceiver(c, volRx, new IntentFilter("android.media.VOLUME_CHANGED_ACTION"), ContextCompat.RECEIVER_EXPORTED); }
+            catch (Exception e) { volRx = null; }
             log(c, "감시 시작" + (disp == null ? " · 화면신호 없음" : ""));
         }
         if (playCb == null && Build.VERSION.SDK_INT >= 26) { // 다른 앱이 재생을 시작·멈추면 음량 세션을 다시 정한다
@@ -107,6 +127,11 @@ final class PressWatch {
                 AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);
                 playCb = new AudioManager.AudioPlaybackCallback() {
                     @Override public void onPlaybackConfigChanged(java.util.List<android.media.AudioPlaybackConfiguration> l) {
+                        int sz = l == null ? 0 : l.size();
+                        if (silent != null) {
+                            if (cfgBase < 0) cfgBase = sz; // 처음 바뀐 것은 내 소리 없는 재생
+                            else if (sz > cfgBase) { others = true; stopSilent(); log(c, "다른 앱 재생 시작 · 음량 받기 멈춤"); }
+                        }
                         h.postDelayed(PressWatch.this::onIdle, 300L);
                     }
                 };
@@ -134,6 +159,59 @@ final class PressWatch {
             playCb = null;
         }
         if (ms != null) { try { ms.setActive(false); ms.release(); } catch (Exception ignored) {} ms = null; msOn = false; }
+        stopSilent();
+        if (volRx != null) { try { c.unregisterReceiver(volRx); } catch (Exception ignored) {} volRx = null; }
+    }
+
+    /** 소리 없는 재생 시작: 화면이 꺼져 있어도 음량 키가 미디어 음량을 바꾸게 한다. 끝 칸에선 안 바뀌니 한 칸 안쪽으로 옮겨 둔다 */
+    private void startSilent() {
+        if (silent != null) return;
+        try {
+            AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);
+            int rate = 8000, frames = rate; // 1초짜리 0을 되풀이
+            AudioAttributes aa = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build();
+            android.media.AudioFormat af = new android.media.AudioFormat.Builder().setSampleRate(rate)
+                .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT).setChannelMask(android.media.AudioFormat.CHANNEL_OUT_MONO).build();
+            android.media.AudioTrack t = new android.media.AudioTrack(aa, af, frames * 2, android.media.AudioTrack.MODE_STATIC, AudioManager.AUDIO_SESSION_ID_GENERATE);
+            t.write(new short[frames], 0, frames);
+            t.setLoopPoints(0, frames, -1);
+            cfgBase = -1;
+            others = false;
+            t.play();
+            silent = t;
+            orig = am.getStreamVolume(AudioManager.STREAM_MUSIC);
+            int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+            base = Math.max(1, Math.min(max - 1, orig));
+            if (base != orig) am.setStreamVolume(AudioManager.STREAM_MUSIC, base, 0);
+            h.postDelayed(() -> {
+                if (silent != null && cfgBase < 0 && Build.VERSION.SDK_INT >= 26) {
+                    try { cfgBase = am.getActivePlaybackConfigurations().size(); } catch (Exception ignored) {}
+                }
+            }, 800L);
+        } catch (Exception e) {
+            silent = null;
+            log(c, "소리 없는 재생 실패: " + e.getClass().getSimpleName());
+        }
+    }
+
+    private void stopSilent() {
+        if (silent == null) return;
+        try { silent.stop(); } catch (Exception ignored) {}
+        try { silent.release(); } catch (Exception ignored) {}
+        silent = null;
+        try {
+            AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);
+            if (orig >= 0 && am.getStreamVolume(AudioManager.STREAM_MUSIC) == base) am.setStreamVolume(AudioManager.STREAM_MUSIC, orig, 0);
+        } catch (Exception ignored) {}
+        base = -1;
+        orig = -1;
+    }
+
+    /** 다른 앱 음악·영상이 재생 중인지 (내 소리 없는 재생은 빼고) */
+    private boolean othersPlaying(AudioManager am) {
+        if (silent != null) return others;
+        return am.isMusicActive();
     }
 
     /** 화면 상태가 바뀜 = 전원 누름 한 번 (같은 상태가 또 오면 무시) */
@@ -161,7 +239,7 @@ final class PressWatch {
         try {
             AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);
             if (am == null) return "";
-            if (am.isMusicActive()) return "소리 재생 중";
+            if (othersPlaying(am)) return "소리 재생 중";
             int m = am.getMode();
             return m == AudioManager.MODE_NORMAL ? "" : "통화 상태(" + m + ")";
         } catch (Exception e) { return ""; }
@@ -179,7 +257,7 @@ final class PressWatch {
         try {
             AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);
             if (am == null) return false;
-            if (am.isMusicActive()) return true;
+            if (othersPlaying(am)) return true;
             return am.getMode() != AudioManager.MODE_NORMAL;
         } catch (Exception e) { return false; }
     }
@@ -201,11 +279,13 @@ final class PressWatch {
                     ms.setPlaybackState(new PlaybackState.Builder().setState(PlaybackState.STATE_PLAYING, 0, 1f).build());
                 }
                 ms.setActive(true);
-            } else if (ms != null) {
-                ms.setActive(false);
+                startSilent();
+            } else {
+                if (ms != null) ms.setActive(false);
+                stopSilent();
             }
             msOn = want;
-            log(c, want ? "화면 꺼짐 · 음량 받기 켬" : "음량 받기 끔" + (mediaBusy() ? "(재생·통화 중)" : ""));
+            log(c, want ? "화면 꺼짐 · 음량 받기 켬" + (silent != null ? "(소리 없는 재생)" : "") : "음량 받기 끔" + (mediaBusy() ? "(재생·통화 중)" : ""));
         } catch (Exception e) {
             msOn = false;
             log(c, "음량 받기 실패: " + e.getClass().getSimpleName());
