@@ -25,7 +25,9 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
@@ -33,13 +35,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 떠 있는 ＋1 버튼: 다른 앱(수업 자료) 위에 작은 동그라미를 띄워, 누르면 앱 밖 측정과 같은 기록(CounterReceiver.handle)을 한다.
+ * 떠 있는 ＋1 (S펜 에어 커맨드 느낌): 다른 앱(수업 자료) 위에 작고 반투명한 동그라미 아이콘이 옆 가장자리에 반쯤 붙어 있다.
  * - 켜는 조건: 사용자가 켜 둠(bubOn) + '다른 앱 위에 표시' 권한 + 회기가 열려 있음(회기 끝나면 사라짐).
- * - 수업 화면을 덜 가리게: 작게(64dp), 평소엔 반투명, 누를 때만 진하게. 버튼 밖 터치는 아래 앱으로 그대로 간다.
- * - 끌어서 옮기고, 화면 왼쪽·오른쪽 밖으로 밀면 가장자리에 반쯤만 남는다(누르면 다시 나옴). 위치는 기억한다.
- * - 빈도 ＋1, 지속시간 시작/끝, 지연시간 지시/반응. 강도·간격 기록은 누르면 앱을 연다.
- * 트리거 '긋기'(bubTrig=draw): 동그라미 대신 작은 판이 뜨고, 판 안에 아무 획이나 그으면 ＋1(여러 획을 0.7초 안에 이어 그리면 한 번).
- *   판 위쪽 띠를 잡아 옮기거나 밀어 숨긴다. 판 밖의 펜·손가락은 아래 앱(칠판 필기)으로 그대로 간다.
+ * - 아이콘(44dp): 지금 횟수 표시, 평소 반투명. 끌면 따라오고 놓으면 가까운 옆 가장자리에 반쯤 걸쳐 붙는다. 위치 기억.
+ * - 아이콘을 누르면 옆으로 작은 판이 열린다: 누르기(bubTrig=tap)면 큰 ＋1 버튼, 긋기(draw)면 그리기 판(아무 획 = ＋1). −1·닫기.
+ *   판 밖을 누르거나 8초 동안 안 쓰면 닫힌다. 판·아이콘 밖의 터치는 아래 앱으로 그대로 간다.
+ * - 빈도 ＋1, 지속시간 시작/끝, 지연시간 지시/반응. 강도·간격 기록은 앱을 연다. 기록은 CounterReceiver.handle(위젯·알림창과 같음).
  * 안드로이드가 백그라운드에서 끄지 않도록 작은 알림(포그라운드 서비스)을 같이 띄운다.
  */
 public class FloatBubble extends Service {
@@ -49,11 +50,15 @@ public class FloatBubble extends Service {
     private WindowManager wm;
     private TextView v;
     private WindowManager.LayoutParams lp;
-    private boolean tucked;
-    private boolean draw;
+    /** 오른쪽 가장자리에 붙어 있는지 */
+    private boolean right = true;
+    /** 펼친 판(없으면 null)과 그 안의 것들 */
+    private LinearLayout panel;
+    private WindowManager.LayoutParams plp;
     private Pad pad;
-    /** 평소엔 반투명(숨김이면 더 흐리게) */
-    private final Runnable dim = () -> { if (v != null) v.setAlpha(tucked ? 0.35f : 0.55f); };
+    private TextView hit, head;
+    /** 평소엔 반투명 */
+    private final Runnable dim = () -> { if (v != null && panel == null) v.setAlpha(0.45f); };
 
     static boolean on(Context c) { return CounterStore.prefs(c).getBoolean("bubOn", false); }
     static boolean perm(Context c) { return Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(c); }
@@ -127,72 +132,63 @@ public class FloatBubble extends Service {
 
     private int dp(float x) { return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, x, getResources().getDisplayMetrics()); }
 
+    private int overlayType() {
+        return Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
+    }
+
+    /* ---------- 아이콘: 작고 반투명, 놓으면 가까운 옆 가장자리에 반쯤 붙는다(S펜 에어 커맨드처럼) ---------- */
+
     @SuppressLint("ClickableViewAccessibility")
     @SuppressWarnings("deprecation")
     private void show() {
         try {
             wm = (WindowManager) getSystemService(WINDOW_SERVICE);
-            draw = "draw".equals(trig(this));
-            v = draw ? (pad = new Pad(this)) : new TextView(this);
+            v = new TextView(this);
             v.setGravity(Gravity.CENTER);
             v.setTextColor(Color.WHITE);
             v.setIncludeFontPadding(false);
-            v.setLineSpacing(0, 1.0f);
-            v.setElevation(dp(6));
-            int size = draw ? dp(150) : dp(64);
-            lp = new WindowManager.LayoutParams(size, size,
-                Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE,
+            v.setTypeface(v.getTypeface(), android.graphics.Typeface.BOLD);
+            int size = dp(44);
+            lp = new WindowManager.LayoutParams(size, size, overlayType(),
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSLUCENT);
             lp.gravity = Gravity.TOP | Gravity.START;
             SharedPreferences p = CounterStore.prefs(this);
             DisplayMetrics m = getResources().getDisplayMetrics();
-            lp.x = p.getInt("bubX", m.widthPixels - size - dp(8));
+            right = p.getBoolean("bubR", true);
             lp.y = p.getInt("bubY", m.heightPixels / 3);
-            tucked = p.getBoolean("bubT", false);
             v.setOnTouchListener(new View.OnTouchListener() {
-                float sx, sy; int ox, oy; boolean moved, inking;
+                float sx, sy; int ox, oy; boolean moved;
                 @Override public boolean onTouch(View view, MotionEvent e) {
                     switch (e.getActionMasked()) {
                         case MotionEvent.ACTION_DOWN:
                             sx = e.getRawX(); sy = e.getRawY(); ox = lp.x; oy = lp.y; moved = false;
                             h.removeCallbacks(dim); v.setAlpha(1f);
-                            // 그리기 판: 위쪽 띠가 아닌 곳은 그리기 (숨김 상태면 꺼내기)
-                            inking = draw && !tucked && e.getY() > dp(30);
-                            if (inking) pad.down(e.getX(), e.getY());
                             return true;
                         case MotionEvent.ACTION_MOVE: {
-                            if (inking) { for (int i = 0; i < e.getHistorySize(); i++) pad.move(e.getHistoricalX(i), e.getHistoricalY(i)); pad.move(e.getX(), e.getY()); return true; }
                             float dx = e.getRawX() - sx, dy = e.getRawY() - sy;
-                            if (!moved && Math.hypot(dx, dy) < dp(10)) return true;
-                            moved = true; tucked = false;
+                            if (!moved && Math.hypot(dx, dy) < dp(8)) return true;
+                            if (!moved) { moved = true; closePanel(); }
                             lp.x = (int) (ox + dx); lp.y = (int) (oy + dy);
                             try { wm.updateViewLayout(v, lp); } catch (Exception ignored) {}
                             return true;
                         }
                         case MotionEvent.ACTION_UP:
-                            if (inking) { inking = false; pad.up(); h.removeCallbacks(dim); h.postDelayed(dim, 2500); return true; }
-                            if (!moved) {
-                                if (draw && !tucked) { place(false); return true; } // 띠를 톡 누른 것은 무시
-                                if (tucked) { tucked = false; place(true); }
-                                else { tap(); h.removeCallbacks(dim); h.postDelayed(dim, 1500); }
-                            } else {
-                                int w = getResources().getDisplayMetrics().widthPixels;
-                                int s = lp.width;
-                                tucked = lp.x < -s * 0.3 || lp.x + s > w + s * 0.3;
-                                place(false);
-                            }
+                            if (moved) {
+                                right = lp.x + lp.width / 2 > getResources().getDisplayMetrics().widthPixels / 2;
+                                snap();
+                            } else if (panel != null) closePanel();
+                            else openPanel();
                             return true;
                         case MotionEvent.ACTION_CANCEL:
-                            if (inking) { inking = false; pad.cancel(); }
-                            place(false);
+                            snap();
                             return true;
                     }
                     return false;
                 }
             });
             wm.addView(v, lp);
-            place(false);
+            snap();
             refresh();
         } catch (Exception e) {
             v = null;
@@ -200,63 +196,170 @@ public class FloatBubble extends Service {
         }
     }
 
-    /** 화면 안에 맞추고, 숨김이면 가장자리에 반쯤만 남긴다 */
-    private void place(boolean pullOut) {
+    /** 가까운 옆 가장자리에 반쯤 걸쳐 붙이고 흐리게 */
+    private void snap() {
         if (v == null) return;
         DisplayMetrics m = getResources().getDisplayMetrics();
         int s = lp.width;
-        boolean left = lp.x + s / 2 < m.widthPixels / 2;
-        if (tucked) lp.x = left ? -s * 2 / 3 : m.widthPixels - s / 3;
-        else if (pullOut) lp.x = left ? dp(12) : m.widthPixels - s - dp(12);
-        else lp.x = Math.max(0, Math.min(lp.x, m.widthPixels - s));
-        lp.y = Math.max(0, Math.min(lp.y, m.heightPixels - s - dp(24)));
-        h.removeCallbacks(dim);
-        h.postDelayed(dim, 1500);
+        lp.x = right ? m.widthPixels - s / 2 : -s / 2;
+        lp.y = Math.max(dp(24), Math.min(lp.y, m.heightPixels - s - dp(48)));
         try { wm.updateViewLayout(v, lp); } catch (Exception ignored) {}
-        CounterStore.prefs(this).edit().putInt("bubX", lp.x).putInt("bubY", lp.y).putBoolean("bubT", tucked).apply();
+        h.removeCallbacks(dim);
+        h.postDelayed(dim, 800);
+        CounterStore.prefs(this).edit().putBoolean("bubR", right).putInt("bubY", lp.y).apply();
     }
 
-    private void tap() {
+    /* ---------- 펼친 판: 아이콘을 누르면 옆으로 열린다. 밖을 누르거나 8초 동안 안 쓰면 닫힌다 ---------- */
+
+    @SuppressLint("ClickableViewAccessibility")
+    @SuppressWarnings("deprecation")
+    private void openPanel() {
+        if (panel != null || v == null) return;
+        try {
+            boolean draw = "draw".equals(trig(this));
+            String mode = CounterStore.uiMode(this);
+            boolean freq = CounterStore.FREQ.equals(mode);
+            LinearLayout box = new LinearLayout(this);
+            box.setOrientation(LinearLayout.VERTICAL);
+            box.setPadding(dp(10), dp(8), dp(10), dp(10));
+            GradientDrawable bg = new GradientDrawable();
+            bg.setCornerRadius(dp(16));
+            bg.setColor(Color.argb(240, 250, 252, 251));
+            bg.setStroke(dp(1), Color.parseColor("#9DB5B1"));
+            box.setBackground(bg);
+            box.setElevation(dp(8));
+
+            LinearLayout top = new LinearLayout(this);
+            top.setOrientation(LinearLayout.HORIZONTAL);
+            top.setGravity(Gravity.CENTER_VERTICAL);
+            head = new TextView(this);
+            head.setTextColor(Color.parseColor("#152426"));
+            head.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+            head.setTypeface(head.getTypeface(), android.graphics.Typeface.BOLD);
+            top.addView(head, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            if (freq) top.addView(small("−1", () -> { CounterReceiver.handle(getApplicationContext(), CounterReceiver.DEC); poke(); }));
+            top.addView(small("✕", this::closePanel));
+            box.addView(top);
+
+            View main;
+            if (draw) {
+                pad = new Pad(this);
+                main = pad;
+                box.addView(pad, new LinearLayout.LayoutParams(dp(190), dp(140)));
+            } else {
+                hit = new TextView(this);
+                hit.setGravity(Gravity.CENTER);
+                hit.setTextColor(Color.WHITE);
+                hit.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
+                hit.setTypeface(hit.getTypeface(), android.graphics.Typeface.BOLD);
+                hit.setOnClickListener(x -> { act(); poke(); });
+                main = hit;
+                LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(dp(150), dp(96));
+                hl.topMargin = dp(6);
+                box.addView(hit, hl);
+            }
+            if (main != null) main.setTag("main");
+
+            plp = new WindowManager.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, overlayType(),
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+                PixelFormat.TRANSLUCENT);
+            plp.gravity = Gravity.TOP | (right ? Gravity.END : Gravity.START);
+            plp.x = lp.width / 2 + dp(6); // 아이콘 옆
+            plp.y = Math.max(dp(16), lp.y - dp(70));
+            box.setOnTouchListener((x, e) -> { if (e.getActionMasked() == MotionEvent.ACTION_OUTSIDE) closePanel(); return false; });
+            panel = box;
+            wm.addView(panel, plp);
+            v.setAlpha(1f);
+            h.removeCallbacks(dim);
+            refresh();
+            poke();
+        } catch (Exception e) {
+            panel = null; pad = null; hit = null; head = null;
+        }
+    }
+
+    private TextView small(String t, Runnable r) {
+        TextView b = new TextView(this);
+        b.setText(t);
+        b.setGravity(Gravity.CENTER);
+        b.setTextColor(Color.parseColor("#152426"));
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        b.setTypeface(b.getTypeface(), android.graphics.Typeface.BOLD);
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(10));
+        g.setColor(Color.WHITE);
+        g.setStroke(dp(1), Color.parseColor("#9DB5B1"));
+        b.setBackground(g);
+        b.setOnClickListener(x -> r.run());
+        LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(dp(44), dp(36));
+        l.leftMargin = dp(6);
+        b.setLayoutParams(l);
+        return b;
+    }
+
+    /** 쓰는 중이면 닫힘 시간을 미룬다 */
+    private void poke() { h.removeCallbacks(autoClose); h.postDelayed(autoClose, 8000); }
+    private final Runnable autoClose = this::closePanel;
+
+    void closePanel() {
+        h.removeCallbacks(autoClose);
+        h.removeCallbacks(judge);
+        if (panel != null && wm != null) { try { wm.removeView(panel); } catch (Exception ignored) {} }
+        panel = null; pad = null; hit = null; head = null;
+        h.removeCallbacks(dim);
+        h.postDelayed(dim, 800);
+    }
+
+    /** ＋1(빈도) / 시작·끝(지속시간) / 지시·반응(지연시간). 그 밖은 앱을 연다 */
+    private void act() {
         String mode = CounterStore.uiMode(this);
-        String act;
-        if (CounterStore.FREQ.equals(mode)) act = CounterReceiver.INC;
-        else if (CounterStore.DUR.equals(mode)) act = CounterReceiver.DUR;
-        else if (CounterStore.LAT.equals(mode)) act = CounterReceiver.LAT;
+        String a;
+        if (CounterStore.FREQ.equals(mode)) a = CounterReceiver.INC;
+        else if (CounterStore.DUR.equals(mode)) a = CounterReceiver.DUR;
+        else if (CounterStore.LAT.equals(mode)) a = CounterReceiver.LAT;
         else {
+            closePanel();
             Intent open = new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             try { startActivity(open); } catch (Exception ignored) {}
             return;
         }
-        v.animate().scaleX(1.15f).scaleY(1.15f).setDuration(90).withEndAction(() -> v.animate().scaleX(1f).scaleY(1f).setDuration(120)).start();
-        CounterReceiver.handle(getApplicationContext(), act); // 기록·진동·알림/위젯 갱신·refresh까지
+        View t = hit != null ? hit : pad;
+        if (t != null) t.animate().scaleX(1.06f).scaleY(1.06f).setDuration(80).withEndAction(() -> t.animate().scaleX(1f).scaleY(1f).setDuration(110)).start();
+        CounterReceiver.handle(getApplicationContext(), a); // 기록·진동·알림/위젯 갱신·refresh까지
     }
 
     void refresh() {
         if (v == null) return;
         String mode = CounterStore.uiMode(this);
-        boolean act = CounterStore.active(this);
         boolean run = CounterStore.running(this);
-        String big, small;
-        if (CounterStore.FREQ.equals(mode)) { big = act ? "＋1" : "시작"; small = act ? CounterStore.count(this) + "회" : "회기"; }
-        else if (CounterStore.DUR.equals(mode)) { big = run ? "끝" : "시작"; small = "행동"; }
-        else if (CounterStore.LAT.equals(mode)) { big = run ? "반응" : "지시"; small = "지연"; }
-        else { big = "열기"; small = "앱"; }
-        if (draw) { pad.label = (CounterStore.FREQ.equals(mode) ? CounterStore.count(this) + "회" : big) + " · 그으면 ＋1"; pad.run = run; pad.invalidate(); return; }
-        v.setText(big + "\n" + small);
-        v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        boolean freq = CounterStore.FREQ.equals(mode);
+        int n = CounterStore.count(this);
+        String big;
+        if (freq) big = "＋1";
+        else if (CounterStore.DUR.equals(mode)) big = run ? "행동 끝" : "행동 시작";
+        else if (CounterStore.LAT.equals(mode)) big = run ? "반응" : "지시";
+        else big = "앱 열기";
+        // 아이콘: 지금 횟수(빈도) 또는 ＋
+        v.setText(freq ? String.valueOf(n) : "＋");
+        v.setTextSize(TypedValue.COMPLEX_UNIT_SP, freq && n >= 100 ? 12 : 15);
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.OVAL);
-        bg.setColor(run ? Color.parseColor("#B3402A") : Color.parseColor("#1B6862"));
-        bg.setStroke(dp(2), Color.WHITE);
+        bg.setColor(run ? Color.parseColor("#B3402A") : Color.parseColor("#2B3A3C"));
+        bg.setStroke(dp(2), Color.argb(200, 255, 255, 255));
         v.setBackground(bg);
+        if (head != null) head.setText(freq ? n + "회" : big);
+        if (hit != null) {
+            hit.setText(big);
+            GradientDrawable g = new GradientDrawable();
+            g.setCornerRadius(dp(14));
+            g.setColor(run ? Color.parseColor("#B3402A") : Color.parseColor("#1B6862"));
+            hit.setBackground(g);
+        }
+        if (pad != null) { pad.run = run; pad.invalidate(); }
     }
 
-    /** 트리거가 바뀌면 화면 위 버튼을 새로 만든다 */
-    void rebuild() {
-        if (v != null && wm != null) { try { wm.removeView(v); } catch (Exception ignored) {} }
-        v = null; pad = null;
-        if (on(this) && perm(this) && CounterStore.active(this)) show();
-    }
+    /** 트리거가 바뀌면 열린 판을 닫는다(다음에 열 때 새 모양) */
+    void rebuild() { closePanel(); refresh(); }
 
     /** 판에 획을 다 그은 뒤(0.7초 쉬면) ＋1. 너무 짧은 것(톡 닿음·손바닥)은 세지 않는다 */
     private final Runnable judge = () -> {
@@ -266,44 +369,49 @@ public class FloatBubble extends Service {
         for (float[] st : drawn) for (int i = 2; i + 1 < st.length; i += 2) L += (float) Math.hypot(st[i] - st[i - 2], st[i + 1] - st[i - 1]);
         if (L < dp(14)) { pad.flash(0); return; }
         pad.flash(1);
-        tap();
+        act();
     };
 
-    /** 작은 그리기 판 */
-    private class Pad extends TextView {
+    /** 긋기 판: 아무 획이나 그으면 ＋1 */
+    private class Pad extends View {
         final Paint ink = new Paint(Paint.ANTI_ALIAS_FLAG), box = new Paint(Paint.ANTI_ALIAS_FLAG), txt = new Paint(Paint.ANTI_ALIAS_FLAG);
         final List<float[]> strokes = new ArrayList<>();
         final List<Float> cur = new ArrayList<>();
         final Path path = new Path();
-        String label = "";
         boolean run;
-        int fl; // 1 맞음 -1 아님
+        int fl;
+        @SuppressLint("ClickableViewAccessibility")
         Pad(Context c) {
             super(c);
             ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(dp(4)); ink.setStrokeCap(Paint.Cap.ROUND); ink.setStrokeJoin(Paint.Join.ROUND); ink.setColor(Color.parseColor("#1B6862"));
-            txt.setColor(Color.WHITE); txt.setTextSize(dp(13)); txt.setFakeBoldText(true);
+            txt.setColor(Color.parseColor("#7A8C8E")); txt.setTextSize(dp(13)); txt.setTextAlign(Paint.Align.CENTER);
+            setOnTouchListener((x, e) -> {
+                switch (e.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN: h.removeCallbacks(judge); fl = 0; cur.clear(); cur.add(e.getX()); cur.add(e.getY()); path.moveTo(e.getX(), e.getY()); poke(); invalidate(); return true;
+                    case MotionEvent.ACTION_MOVE:
+                        for (int i = 0; i < e.getHistorySize(); i++) { cur.add(e.getHistoricalX(i)); cur.add(e.getHistoricalY(i)); path.lineTo(e.getHistoricalX(i), e.getHistoricalY(i)); }
+                        cur.add(e.getX()); cur.add(e.getY()); path.lineTo(e.getX(), e.getY()); invalidate(); return true;
+                    case MotionEvent.ACTION_UP: {
+                        float[] f = new float[cur.size()]; for (int i = 0; i < f.length; i++) f[i] = cur.get(i);
+                        if (f.length >= 2) strokes.add(f);
+                        cur.clear(); h.removeCallbacks(judge); h.postDelayed(judge, 700); return true;
+                    }
+                    case MotionEvent.ACTION_CANCEL: cur.clear(); strokes.clear(); path.reset(); invalidate(); return true;
+                }
+                return false;
+            });
         }
-        void down(float x, float y) { h.removeCallbacks(judge); fl = 0; cur.clear(); cur.add(x); cur.add(y); path.moveTo(x, y); invalidate(); }
-        void move(float x, float y) { cur.add(x); cur.add(y); path.lineTo(x, y); invalidate(); }
-        void up() {
-            float[] f = new float[cur.size()]; for (int i = 0; i < f.length; i++) f[i] = cur.get(i);
-            if (f.length >= 2) strokes.add(f);
-            cur.clear(); h.removeCallbacks(judge); h.postDelayed(judge, 700);
-        }
-        void cancel() { cur.clear(); strokes.clear(); path.reset(); invalidate(); }
         List<float[]> take() { List<float[]> r = new ArrayList<>(strokes); strokes.clear(); return r; }
-        void flash(int f) { fl = f; path.reset(); invalidate(); h.postDelayed(() -> { fl = 0; invalidate(); }, 600); }
+        void flash(int f) { fl = f; path.reset(); invalidate(); h.postDelayed(() -> { fl = 0; invalidate(); }, 500); }
         @Override protected void onDraw(Canvas c) {
-            float w = getWidth(), hh = getHeight(), r = dp(14);
+            float w = getWidth(), hh = getHeight(), r = dp(12);
             box.setStyle(Paint.Style.FILL);
-            box.setColor(fl == 1 ? Color.parseColor("#D2E9E5") : fl == -1 ? Color.parseColor("#F4D6CF") : Color.argb(235, 255, 255, 255));
+            box.setColor(fl == 1 ? Color.parseColor("#D2E9E5") : Color.WHITE);
             c.drawRoundRect(0, 0, w, hh, r, r, box);
-            box.setColor(run ? Color.parseColor("#B3402A") : Color.parseColor("#1B6862"));
-            c.drawRoundRect(0, 0, w, dp(30), r, r, box);
-            c.drawRect(0, dp(16), w, dp(30), box);
             box.setStyle(Paint.Style.STROKE); box.setStrokeWidth(dp(2));
+            box.setColor(run ? Color.parseColor("#B3402A") : Color.parseColor("#1B6862"));
             c.drawRoundRect(dp(1), dp(1), w - dp(1), hh - dp(1), r, r, box);
-            c.drawText("≡ " + label, dp(10), dp(20), txt);
+            if (path.isEmpty() && fl == 0) c.drawText("그으면 ＋1", w / 2, hh / 2 + dp(5), txt);
             c.drawPath(path, ink);
         }
     }
@@ -311,6 +419,7 @@ public class FloatBubble extends Service {
     @Override
     public void onDestroy() {
         if (inst == this) inst = null;
+        closePanel();
         h.removeCallbacksAndMessages(null);
         if (v != null && wm != null) { try { wm.removeView(v); } catch (Exception ignored) {} }
         v = null;
