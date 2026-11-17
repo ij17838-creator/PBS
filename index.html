@@ -4723,7 +4723,7 @@ function ivAct(el,what){
   durOpen.add(s.id+':iv');s.ivLog=ivStr(L);edApply(p,ph,s,'iv');
 }
 setInterval(latTick,1000);
-function natSync(p,ph,s){const m=natMode(p,ph);if(m&&m!=='freq'&&m!=='dur')return;/* 지연시간 등은 측정값이 횟수가 아니라서 알림 숫자에 넣지 않는다 */if(PCN&&nat.key===natKey(p,ph,s))PCN.setCount({key:nat.key,count:blNum(s.value)||0}).catch(()=>{});}
+function natSync(p,ph,s){setTimeout(liveHostTick,0);/* 앱 안 ＋1도 칠판·PC로 바로 */const m=natMode(p,ph);if(m&&m!=='freq'&&m!=='dur')return;/* 지연시간 등은 측정값이 횟수가 아니라서 알림 숫자에 넣지 않는다 */if(PCN&&nat.key===natKey(p,ph,s))PCN.setCount({key:nat.key,count:blNum(s.value)||0}).catch(()=>{});}
 async function natDrain(){
   if(!PCN)return;
   if(nat.busy){nat.again=true;return;}
@@ -4994,6 +4994,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-17-13',d:'2026-11-17',k:'web',t:'＋1 대기 창 고침',items:['닫아도 다시 누르면 또 뜸','앱 안 ＋1도 칠판에 바로','못 보내면 휴대폰에 알림','칠판에 \'휴대폰 소식 없음\' 표시']},
   {id:'2026-11-17-12',d:'2026-11-17',k:'web',t:'＋1 대기 창 더 빨리',items:['화면을 처음 누르면 대기 창','회기 시작 뒤 한 번 누르면 ＋1','창에 \'진행 중\'·시작 시각','뒤에 있으면 탭 제목 깜빡임']},
   {id:'2026-11-17-11',d:'2026-11-17',k:'web',t:'휴대폰 회기를 칠판에서도 ＋1',items:['휴대폰 앱이 회기를 열면','공유 프로젝트 칠판·PC에 ＋1','양쪽 ＋1이 한 회기로 합쳐짐','PC는 \'＋1 창 대기\'를 미리']},
   {id:'2026-11-17-10',d:'2026-11-17',k:'apk',need:9,t:'떠 있는 ＋1 새 모양',items:['작고 반투명한 아이콘','놓으면 옆 가장자리에 붙음','누르면 옆으로 판이 열림','밖을 누르면 닫힘']},
@@ -5126,7 +5127,7 @@ function miniSes(){const p=curProject();if(!p||!mini.id)return null;const s=sesL
 function miniCount(){
   let t;if(mini.live){const n=liveCount();t=n==null?'대기':n+'회';}else{const r=miniSes();t=(r?(blNum(r.s.value)||0):0)+'회';}
   $('#mini-n').textContent=t;$('#mini-pad-n').textContent=t;if(mini.pip){const e=mini.pip.document.getElementById('mini-n');if(e)e.textContent=t;
-    const w=mini.pip.document.getElementById('mini-who');if(w){const r=mini.live&&liveActive();w.textContent=r?`● ${r.v.st?r.v.st+' 시작 · ':''}진행 중`:'휴대폰 회기 대기 중';w.title=r?(r.v.title||''):'';w.classList.toggle('on',!!r);}}
+    const w=mini.pip.document.getElementById('mini-who');if(w){const r=mini.live&&liveActive();w.textContent=r?(Date.now()-(Number(r.v.at)||0)>90000?'휴대폰 소식 없음(앱 열기)':`● ${r.v.st?r.v.st+' 시작 · ':''}진행 중`):'휴대폰 회기 대기 중';w.title=r?(r.v.title||''):'';w.classList.toggle('on',!!r);}}
 }
 function miniInc(d){
   if(mini.live){if(!liveInc(d))return;}
@@ -5183,7 +5184,7 @@ async function miniShow(tryPip){
       else w.document.getElementById('mini-mark').addEventListener('click',()=>miniInc(1));
       w.document.getElementById('mini-dec').addEventListener('click',()=>miniInc(-1));
       w.document.getElementById('mini-out').addEventListener('click',()=>{miniOff();try{window.focus();}catch(e){}});
-      w.addEventListener('pagehide',()=>{if(mini.pip===w){mini.pip=null;if(mini.live)live.closed=true;/* 사람이 닫음: 다음 회기 시작 전까지 저절로 다시 열지 않음 */if(mini.on&&mini.live&&!liveActive())miniOff();else if(mini.on){$('#mini').hidden=false;miniPlace();}liveBar();}});
+      w.addEventListener('pagehide',()=>{if(mini.pip===w){mini.pip=null;if(mini.live)live.closed=Date.now();/* 사람이 닫음: 3초 동안만 저절로 다시 열지 않음(닫자마자 다시 뜨지 않게) */if(mini.on&&mini.live&&!liveActive())miniOff();else if(mini.on){$('#mini').hidden=false;miniPlace();}liveBar();}});
       mini.pip=w;miniCount();toast(mini.live&&!liveActive()?'휴대폰 회기를 기다립니다':'작은 창 ＋1을 누르세요');return;
     }catch(e){mini.pip=null;}
   }
@@ -5223,7 +5224,8 @@ Object.assign(actions,{'mini-on':el=>miniOn(el),
    다른 기기 화면: 컴퓨터(크롬)는 미리 연 '＋1 창 대기' 작은 창이 저절로 ＋1로 바뀐다(작은 창은 누른 직후에만 열 수 있음). 없으면 화면 안 ＋1과 시스템 알림.
    안드로이드(칠판 앱)는 알림창 ＋1·떠 있는 ＋1을 그 회기로 띄운다(key 'live|공유ID|회기id'). */
 function liveDev(){try{let d=localStorage.getItem('pbs-dev');if(!d){d=uid('d');localStorage.setItem('pbs-dev',d);}return d;}catch(e){return live.dev||(live.dev=uid('d'));}}
-function liveWrite(pid,path,val){const me=syncMe();if(!me||!Sync.ad||!Sync.ad.liveSet)return;Sync.ad.liveSet(pid,path,val,me).catch(e=>console.warn(e));}
+function liveWrite(pid,path,val){const me=syncMe();if(!me||!Sync.ad||!Sync.ad.liveSet)return;
+  Sync.ad.liveSet(pid,path,val,me).then(()=>{live.err='';live.okAt=Date.now();}).catch(e=>{console.warn(e);const c=(e&&e.code)||'오류';if(live.err!==c){live.err=c;toast(`칠판·PC로 못 보냄(${/permission/.test(c)?'권한':c})`);}});}
 /* ---- 주인(회기를 연 앱) ---- */
 function liveHostWant(){
   if(!PCN||!nat.key||nat.key.startsWith('live|'))return null;
@@ -5240,7 +5242,7 @@ function liveHostTick(){
     live.host=null;liveTapsOff();liveWrite(H.pid,LIVE_HOST,{on:false,id:H.id,dev:liveDev(),at:Date.now()});
   }
   if(!want)return;
-  if(!live.host){live.host={pid:want.pid,id:want.id,seen:liveSeenGet(want.id),sent:''};live.tapUn=Sync.ad.liveWatchTaps(want.pid,liveAbsorb);}
+  if(!live.host){live.host={pid:want.pid,id:want.id,seen:liveSeenGet(want.id),sent:''};live.tapUn=Sync.ad.liveWatchTaps(want.pid,liveAbsorb);toast('칠판·PC에도 ＋1이 떠요');}
   const H2=live.host;
   const doc={on:true,id:want.id,st:f.s.time||'',title:natTitle(f.p,f.ph,'freq'),n:blNum(f.s.value)||0,seen:H2.seen,dev:liveDev()};
   const sig=JSON.stringify(doc);const now=Date.now();
@@ -5304,7 +5306,7 @@ function liveRemote(){
 function liveStarted(r){
   toast(`휴대폰 회기 시작: ${r.v.title||''}`);
   if(PCN){liveMirror(r);return;}
-  live.closed=false;liveFlash(true);
+  live.closed=0;liveFlash(true);
   if(!(mini.on&&mini.live))liveMini(false);/* 미리 연 작은 창이 있으면 그 창이 ＋1로 바뀐다 */
   liveNotify(r);
 }
@@ -5334,7 +5336,8 @@ function liveGesture(e){
   if(e.target&&e.target.closest&&e.target.closest('[data-act="live-arm"],[data-act="live-pip"],#mini'))return;
   if(!store.projects.some(p=>p.shared)||!Sync.user)return;
   const r=liveActive();
-  if(!r&&(!liveAuto()||live.closed))return;
+  if(Date.now()-(live.closed||0)<3000)return;
+  if(!r&&!liveAuto())return;
   liveMini(true);setTimeout(liveNotePerm,600);
 }
 document.addEventListener('pointerup',liveGesture,true);
@@ -5394,7 +5397,7 @@ Object.assign(actions,{
   'live-inc':()=>{liveInc(1);}
 });
 document.addEventListener('change',e=>{if(e.target.matches&&e.target.matches('[data-live-auto]')){try{localStorage.setItem('pbs-live-auto',e.target.checked?'1':'0');}catch(x){}toast(e.target.checked?'화면을 누르면 대기 창이 떠요':'대기 창은 버튼으로만');}});
-setInterval(()=>{liveRemote();liveHostTick();},20000);
+setInterval(()=>{liveRemote();liveHostTick();},10000);
 
 /* ---------- boot ---------- */
 if(firstRun&&!store.projects.length){store.projects.push(exampleProject());}
