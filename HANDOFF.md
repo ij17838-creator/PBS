@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-11-17 · 앱이 꺼져 있어도 칠판·PC와 함께 세기(LiveSync, 새 apk)
+### 한 일
+- 원인: 빠른 설정으로 회기를 열면 앱 화면(JS)이 꺼져 있거나 멈춰 칠판으로 아무것도 안 보냄.
+- 안드로이드가 직접 처리: 공유 프로젝트(빈도) 회기가 열려 있는 동안 포그라운드 서비스 LiveSync가 2초마다 '~live/host' 쓰기 + '~live/tap/*' 읽어 칠판 ＋1을 CounterStore에 넣음(앱이 열리면 natDrain이 회기 기록으로). 회기 중 알림 '칠판·PC와 함께 세는 중'.
+- 서버는 Firestore REST(documents:commit, runQuery) + 구글 로그인 토큰. 앱 화면이 setLive로 로그인 정보·대상 프로젝트(로컬 id→공유 id)를 넘기고, 토큰은 refresh 토큰으로 새로 받음.
+- 웹: nat.ver>=10이면 liveHostTick 안 씀. 휴대폰 상태 줄은 nat.live(앱 상태) 기준.
+- 플러그인 ver 10, 공지 k:'apk' need 10.
+### 데이터
+- SharedPreferences lvOn·lvKey·lvProj·lvUid·lvName·lvDev·lvMap·lvRt·lvTok·lvExp·lvHost·lvSeen·lvSig·lvBeat·lvErr·lvOk. 회기 id는 key 세 번째 칸(new:시작ms 또는 회기 id).
+### 확인한 것
+- 웹 Playwright(옛 앱 ver 9 경로) 통과. GitHub Actions 빌드(아래 '다음에 할 일' 전 확인).
+- 시험 못 함: REST 요청 실제 서버 응답(에뮬레이터 실행이 이 환경에서 막힘), 실기기 전체.
+### 알려진 한계
+- 칠판(안드로이드 앱)에서 누른 ＋1은 여전히 그 기기 앱 화면(JS)이 보냄.
+- 서버 읽기: 회기 중 2초마다 1~2건(40분 약 2,400건).
+### 코드 위치
+- android LiveSync(config·want·sync·step·pushHost·sendEnd·pollTaps·writeCell·token), CounterStore.liveTap, CounterNotifier.refreshAll, PbsCounterPlugin.setLive·state.live
+- index.html liveNative, adapter liveCred, liveHostSt
+### 다음에 할 일
+- 사용자: 새 apk 덮어 설치 → 공유 프로젝트로 빠른 설정 회기 시작 → 휴대폰 상태 줄('칠판 함께 세기 중' 또는 '못 보냄(이유)')과 PC 대기 창 확인.
+
 ## 2026-11-17 · 대기 창에 지금 횟수·연결 상태 줄
 ### 한 일
 - 사용자 보고: 회기 끝·앱 ＋1이 브라우저에 반영 안 됨(원인 미확인). 대기 창에 횟수 표시 요청.
@@ -32,19 +53,4 @@
 - liveReady, liveGesture, liveArmRow
 ### 다음에 할 일
 - 사용자: 같은 공유 프로젝트로 휴대폰·브라우저 함께 세기 실기기 확인(2026-11-17 '대기 창 다시 띄우기' 항목의 확인 부탁 참고).
-
-## 2026-11-17 · 대기 창 다시 띄우기·앱 ＋1 반영 고침
-### 한 일
-- 사용자 보고: 대기 창이 처음 한 번만 뜸, 앱 ＋1이 브라우저에 실시간 반영 안 되는 듯.
-- 대기 창을 닫으면 다음 회기까지 안 열던 것을 닫은 뒤 3초만 막도록 바꿈(live.closed=닫은 시각).
-- 앱 안 ＋1·값 고침도 바로 보냄(natSync에서 liveHostTick). 휴대폰이 주인 되면 '칠판·PC에도 ＋1이 떠요', 서버에 못 쓰면 '칠판·PC로 못 보냄(이유)' 알림.
-- 칠판 작은 창: 휴대폰 소식이 90초 넘게 없으면 '휴대폰 소식 없음(앱 열기)'. 확인 주기 10초.
-- 공지 k:'web'.
-### 확인한 것
-- Playwright(가짜): 닫고 3초 뒤 터치→다시 열림, 이전 시험 전부 통과.
-- 시험 못 함: 실기기. 앱 ＋1 미반영 원인은 확인 못 함(후보: 휴대폰 앱이 새 화면을 아직 안 받음, 백그라운드에서 JS 멈춤, 서버 규칙).
-### 코드 위치 (index.html)
-- liveGesture, liveWrite(live.err·okAt), liveHostTick, natSync, miniCount(mini-who)
-### 다음에 할 일
-- 사용자: 휴대폰 앱 공지에 '＋1 대기 창 고침'이 보이는지 확인 → 회기 시작 때 '칠판·PC에도 ＋1이 떠요'가 뜨는지, 오류 알림 문구 알려 주기.
 
