@@ -58,6 +58,16 @@
                 android:value="교사가 학생 행동을 재는 동안 일정 간격으로 진행 여부를 묻는 알림, 그리고 측정 중 화면이 꺼진 채 음량 버튼을 3번 눌러 기록하는 기능(소리 없는 재생으로 음량 키를 받음)" />
         </service>
 
+        <!-- 떠 있는 ＋1: 다른 앱(수업 자료) 위의 작은 버튼. 켜 둔 동안만 돈다 -->
+        <service
+            android:name=".FloatBubble"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="교사가 수업 자료를 띄운 채 학생 행동을 셀 수 있도록 다른 앱 위에 작은 기록 버튼을 띄움" />
+        </service>
+
         <!-- 재부팅·앱 업데이트 뒤 측정 알림·위젯 다시 그리기 -->
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>
@@ -92,6 +102,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- 관찰 중 녹음 (웹앱의 마이크 기능) -->
+    <!-- 떠 있는 ＋1 (다른 앱 위에 표시) -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 </manifest>

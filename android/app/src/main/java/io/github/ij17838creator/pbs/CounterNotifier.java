@@ -314,6 +314,7 @@ final class CounterNotifier {
         DurWatch.sync(c);
         CounterWidget.updateAll(c);
         CounterTile.refresh(c);
+        FloatBubble.sync(c);
     }
 
     static void cancel(Context c) {

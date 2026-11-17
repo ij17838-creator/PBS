@@ -2856,6 +2856,14 @@ const actions={
   'lvl-add':el=>lvlAct(el,'add'),'lvl-set':el=>lvlAct(el,'set'),'lvl-del':el=>lvlAct(el,'del'),
   'iv-cyc':el=>ivAct(el,'cyc'),'iv-make':el=>ivAct(el,'make'),'iv-add':el=>ivAct(el,'add'),'iv-pop':el=>ivAct(el,'pop'),
   'nat-btn-refresh':async()=>{try{const r=await PCN.status();nat.btn=r.btn||nat.btn;nat.timer=r.timer||nat.timer;}catch(e){}natUI();},
+  'nat-bub':async()=>{
+    const cur=!!(nat.bub&&nat.bub.on&&nat.bub.perm);
+    try{const r=await PCN.setBubble({on:!cur});nat.bub=r.bub||null;
+      if(!cur&&r.bub&&!r.bub.perm)toast('다른 앱 위 표시를 켜 주세요');
+      else toast(cur?'떠 있는 ＋1을 껐습니다':'다른 앱 위에 ＋1을 띄웠습니다');}
+    catch(e){toast('이 앱에서는 안 됩니다');}
+    natUI();
+  },
   'nat-pin':async()=>{try{const r=await PCN.pinWidget();if(!r.ok)toast('홈 화면을 길게 눌러 위젯 → PBS 기록');}catch(e){toast('홈 화면을 길게 눌러 위젯 → PBS 기록');}},
   'nat-tile':async()=>{try{const r=await PCN.addTile();toast(r.already?'이미 빠른 설정에 있습니다':r.ok?'빠른 설정에 추가했습니다':'빠른 설정 편집에서 PBS 측정을 끌어 놓으세요');}catch(e){toast('빠른 설정 편집에서 PBS 측정을 끌어 놓으세요');}},
   'bl-goal':()=>{
@@ -4691,7 +4699,7 @@ async function natDrain(){
   if(nat.busy){nat.again=true;return;}
   nat.busy=true;
   try{
-    const r=await PCN.drain();nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;nat.ver=r.ver||1;nat.chk=r.chk||null;nat.btn=r.btn||null;nat.timer=r.timer||null;
+    const r=await PCN.drain();nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;nat.ver=r.ver||1;nat.chk=r.chk||null;nat.btn=r.btn||null;nat.timer=r.timer||null;nat.bub=r.bub||null;
     const hit=new Map();let lost=0,made=0;
     (r.events||[]).forEach(e=>{
       const f=natResolve(e.key);if(!f){lost++;return;}
@@ -4775,6 +4783,7 @@ function natTargetRow(p,ph){
   return `<div class="bl-nat nat-target" id="nat-target-${ph}">
     <button type="button" class="btn small${on?' primary':''}" data-act="nat-target" data-ph="${ph}" aria-pressed="${on}">${on?'앱 밖 측정 끄기':'앱 밖 측정 켜기'}</button>
     ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>`:''}
+    ${on&&nat.ver>=6?`<button type="button" class="btn small${nat.bub&&nat.bub.on&&nat.bub.perm?' primary':''}" data-act="nat-bub" aria-pressed="${!!(nat.bub&&nat.bub.on&&nat.bub.perm)}">${nat.bub&&nat.bub.on&&nat.bub.perm?'떠 있는 ＋1 끄기':'떠 있는 ＋1'}</button>`:''}
     <span class="muted">${on?(ph==='abc'?'＋1마다 시각 한 행':({lat:'지시·반응을 눌러요',lvl:'1·2·3을 눌러요',int:'신호 때 있음·없음'}[m]||'앱이 꺼져도 기록돼요')):'위젯·알림창에서 기록'}</span>
     ${on&&m==='dur'&&nat.ver>=2?natChkBox():''}
     ${on&&nat.ver>=5?natTimerBox():''}
@@ -4954,6 +4963,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-17-8',d:'2026-11-17',k:'apk',need:6,t:'떠 있는 ＋1 (안드로이드)',items:['앱 밖 측정 켜고 \'떠 있는 ＋1\'','수업 자료 위에 작은 버튼','밀면 가장자리로 숨음','처음 한 번 권한 허용']},
   {id:'2026-11-17-7',d:'2026-11-17',k:'web',t:'전자칠판·큰 화면',items:['화면 가리기(B 키·길게 눌러 열기)','큰 화면 오른쪽 아래 바로가기','빈도 회기: 작게 띄워 세기','표시를 밀면 가장자리로 숨음']},
   {id:'2026-11-17-6',d:'2026-11-17',k:'web',t:'앱 안 공지',items:['바뀐 점을 여기서 확인','설치 앱이 옛 버전이면 홈에 알림']},
   {id:'2026-11-17-5',d:'2026-11-17',k:'apk',need:5.1,t:'음량 버튼 누를 횟수',items:['누를 횟수 1·2·3번 선택(기본 1번)','1번이면 누를 때마다 바로 ＋1','꾹 누름은 세지 않음']},
