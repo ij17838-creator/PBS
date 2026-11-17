@@ -30,7 +30,7 @@ public class CounterTile extends TileService {
         Context c = getApplicationContext();
         if (!CounterStore.anything(c)) { openApp(); return; }
         String um = CounterStore.uiMode(c);
-        if (!CounterStore.active(c)) { // 첫 탭은 회기 시작만(횟수·행동은 아직 없음)
+        if (!CounterStore.active(c) && !CounterStore.isAbc(c)) { // 첫 탭은 회기 시작만(횟수·행동은 아직 없음). ABC는 첫 탭도 한 행
             CounterReceiver.handle(c, CounterReceiver.BEGIN);
             draw();
             return;
@@ -72,7 +72,7 @@ public class CounterTile extends TileService {
         else if (CounterStore.INT.equals(um)) label = on ? "PBS 간격 " + CounterStore.ivYes(c) + "/" + CounterStore.ivTot(c) : "PBS 관찰 시작";
         else if (dur) label = on && CounterStore.running(c) ? "PBS 행동 끝" : "PBS 행동 시작";
         else label = on ? "PBS ＋1 (" + CounterStore.count(c) + "회)" : "PBS ＋1";
-        if (any && !on) label = "PBS 회기 시작";
+        if (any && !on) label = CounterStore.isAbc(c) ? "PBS 발생 시각" : "PBS 회기 시작";
         t.setLabel(label);
         if (Build.VERSION.SDK_INT >= 29) t.setSubtitle(any ? CounterNotifier.titleText(c) : "앱에서 대상 고르기");
         t.setState(on ? Tile.STATE_ACTIVE : Tile.STATE_INACTIVE);

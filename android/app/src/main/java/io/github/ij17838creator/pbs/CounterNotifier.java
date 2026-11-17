@@ -61,7 +61,7 @@ final class CounterNotifier {
                 case CounterStore.LAT: return "대기 · 지시를 누르면 새 회기";
                 case CounterStore.LVL: return "대기 · 단계를 누르면 새 회기";
                 case CounterStore.INT: return "대기 · 관찰 시작을 누르세요";
-                default: return "대기 · 회기 시작을 누르세요";
+                default: return CounterStore.isAbc(c) ? "대기 · ＋1을 누르면 관찰 시작" : "대기 · 회기 시작을 누르세요";
             }
         }
         String md = CounterStore.mode(c);

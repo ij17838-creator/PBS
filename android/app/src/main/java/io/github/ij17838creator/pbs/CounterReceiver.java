@@ -49,8 +49,10 @@ public class CounterReceiver extends BroadcastReceiver {
     static void handle(Context c, String a) {
         switch (a) {
             case INC:
-                // 열린 회기가 없을 때 ＋1은 회기 시작만 한다(시작하면서 1회가 저절로 세지지 않게)
-                if (CounterStore.begin(c)) buzz(c, 40);
+                // 열린 회기가 없을 때 ＋1은 회기 시작만 한다(시작하면서 1회가 저절로 세지지 않게).
+                // ABC 관찰은 앱의 '행동 발생 · 지금 시각 찍기'처럼 관찰이 없으면 시작하면서 그 시각을 바로 한 행으로 남긴다
+                if (CounterStore.isAbc(c)) { if (CounterStore.add(c, 1) > 0) buzz(c, 60); }
+                else if (CounterStore.begin(c)) buzz(c, 40);
                 else if (CounterStore.add(c, 1) > 0) buzz(c, 60);
                 break;
             case DEC:

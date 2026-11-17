@@ -4715,8 +4715,8 @@ function natTargetRow(p,ph){
     ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>`:''}
     <span class="muted">${on?(ph==='abc'?'＋1마다 시각 한 행':({lat:'지시·반응을 눌러요',lvl:'1·2·3을 눌러요',int:'신호 때 있음·없음'}[m]||'앱이 꺼져도 기록돼요')):'위젯·알림창에서 기록'}</span>
     ${on&&m==='dur'&&nat.ver>=2?natChkBox():''}
-    ${on&&nat.ver>=5?natTimerBox():''}
-    ${natBtnBox(m,on)}
+    ${on&&nat.ver>=5&&ph!=='abc'?natTimerBox():''}
+    ${natBtnBox(m,on,ph)}
   </div>`;
 }
 /* 지속시간 끝 확인(끝 깜빡 방지) 설정: 간격·알림 방식·응답 없을 때·늦은 시작 보정 버튼. 값은 기기(앱)에 저장된다 */
@@ -4766,10 +4766,10 @@ async function natTimerSet(){
   if(document.activeElement)document.activeElement.blur();
   natUI();
 }
-function natBtnBox(m,on){
+function natBtnBox(m,on,ph){
   if(nat.ver<4)return `<div class="muted" style="flex:1 1 100%">음량 3번 · 새 앱 설치 필요</div>`;
   if(!on)return `<div class="muted" style="flex:1 1 100%">음량 3번 · 켜기 후 사용</div>`;
-  const next={freq:'3번=＋1',dur:'3번=행동 시작·끝',lat:'3번=지시·반응'}[m];
+  const abc=ph==='abc';const next=abc?'3번=발생 시각 1행':{freq:'3번=＋1',dur:'3번=행동 시작·끝',lat:'3번=지시·반응'}[m];
   if(!next)return `<div class="muted" style="flex:1 1 100%">음량 3번 · 이 방법 미지원</div>`;
   const b=nat.btn||{on:false};
   return `<details class="nat-chk" data-nat-btn${nat.btnOpen?' open':''}><summary>음량 3번 · ${b.on?'켬':'끔'}</summary>
@@ -4777,7 +4777,7 @@ function natBtnBox(m,on){
       <label class="check"><input type="checkbox" data-btn3="on"${b.on?' checked':''}> <span>회기 중 음량 3번</span></label>
       <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}${b.on?'':' disabled'}> <span>누를 때마다 진동(시험)</span></label>
     </div>
-    <div class="dur-foot muted"><span>회기는 타일·위젯으로</span><span>${next}</span><span>4번째 누름=취소</span><span>재생·통화 중엔 안 셈</span><span>화면 꺼졌을 때만</span></div>
+    <div class="dur-foot muted"><span>${abc?'관찰은 타일·위젯으로':'회기는 타일·위젯으로'}</span><span>${next}</span><span>4번째 누름=취소</span><span>재생·통화 중엔 안 셈</span><span>화면 꺼졌을 때만</span></div>
     ${b.on&&'alive' in b?`<div class="dur-foot"><strong>${b.alive?'누름 세는 중':'회기 열면 셈'}</strong><button type="button" class="btn small" data-act="nat-btn-refresh">기록 새로 보기</button></div>
     <pre class="btn3-log">${esc(b.log||'아직 누른 기록 없음')}</pre>`:''}
   </details>`;
