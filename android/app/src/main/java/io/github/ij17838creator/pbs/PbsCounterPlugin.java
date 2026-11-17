@@ -78,12 +78,13 @@ public class PbsCounterPlugin extends Plugin {
         // 2 = 끝 확인·늦은 시작 보정이 있는 앱 (웹 화면이 먼저 업데이트돼도 옛 앱에선 설정 칸을 숨기려고)
         // 3 = 지연시간·강도·간격 기록도 앱 밖 측정 가능
         // 4 = 음량 버튼 기록(회기 중 화면 꺼짐) / 5 = 측정 시간·자동 갱신
-        // 6 = 떠 있는 ＋1(다른 앱 위 버튼) / 7 = 떠 있는 ＋1은 회기 중에만·작고 반투명
-        o.put("ver", 7);
+        // 6 = 떠 있는 ＋1(다른 앱 위 버튼) / 7 = 떠 있는 ＋1은 회기 중에만·작고 반투명 / 8 = 트리거 누르기·긋기(작은 판)
+        o.put("ver", 8);
         JSObject bub = new JSObject();
         bub.put("on", FloatBubble.on(c));
         bub.put("perm", FloatBubble.perm(c));
         bub.put("alive", FloatBubble.alive());
+        bub.put("trig", FloatBubble.trig(c));
         o.put("bub", bub);
         JSObject b = new JSObject();
         b.put("on", CounterStore.btnOn(c));
@@ -223,6 +224,8 @@ public class PbsCounterPlugin extends Plugin {
     public void setBubble(PluginCall call) {
         Context c = getContext();
         boolean on = Boolean.TRUE.equals(call.getBoolean("on", false));
+        String trig = call.getString("trig");
+        if (trig != null) FloatBubble.setTrig(c, trig);
         if (on && !FloatBubble.perm(c)) {
             FloatBubble.askPerm(c);
             CounterStore.prefs(c).edit().putBoolean("bubOn", true).apply(); // 권한을 켜고 돌아오면 바로 뜨게

@@ -616,6 +616,19 @@ html.in-ink .ink-host{caret-color:transparent}
 .mini.tuck .mini-tools{display:none}
 .mini.tuck .mini-mark{width:44px;height:104px;border-radius:12px;font-size:16px}
 .mini.tuck .mini-mark .mini-plus{display:none}
+.mini-pad{display:none;flex-direction:column;width:200px;border:2px solid var(--accent);border-radius:14px;background:var(--surface);overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.2)}
+.mini-pad-bar{min-height:36px;display:flex;align-items:center;padding:0 10px;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:14px;cursor:grab;touch-action:none}
+.mini-pad canvas{display:block;width:100%;height:150px;touch-action:none;cursor:crosshair}
+.mini-pad.ok canvas{background:var(--accent-soft)}
+.mini.draw .mini-mark{display:none}
+.mini.draw .mini-pad{display:flex}
+.mini.draw.tuck .mini-pad{width:44px}
+.mini.draw.tuck .mini-pad canvas{display:none}
+.mini.draw.tuck .mini-pad-bar{min-height:150px;padding:0;justify-content:center;writing-mode:vertical-rl}
+.trig-seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden}
+.trig-seg .seg-btn{min-height:36px;font-size:.86rem}
+.trig-seg .seg-btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.trig-seg .seg-btn:first-child{border-left:0}
 @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important;scroll-behavior:auto!important} }
 </style>
 
@@ -653,6 +666,7 @@ html.in-ink .ink-host{caret-color:transparent}
 </div>
 <div class="mini" id="mini" hidden>
   <button type="button" class="mini-mark" id="mini-mark" aria-label="1 더하기"><span class="mini-plus">＋1</span><small id="mini-n">0</small></button>
+  <div class="mini-pad" id="mini-pad"><div class="mini-pad-bar" id="mini-pad-bar">≡ <span id="mini-pad-n">0회</span>&nbsp;· 그으면 ＋1</div><canvas id="mini-pad-cv" width="400" height="300" aria-label="그으면 1 더하기"></canvas></div>
   <div class="mini-tools"><button type="button" class="btn" id="mini-dec" aria-label="1 빼기">−1</button><button type="button" class="btn" id="mini-out">펼치기</button></div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
@@ -1986,7 +2000,7 @@ function sesRow(p,ph,s,i){
       <label class="field"><span>관찰자</span><textarea rows="1" class="one" id="ses-${s.id}-observer" data-f="ses:${k}:observer" placeholder="예: 담임">${esc(s.observer)}</textarea></label>
       <label class="field wide2"><span>메모</span><textarea rows="1" class="one" id="ses-${s.id}-note" data-f="ses:${k}:note" placeholder="예: 시험 주간, 결석 후 첫날">${esc(s.note)}</textarea></label>
     </div>
-    ${freq?`<div class="mini-row"><button type="button" class="btn small" data-act="mini-on" data-ph="${ph}" data-id="${s.id}">작게 띄워 세기</button><span class="muted">화면 가리고 ＋1만</span></div>`:''}
+    ${freq?`<div class="mini-row"><button type="button" class="btn small" data-act="mini-on" data-ph="${ph}" data-id="${s.id}">작게 띄워 세기</button>${trigSeg('mini-trig',miniTrig())}<span class="muted">화면 가리고 ＋1만</span></div>`:''}
     ${freq&&(PCN||s.tapLog)?natRow(p,ph,s,i):''}${p.procs.define.data.measure==='지속시간'||s.durLog?durEd(p,ph,s):''}${measEds(p,ph,s)}
     ${ui.confirm==='del-ses:'+k?confirmBox('이 회기 기록을 삭제합니다.','del-ses',k):''}
   </div>`;
@@ -2856,9 +2870,13 @@ const actions={
   'lvl-add':el=>lvlAct(el,'add'),'lvl-set':el=>lvlAct(el,'set'),'lvl-del':el=>lvlAct(el,'del'),
   'iv-cyc':el=>ivAct(el,'cyc'),'iv-make':el=>ivAct(el,'make'),'iv-add':el=>ivAct(el,'add'),'iv-pop':el=>ivAct(el,'pop'),
   'nat-btn-refresh':async()=>{try{const r=await PCN.status();nat.btn=r.btn||nat.btn;nat.timer=r.timer||nat.timer;}catch(e){}natUI();},
+  'nat-bub-trig':async el=>{
+    try{const on=!!(nat.bub&&nat.bub.on);const r=await PCN.setBubble({on,trig:el.dataset.v});nat.bub=r.bub||null;toast(el.dataset.v==='draw'?'작은 판에 그으면 ＋1':'눌러서 ＋1');}catch(e){}
+    natUI();
+  },
   'nat-bub':async()=>{
     const cur=!!(nat.bub&&nat.bub.on&&nat.bub.perm);
-    try{const r=await PCN.setBubble({on:!cur});nat.bub=r.bub||null;
+    try{const r=await PCN.setBubble({on:!cur,trig:(nat.bub&&nat.bub.trig)||'tap'});nat.bub=r.bub||null;
       if(!cur&&r.bub&&!r.bub.perm)toast('다른 앱 위 표시를 켜 주세요');
       else toast(cur?'떠 있는 ＋1을 껐습니다':'회기 중에만 ＋1이 떠요');}
     catch(e){toast('이 앱에서는 안 됩니다');}
@@ -4783,7 +4801,7 @@ function natTargetRow(p,ph){
   return `<div class="bl-nat nat-target" id="nat-target-${ph}">
     <button type="button" class="btn small${on?' primary':''}" data-act="nat-target" data-ph="${ph}" aria-pressed="${on}">${on?'앱 밖 측정 끄기':'앱 밖 측정 켜기'}</button>
     ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>`:''}
-    ${on&&nat.ver>=6?`<button type="button" class="btn small${nat.bub&&nat.bub.on&&nat.bub.perm?' primary':''}" data-act="nat-bub" aria-pressed="${!!(nat.bub&&nat.bub.on&&nat.bub.perm)}">${nat.bub&&nat.bub.on&&nat.bub.perm?'떠 있는 ＋1 끄기':'떠 있는 ＋1'}</button>`:''}
+    ${on&&nat.ver>=6?`<button type="button" class="btn small${nat.bub&&nat.bub.on&&nat.bub.perm?' primary':''}" data-act="nat-bub" aria-pressed="${!!(nat.bub&&nat.bub.on&&nat.bub.perm)}">${nat.bub&&nat.bub.on&&nat.bub.perm?'떠 있는 ＋1 끄기':'떠 있는 ＋1'}</button>${nat.ver>=8?trigSeg('nat-bub-trig',nat.bub&&nat.bub.trig):''}`:''}
     <span class="muted">${on?(ph==='abc'?'＋1마다 시각 한 행':({lat:'지시·반응을 눌러요',lvl:'1·2·3을 눌러요',int:'신호 때 있음·없음'}[m]||'앱이 꺼져도 기록돼요')):'위젯·알림창에서 기록'}</span>
     ${on&&m==='dur'&&nat.ver>=2?natChkBox():''}
     ${on&&nat.ver>=5?natTimerBox():''}
@@ -4963,6 +4981,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-17-9',d:'2026-11-17',k:'apk',need:8,t:'＋1 방법: 누르기·긋기',items:['\'누르기/긋기\' 중 고르기','긋기: 작은 판에 한 획 = ＋1','전자칠판 펜에 맞춤','작게 띄워 세기에도 적용']},
   {id:'2026-11-17-8',d:'2026-11-17',k:'apk',need:7,t:'떠 있는 ＋1 (안드로이드)',items:['앱 밖 측정 켜고 \'떠 있는 ＋1\'','회기 중에만 작게 뜸','평소엔 반투명, 밀면 숨음','처음 한 번 권한 허용']},
   {id:'2026-11-17-7',d:'2026-11-17',k:'web',t:'전자칠판·큰 화면',items:['화면 가리기(B 키·길게 눌러 열기)','큰 화면 오른쪽 아래 바로가기','빈도 회기: 작게 띄워 세기','표시를 밀면 가장자리로 숨음']},
   {id:'2026-11-17-6',d:'2026-11-17',k:'web',t:'앱 안 공지',items:['바뀐 점을 여기서 확인','설치 앱이 옛 버전이면 홈에 알림']},
@@ -5071,10 +5090,24 @@ Object.assign(actions,{
 /* ---------- 작게 띄워 세기: 회기 하나를 골라 화면은 가리고 ＋1 표시만 띄운다 ----------
    표시는 끌어 옮길 수 있고, 화면 밖으로 밀면 가장자리에 손잡이만 남는다(누르면 다시 나옴).
    크롬(윈도우 등)에서 '다른 창 위에 띄우기'(Document Picture-in-Picture)가 되면 작은 창으로 띄워 수업 자료 위에도 보인다. */
-const MINI_POS='pbs-mini-pos';
+const MINI_POS='pbs-mini-pos',MINI_TRIG='pbs-mini-trig';
+/* ＋1 방법: 누르기(tap) / 긋기(draw, 전자칠판 펜용 작은 판) */
+function miniTrig(){try{return localStorage.getItem(MINI_TRIG)==='draw'?'draw':'tap';}catch(e){return 'tap';}}
+function trigSeg(act,v){return `<span class="trig-seg" role="group" aria-label="＋1 방법"><button type="button" class="seg-btn" data-act="${act}" data-v="tap" aria-pressed="${v!=='draw'}">누르기</button><button type="button" class="seg-btn" data-act="${act}" data-v="draw" aria-pressed="${v==='draw'}">긋기</button></span>`;}
+/* 그리기 판: 획을 긋고 0.7초 쉬면 한 번 ＋1 (너무 짧으면 무시). 앱 화면과 작은 창(PiP) 모두 */
+function padBind(cv,onHit){
+  const c=cv.getContext('2d');let cur=null,len=0,t=null;const box=cv.parentNode;
+  const pos=e=>{const b=cv.getBoundingClientRect();return [(e.clientX-b.left)*cv.width/b.width,(e.clientY-b.top)*cv.height/b.height,cv.width/b.width];};
+  cv.addEventListener('pointerdown',e=>{e.preventDefault();clearTimeout(t);try{cv.setPointerCapture(e.pointerId);}catch(x){}const [x,y,k]=pos(e);cur={id:e.pointerId,x,y,k};
+    c.strokeStyle=getComputedStyle(box).borderTopColor;c.lineWidth=5*k;c.lineCap='round';c.lineJoin='round';});
+  cv.addEventListener('pointermove',e=>{if(!cur||e.pointerId!==cur.id)return;const [x,y]=pos(e);c.beginPath();c.moveTo(cur.x,cur.y);c.lineTo(x,y);c.stroke();len+=Math.hypot(x-cur.x,y-cur.y)/cur.k;cur.x=x;cur.y=y;});
+  const up=e=>{if(!cur||e.pointerId!==cur.id)return;cur=null;clearTimeout(t);
+    t=setTimeout(()=>{const ok=len>=14;len=0;c.clearRect(0,0,cv.width,cv.height);if(!ok)return;box.classList.add('ok');setTimeout(()=>box.classList.remove('ok'),400);onHit();},700);};
+  cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+}
 const mini={on:false,ph:null,id:null,pip:null,tuck:false,x:0,y:0};
 function miniSes(){const p=curProject();if(!p||!mini.id)return null;const s=sesList(p,mini.ph).find(x=>x.id===mini.id);return s?{p,s}:null;}
-function miniCount(){const r=miniSes();const n=r?(blNum(r.s.value)||0):0;$('#mini-n').textContent=n+'회';if(mini.pip){const e=mini.pip.document.getElementById('mini-n');if(e)e.textContent=n+'회';}}
+function miniCount(){const r=miniSes();const n=r?(blNum(r.s.value)||0):0;$('#mini-n').textContent=n+'회';$('#mini-pad-n').textContent=n+'회';if(mini.pip){const e=mini.pip.document.getElementById('mini-n');if(e)e.textContent=n+'회';}}
 function miniInc(d){
   const r=miniSes();if(!r){toast('회기를 찾지 못했습니다');miniOff();return;}
   actions['ses-inc']({dataset:{ph:mini.ph,id:mini.id,d:String(d)}});miniCount();
@@ -5103,7 +5136,7 @@ async function miniOn(el){
   /* 다른 창 위에 띄우기(되는 브라우저만) */
   if(window.documentPictureInPicture&&matchMedia('(min-width:900px)').matches){
     try{
-      const req=documentPictureInPicture.requestWindow({width:180,height:200});
+      const req=documentPictureInPicture.requestWindow(miniTrig()==='draw'?{width:240,height:230}:{width:180,height:200});
       const w=await Promise.race([req,new Promise((_,no)=>setTimeout(()=>no(new Error('late')),2500))]).catch(e=>{req.then(x=>{try{x.close();}catch(y){}}).catch(()=>{});throw e;});
       if(!mini.on){try{w.close();}catch(e){}return;}
       const st=getComputedStyle(document.documentElement);const v=k=>st.getPropertyValue(k);
@@ -5115,38 +5148,45 @@ async function miniOn(el){
         #mini-mark.hit{animation:h .35s ease}@keyframes h{40%{transform:scale(1.12)}}
         .t{display:flex;gap:6px}.t button{min-height:40px;min-width:52px;border:1px solid ${v('--line-strong')};border-radius:10px;background:${v('--surface')};color:${v('--ink')};font-weight:700}
       </style>`;
-      w.document.body.innerHTML='<button id="mini-mark" aria-label="1 더하기">＋1<small id="mini-n">0</small></button><div class="t"><button id="mini-dec" aria-label="1 빼기">−1</button><button id="mini-out">펼치기</button></div>';
-      w.document.getElementById('mini-mark').addEventListener('click',()=>miniInc(1));
+      const drawM=miniTrig()==='draw';
+      w.document.head.insertAdjacentHTML('beforeend',`<style>.pad{width:94vw;border:2px solid ${v('--accent')};border-radius:12px;overflow:hidden;background:${v('--surface')}}.pad b{display:block;padding:4px 8px;background:${v('--accent')};color:${v('--accent-ink')};font-size:14px}.pad canvas{display:block;width:100%;height:110px;touch-action:none}.pad.ok canvas{background:${v('--accent-soft')}}</style>`);
+      w.document.body.innerHTML=(drawM?'<div class="pad"><b>그으면 ＋1 · <span id="mini-n">0</span></b><canvas id="pip-cv" width="360" height="220"></canvas></div>':'<button id="mini-mark" aria-label="1 더하기">＋1<small id="mini-n">0</small></button>')+'<div class="t"><button id="mini-dec" aria-label="1 빼기">−1</button><button id="mini-out">펼치기</button></div>';
+      if(drawM)padBind(w.document.getElementById('pip-cv'),()=>miniInc(1));
+      else w.document.getElementById('mini-mark').addEventListener('click',()=>miniInc(1));
       w.document.getElementById('mini-dec').addEventListener('click',()=>miniInc(-1));
       w.document.getElementById('mini-out').addEventListener('click',()=>{miniOff();try{window.focus();}catch(e){}});
       w.addEventListener('pagehide',()=>{if(mini.pip===w){mini.pip=null;if(mini.on){$('#mini').hidden=false;miniPlace();}}});
       mini.pip=w;miniCount();toast('작은 창 ＋1을 누르세요');return;
     }catch(e){mini.pip=null;}
   }
-  $('#mini').hidden=false;
+  $('#mini').hidden=false;$('#mini').classList.toggle('draw',miniTrig()==='draw');
   try{const o=JSON.parse(localStorage.getItem(MINI_POS)||'null');if(o){mini.x=o.x;mini.y=o.y;mini.tuck=!!o.t;}else{mini.x=innerWidth-140;mini.y=innerHeight-260;mini.tuck=false;}}catch(e){mini.x=innerWidth-140;mini.y=innerHeight-260;}
   miniCount();miniPlace();
 }
 (function(){
-  const m=$('#mini'),mk=$('#mini-mark');if(!m)return;
+  const m=$('#mini'),mk=$('#mini-mark'),bar=$('#mini-pad-bar');if(!m)return;
   let d=null;
-  mk.addEventListener('pointerdown',e=>{e.preventDefault();try{mk.setPointerCapture(e.pointerId);}catch(x){}d={id:e.pointerId,sx:e.clientX,sy:e.clientY,x:mini.x,y:mini.y,moved:false};});
-  mk.addEventListener('pointermove',e=>{if(!d||e.pointerId!==d.id)return;const dx=e.clientX-d.sx,dy=e.clientY-d.sy;
+  padBind($('#mini-pad-cv'),()=>miniInc(1));
+  const grab=el=>{
+  el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId);}catch(x){}d={id:e.pointerId,sx:e.clientX,sy:e.clientY,x:mini.x,y:mini.y,moved:false,bar:el===bar};});
+  el.addEventListener('pointermove',e=>{if(!d||e.pointerId!==d.id)return;const dx=e.clientX-d.sx,dy=e.clientY-d.sy;
     if(!d.moved&&Math.hypot(dx,dy)<10)return;
     if(!d.moved){d.moved=true;m.classList.add('drag');if(mini.tuck){mini.tuck=false;m.classList.remove('tuck');}}
     mini.x=d.x+dx;mini.y=Math.min(Math.max(8,d.y+dy),innerHeight-60);m.style.left=mini.x+'px';m.style.top=mini.y+'px';});
   const end=e=>{if(!d||e.pointerId!==d.id)return;const was=d;d=null;m.classList.remove('drag');
     if(e.type==='pointercancel')return miniPlace();
-    if(!was.moved){if(mini.tuck){mini.tuck=false;mini.x=mini.x<innerWidth/2?12:innerWidth-120;miniPlace();}else miniInc(1);return;}
+    if(!was.moved){if(mini.tuck){mini.tuck=false;mini.x=mini.x<innerWidth/2?12:innerWidth-(was.bar?220:120);miniPlace();}else if(!was.bar)miniInc(1);return;}
     const w=m.offsetWidth;mini.tuck=mini.x<-w*0.3||mini.x+w>innerWidth+w*0.3;miniPlace();};
-  mk.addEventListener('pointerup',end);mk.addEventListener('pointercancel',end);
+  el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);};
+  grab(mk);grab(bar);
   mk.addEventListener('click',e=>e.preventDefault());
   mk.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();miniInc(1);}});
   $('#mini-dec').addEventListener('click',()=>miniInc(-1));
   $('#mini-out').addEventListener('click',()=>miniOff());
   addEventListener('resize',()=>{if(mini.on&&!m.hidden)miniPlace();});
 })();
-Object.assign(actions,{'mini-on':el=>miniOn(el)});
+Object.assign(actions,{'mini-on':el=>miniOn(el),
+  'mini-trig':el=>{try{localStorage.setItem(MINI_TRIG,el.dataset.v);}catch(e){}$$('[data-act="mini-trig"]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===el.dataset.v)));toast(el.dataset.v==='draw'?'작은 판에 그으면 ＋1':'눌러서 ＋1');}});
 
 /* ---------- boot ---------- */
 if(firstRun&&!store.projects.length){store.projects.push(exampleProject());}
