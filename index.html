@@ -3901,7 +3901,7 @@ async function makeFirestoreAdapter(){
     async liveSet(pid,path,val,me){await F.setDoc(sub(pid,'cells',key(path)),{path,value:JSON.stringify(val),deleted:false,rev:0,baseRev:0,by:me.uid,byName:me.name,at:ts()});count(1);},
     /* 설치형 앱이 직접(앱 화면이 꺼져 있어도) 서버에 쓰도록 넘겨 줄 로그인 정보 */
     async liveCred(){const u=auth.currentUser;if(!u)return null;return {idToken:await u.getIdToken(),refresh:u.refreshToken||'',uid:u.uid};},
-    liveWatchHost(pid,cb){return F.onSnapshot(sub(pid,'cells',key(LIVE_HOST)),s=>cb(s.exists()?syncParse(s.data().value):null),()=>{});},
+    liveWatchHost(pid,cb){return F.onSnapshot(sub(pid,'cells',key(LIVE_HOST)),s=>cb(s.exists()?syncParse(s.data().value):null),e=>cb(undefined,(e&&e.code)||'오류'));},
     liveWatchTaps(pid,cb){return F.onSnapshot(F.query(sub(pid,'cells'),F.where('path','>=',LIVE_TAP),F.where('path','<',LIVE_TAP+'\uf8ff')),s=>cb(s.docs.map(d=>syncParse(d.data().value)).filter(Boolean)),()=>{});},
     watchDoc(pid,cb){return F.onSnapshot(pd(pid),s=>cb(s.exists()?s.data():null),()=>{});},
     watchMembers(pid,cb){return F.onSnapshot(sub(pid,'members'),s=>cb(s.docs.map(d=>{const x=d.data({serverTimestamps:'estimate'});return {uid:d.id,name:x.name||'',role:x.role||'',joinedAt:iso(x.joinedAt)};})),()=>{});},
@@ -4461,7 +4461,7 @@ function natResolve(key){
   if(!p||(ph!=='bl'&&ph!=='iv')||!/^new:\d+$/.test(sid||''))return null;
   const list=sesList(p,ph);const st=new Date(Number(sid.slice(4)));
   const prev=blSorted(list).slice(-1)[0]||(ph==='iv'?blSorted(p.procs.baseline.data.sessions).slice(-1)[0]:null);
-  const s=blNew(prev);s.natId=sid;s.date=ymdLocal(st);s.time=natHms(st.getTime()).slice(0,5);
+  const s=blNew(prev);s.id=liveSesId(sid);s.natId=sid;s.natOwn=1;s.date=ymdLocal(st);s.time=natHms(st.getTime()).slice(0,5);
   const nm=natMode(p,ph);s.value=nm==='freq'||nm==='dur'||!nm?'0':'';/* 지연시간·강도·간격 기록은 기록이 들어오면 계산 */
   list.push(s);return {p,ph,s,created:true};
 }
@@ -4738,6 +4738,7 @@ async function natDrain(){
       const f=natResolve(e.key);if(!f){lost++;return;}
       if(f.created){made++;f.created=false;}
       const {s}=f;
+      if(s&&s.liveMade&&!s.natOwn&&f.ph!=='abc'){s.natOwn=1;s.value='0';s.tapLog='';}/* 칠판이 먼저 만든 회기: 이 기기 기록으로 다시 센다 */
       if(f.ph==='abc'){if(!e.k)natAbcTap(f,e);}
       else if(e.k==='b'){/* 회기 시작만 (0회도 기록) */}
       else if(e.k==='ls'||e.k==='le'){/* 지연시간: 지시 / 반응(f:'m' 최대 대기 넘음, 'x' 중단) */
@@ -4771,6 +4772,9 @@ async function natDrain(){
       }
       hit.set(e.key,f);
     });
+    /* 열린 빈도 회기는 앱(알림창)의 횟수가 기준(칠판이 먼저 적어 둔 값과 겹쳐 세지 않게) */
+    if(r.active&&r.key&&typeof r.count==='number'&&!String(r.key).startsWith('live|')){const f=natFind(r.key);
+      if(f&&f.s&&f.ph!=='abc'&&natMode(f.p,f.ph)==='freq'&&!f.s.durLog&&String(r.count)!==String(f.s.value)){f.s.value=String(r.count);hit.set(r.key,f);}}
     hit.forEach(f=>touch(f.p,f.ph==='abc'?'abc':sesProc(f.ph)));
     if(hit.size){
       saveNow();const p=curProject();
@@ -4997,6 +5001,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-17-17',d:'2026-11-17',k:'web',t:'휴대폰 회기가 기록에 바로',items:['앱에서 측정 시작하면','PC 회기별 기록에 회기 추가','횟수도 실시간으로 바뀜','대기 창 연결 오류 표시']},
   {id:'2026-11-17-16',d:'2026-11-17',k:'apk',need:10,t:'앱이 꺼져도 칠판과 함께 세기',items:['빠른 설정·위젯으로 시작해도','칠판·PC에 ＋1이 바로 뜸','칠판 ＋1도 휴대폰에 바로','회기 중 알림 \'함께 세는 중\'']},
   {id:'2026-11-17-15',d:'2026-11-17',k:'web',t:'대기 창에 지금 횟수',items:['작은 창 위에 큰 숫자','휴대폰: 함께 세기 상태 줄','PC: 휴대폰 소식 시각 표시']},
   {id:'2026-11-17-14',d:'2026-11-17',k:'web',t:'대기 창은 측정 방법 뒤에',items:['측정 방법 \'빈도\'를 고른','공유 프로젝트가 있을 때만','대기 창이 저절로 뜸']},
@@ -5310,7 +5315,7 @@ function liveWatch(){
   if(!Sync.ad||!Sync.user||!Sync.ad.liveWatchHost)return;
   const want=new Set(store.projects.filter(x=>x.shared).map(x=>x.shared.projectId));
   live.watch.forEach((un,pid)=>{if(!want.has(pid)){un();live.watch.delete(pid);live.docs.delete(pid);}});
-  want.forEach(pid=>{if(!live.watch.has(pid))live.watch.set(pid,Sync.ad.liveWatchHost(pid,v=>{live.docs.set(pid,v);liveRemote();}));});
+  want.forEach(pid=>{if(!live.watch.has(pid))live.watch.set(pid,Sync.ad.liveWatchHost(pid,(v,err)=>{if(err){live.werr=live.werr||{};live.werr[pid]=err;liveBar();return;}if(live.werr)delete live.werr[pid];live.docs.set(pid,v);liveRemote();}));});
 }
 function liveUnwatch(){liveNative();live.watch.forEach(un=>{try{un();}catch(e){}});live.watch.clear();live.docs.clear();liveRemote();}
 /* 지금 다른 기기에서 열린 회기(15분 넘게 소식이 없으면 끝난 것으로 봄) */
@@ -5339,7 +5344,33 @@ function liveRemote(){
   liveMineLoad();
   const r=liveActive();const id=r?r.pid+'|'+r.v.id:null;
   if(id!==live.rid){const was=live.rid;live.rid=id;if(was)liveEnded();if(r)liveStarted(r);}
+  if(r)liveSes(r);
   liveShow();
+}
+/* 앱 밖에서 연 회기 id 'new:시작ms' → 회기 id(휴대폰·칠판이 같은 id로 만든다) */
+function liveSesId(sid){return 'bsn'+String(sid).replace(/^new:/,'');}
+function liveTitlePh(t){return String(t||'').split(' · ').includes('중재')?'iv':'bl';}
+/* 칠판·PC: 휴대폰 회기를 이 기기 회기별 기록에도 바로 넣고 횟수를 따라간다(공유로 서버에도 올라감) */
+function liveSes(r){
+  const p=store.projects.find(x=>x.shared&&x.shared.projectId===r.pid);if(!p||!liveReady(p))return;
+  const sid=String(r.v.id||'');const ph=liveTitlePh(r.v.title);const list=sesList(p,ph);
+  let s=list.find(x=>x.natId===sid||x.id===sid||x.id===liveSesId(sid));let made=false;
+  if(!s){
+    if(!/^new:\d+$/.test(sid))return;
+    const st=new Date(Number(sid.slice(4)));
+    const prev=blSorted(list).slice(-1)[0]||(ph==='iv'?blSorted(p.procs.baseline.data.sessions).slice(-1)[0]:null);
+    s=blNew(prev);s.id=liveSesId(sid);s.natId=sid;s.liveMade=1;s.date=ymdLocal(st);s.time=natHms(st.getTime()).slice(0,5);s.value='0';
+    list.push(s);made=true;
+  }
+  const n=String(Math.max(0,Number(r.v.n)||0));
+  if(!made&&s.value===n)return;
+  s.value=n;touch(p,sesProc(ph));saveNow();
+  if(curProject()===p&&ui.view==='proc'){
+    if(made){const y=window.scrollY;render();window.scrollTo(0,y);}
+    else{const v=$(`#ses-${s.id}-value`);if(v&&document.activeElement!==v)v.value=s.value;refreshBl(p);}
+  }
+  if(Sync.cur&&Sync.cur.localId===p.id)syncFlushSoon(made?0:300);
+  if(made)toast('휴대폰 회기를 회기별 기록에 넣었습니다');
 }
 function liveStarted(r){
   toast(`휴대폰 회기 시작: ${r.v.title||''}`);
@@ -5431,6 +5462,7 @@ function liveReady(p){return !!(p&&p.shared&&p.procs.define.data.measure==='빈�
 /* 브라우저: 그 프로젝트의 휴대폰 소식 */
 function liveSt(pid){
   const v=live.docs.get(pid);if(!Sync.user)return '로그인하면 휴대폰과 연결';
+  if(live.werr&&live.werr[pid])return `휴대폰 소식 못 읽음(${live.werr[pid]})`;
   if(!v||!v.at)return '휴대폰 소식 아직 없음';
   const t=natHms(v.at);
   if(v.dev===liveDev())return '이 기기에서 연 회기';
