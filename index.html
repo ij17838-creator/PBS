@@ -4994,6 +4994,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-17-12',d:'2026-11-17',k:'web',t:'＋1 대기 창 더 빨리',items:['화면을 처음 누르면 대기 창','회기 시작 뒤 한 번 누르면 ＋1','창에 \'진행 중\'·시작 시각','뒤에 있으면 탭 제목 깜빡임']},
   {id:'2026-11-17-11',d:'2026-11-17',k:'web',t:'휴대폰 회기를 칠판에서도 ＋1',items:['휴대폰 앱이 회기를 열면','공유 프로젝트 칠판·PC에 ＋1','양쪽 ＋1이 한 회기로 합쳐짐','PC는 \'＋1 창 대기\'를 미리']},
   {id:'2026-11-17-10',d:'2026-11-17',k:'apk',need:9,t:'떠 있는 ＋1 새 모양',items:['작고 반투명한 아이콘','놓으면 옆 가장자리에 붙음','누르면 옆으로 판이 열림','밖을 누르면 닫힘']},
   {id:'2026-11-17-9',d:'2026-11-17',k:'apk',need:8,t:'＋1 방법: 누르기·긋기',items:['\'누르기/긋기\' 중 고르기','긋기: 작은 판에 한 획 = ＋1','전자칠판 펜에 맞춤','작게 띄워 세기에도 적용']},
@@ -5124,7 +5125,8 @@ const mini={on:false,live:false,ph:null,id:null,pip:null,tuck:false,x:0,y:0};/* 
 function miniSes(){const p=curProject();if(!p||!mini.id)return null;const s=sesList(p,mini.ph).find(x=>x.id===mini.id);return s?{p,s}:null;}
 function miniCount(){
   let t;if(mini.live){const n=liveCount();t=n==null?'대기':n+'회';}else{const r=miniSes();t=(r?(blNum(r.s.value)||0):0)+'회';}
-  $('#mini-n').textContent=t;$('#mini-pad-n').textContent=t;if(mini.pip){const e=mini.pip.document.getElementById('mini-n');if(e)e.textContent=t;}
+  $('#mini-n').textContent=t;$('#mini-pad-n').textContent=t;if(mini.pip){const e=mini.pip.document.getElementById('mini-n');if(e)e.textContent=t;
+    const w=mini.pip.document.getElementById('mini-who');if(w){const r=mini.live&&liveActive();w.textContent=r?`● ${r.v.st?r.v.st+' 시작 · ':''}진행 중`:'휴대폰 회기 대기 중';w.title=r?(r.v.title||''):'';w.classList.toggle('on',!!r);}}
 }
 function miniInc(d){
   if(mini.live){if(!liveInc(d))return;}
@@ -5171,16 +5173,17 @@ async function miniShow(tryPip){
         #mini-mark{width:110px;height:110px;border-radius:50%;border:0;background:${v('--accent')};color:${v('--accent-ink')};font-size:30px;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
         #mini-mark small{font-size:15px;font-weight:700;color:inherit}
         #mini-mark.hit{animation:h .35s ease}@keyframes h{40%{transform:scale(1.12)}}
+        .who{font-size:13px;font-weight:700;color:${v('--muted')};text-align:center;max-width:96vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.who.on{color:${v('--accent')}}
         .t{display:flex;gap:6px}.t button{min-height:40px;min-width:52px;border:1px solid ${v('--line-strong')};border-radius:10px;background:${v('--surface')};color:${v('--ink')};font-weight:700}
       </style>`;
       const drawM=miniTrig()==='draw';
       w.document.head.insertAdjacentHTML('beforeend',`<style>.pad{width:94vw;border:2px solid ${v('--accent')};border-radius:12px;overflow:hidden;background:${v('--surface')}}.pad b{display:block;padding:4px 8px;background:${v('--accent')};color:${v('--accent-ink')};font-size:14px}.pad canvas{display:block;width:100%;height:110px;touch-action:none}.pad.ok canvas{background:${v('--accent-soft')}}</style>`);
-      w.document.body.innerHTML=(drawM?'<div class="pad"><b>그으면 ＋1 · <span id="mini-n">0</span></b><canvas id="pip-cv" width="360" height="220"></canvas></div>':'<button id="mini-mark" aria-label="1 더하기">＋1<small id="mini-n">0</small></button>')+'<div class="t"><button id="mini-dec" aria-label="1 빼기">−1</button><button id="mini-out">펼치기</button></div>';
+      w.document.body.innerHTML=(mini.live?'<div class="who" id="mini-who"></div>':'')+(drawM?'<div class="pad"><b>그으면 ＋1 · <span id="mini-n">0</span></b><canvas id="pip-cv" width="360" height="220"></canvas></div>':'<button id="mini-mark" aria-label="1 더하기">＋1<small id="mini-n">0</small></button>')+'<div class="t"><button id="mini-dec" aria-label="1 빼기">−1</button><button id="mini-out">펼치기</button></div>';
       if(drawM)padBind(w.document.getElementById('pip-cv'),()=>miniInc(1));
       else w.document.getElementById('mini-mark').addEventListener('click',()=>miniInc(1));
       w.document.getElementById('mini-dec').addEventListener('click',()=>miniInc(-1));
       w.document.getElementById('mini-out').addEventListener('click',()=>{miniOff();try{window.focus();}catch(e){}});
-      w.addEventListener('pagehide',()=>{if(mini.pip===w){mini.pip=null;if(mini.on&&mini.live&&!liveActive())miniOff();else if(mini.on){$('#mini').hidden=false;miniPlace();}liveBar();}});
+      w.addEventListener('pagehide',()=>{if(mini.pip===w){mini.pip=null;if(mini.live)live.closed=true;/* 사람이 닫음: 다음 회기 시작 전까지 저절로 다시 열지 않음 */if(mini.on&&mini.live&&!liveActive())miniOff();else if(mini.on){$('#mini').hidden=false;miniPlace();}liveBar();}});
       mini.pip=w;miniCount();toast(mini.live&&!liveActive()?'휴대폰 회기를 기다립니다':'작은 창 ＋1을 누르세요');return;
     }catch(e){mini.pip=null;}
   }
@@ -5239,7 +5242,7 @@ function liveHostTick(){
   if(!want)return;
   if(!live.host){live.host={pid:want.pid,id:want.id,seen:liveSeenGet(want.id),sent:''};live.tapUn=Sync.ad.liveWatchTaps(want.pid,liveAbsorb);}
   const H2=live.host;
-  const doc={on:true,id:want.id,title:natTitle(f.p,f.ph,'freq'),n:blNum(f.s.value)||0,seen:H2.seen,dev:liveDev()};
+  const doc={on:true,id:want.id,st:f.s.time||'',title:natTitle(f.p,f.ph,'freq'),n:blNum(f.s.value)||0,seen:H2.seen,dev:liveDev()};
   const sig=JSON.stringify(doc);const now=Date.now();
   if(sig===H2.sent&&now-live.beat<60000)return;/* 바뀐 게 없으면 1분마다 살아 있음만 알림 */
   H2.sent=sig;live.beat=now;doc.at=now;liveWrite(want.pid,LIVE_HOST,doc);
@@ -5301,10 +5304,12 @@ function liveRemote(){
 function liveStarted(r){
   toast(`휴대폰 회기 시작: ${r.v.title||''}`);
   if(PCN){liveMirror(r);return;}
+  live.closed=false;liveFlash(true);
   if(!(mini.on&&mini.live))liveMini(false);/* 미리 연 작은 창이 있으면 그 창이 ＋1로 바뀐다 */
   liveNotify(r);
 }
 function liveEnded(){
+  liveFlash(false);
   if(live.note){try{live.note.close();}catch(e){}live.note=null;}
   if(PCN&&live.mkey){const k=live.mkey;live.mkey=null;live.mcount=null;if(nat.key===k)PCN.stop().then(()=>{nat.key=null;natUI();}).catch(()=>{});}
   if(mini.on&&mini.live&&!mini.pip)miniOff();/* 작은 창은 남겨 두고 다음 회기를 기다린다 */
@@ -5314,10 +5319,35 @@ function liveEnded(){
 async function liveMini(gesture){
   if(mini.on&&!mini.live){if(gesture)toast('작게 띄워 세기를 먼저 닫으세요');return;}
   if(mini.on&&mini.pip){try{mini.pip.focus();}catch(e){}return;}
+  if(live.opening)return;
   if(mini.on){if(!gesture)return;$('#mini').hidden=true;}
   Object.assign(mini,{on:true,live:true,ph:null,id:null});
-  await miniShow(gesture);liveShow();
+  live.opening=true;try{await miniShow(gesture);}finally{live.opening=false;}
+  if(mini.pip)liveFlash(false);
+  liveShow();
 }
+/* 큰 화면 크롬: 작은 창은 누른 직후에만 열 수 있다. 그래서 공유 프로젝트가 있으면 화면을 처음 누를 때(또는 회기가 시작된 뒤 처음 누를 때) 바로 연다 */
+function liveCanPip(){return !PCN&&!!window.documentPictureInPicture&&matchMedia('(min-width:900px)').matches;}
+function liveAuto(){try{return localStorage.getItem('pbs-live-auto')!=='0';}catch(e){return true;}}
+function liveGesture(e){
+  if(!liveCanPip()||(mini.on&&(mini.pip||!mini.live))||live.opening||cover.on)return;
+  if(e.target&&e.target.closest&&e.target.closest('[data-act="live-arm"],[data-act="live-pip"],#mini'))return;
+  if(!store.projects.some(p=>p.shared)||!Sync.user)return;
+  const r=liveActive();
+  if(!r&&(!liveAuto()||live.closed))return;
+  liveMini(true);setTimeout(liveNotePerm,600);
+}
+document.addEventListener('pointerup',liveGesture,true);
+document.addEventListener('keydown',e=>{if(!e.repeat)liveGesture(e);},true);
+/* 다른 창 뒤에 있을 때: 탭 제목을 깜빡여 알린다 */
+function liveFlash(on){
+  clearInterval(live.flashT);live.flashT=null;
+  if(live.flashTitle!=null){document.title=live.flashTitle;live.flashTitle=null;}
+  if(!on||!document.hidden&&document.hasFocus())return;
+  live.flashTitle=document.title;let k=0;
+  live.flashT=setInterval(()=>{document.title=(k++%2)?live.flashTitle:'● 회기 시작 · ＋1';},900);
+}
+addEventListener('focus',()=>liveFlash(false));
 function liveNotify(r){
   if(mini.pip||!('Notification' in window)||Notification.permission!=='granted')return;
   try{
@@ -5356,13 +5386,14 @@ function liveBar(){
 /* 회기 화면: 작은 창을 미리 열어 두면 휴대폰 회기 때 저절로 ＋1이 된다(크롬 등 큰 화면) */
 function liveArmRow(p,ph){
   if(PCN||!p.shared||!window.documentPictureInPicture||ph==='abc'||!matchMedia('(min-width:900px)').matches)return '';
-  return `<div class="bl-nat"><button type="button" class="btn small" data-act="live-arm">＋1 창 대기</button><span class="muted">휴대폰 회기 때 ＋1</span></div>`;
+  return `<div class="bl-nat"><button type="button" class="btn small" data-act="live-arm">＋1 창 대기</button><label class="check"><input type="checkbox" data-live-auto${liveAuto()?' checked':''}> <span>자동으로 띄우기</span></label><span class="muted">휴대폰 회기 때 ＋1</span></div>`;
 }
 Object.assign(actions,{
   'live-arm':()=>{liveNotePerm();liveMini(true);},
   'live-pip':()=>{liveNotePerm();liveMini(true);},
   'live-inc':()=>{liveInc(1);}
 });
+document.addEventListener('change',e=>{if(e.target.matches&&e.target.matches('[data-live-auto]')){try{localStorage.setItem('pbs-live-auto',e.target.checked?'1':'0');}catch(x){}toast(e.target.checked?'화면을 누르면 대기 창이 떠요':'대기 창은 버튼으로만');}});
 setInterval(()=>{liveRemote();liveHostTick();},20000);
 
 /* ---------- boot ---------- */
