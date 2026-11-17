@@ -77,15 +77,7 @@ public class PbsCounterPlugin extends Plugin {
         o.put("target", t);
         // 2 = 끝 확인·늦은 시작 보정이 있는 앱 (웹 화면이 먼저 업데이트돼도 옛 앱에선 설정 칸을 숨기려고)
         // 3 = 지연시간·강도·간격 기록도 앱 밖 측정 가능
-        // 4 = 버튼 3번(전원·음량)으로 측정 시작
-        o.put("ver", 4);
-        JSObject b = new JSObject();
-        b.put("on", CounterStore.btnOn(c));
-        b.put("vol", CounterStore.btnVol(c));
-        b.put("test", CounterStore.btnTest(c));
-        b.put("alive", DurWatch.pressAlive());
-        b.put("log", CounterStore.btnLog(c));
-        o.put("btn", b);
+        o.put("ver", 3);
         JSObject k = new JSObject();
         k.put("sec", CounterStore.chkSec(c));
         k.put("mode", CounterStore.chkMode(c));
@@ -182,16 +174,6 @@ public class PbsCounterPlugin extends Plugin {
         Context c = getContext();
         CounterStore.setCheck(c, call.getInt("sec", 30), call.getString("mode", CounterStore.CHK_VIB),
             call.getInt("miss", 3), Boolean.TRUE.equals(call.getBoolean("adj", true)));
-        CounterNotifier.refreshAll(c);
-        call.resolve(state());
-    }
-
-    /** 버튼 3번으로 측정 시작: {on, vol:음량 버튼도 셀지} */
-    @PluginMethod
-    public void setButtons(PluginCall call) {
-        Context c = getContext();
-        CounterStore.setBtn(c, Boolean.TRUE.equals(call.getBoolean("on", false)), !Boolean.FALSE.equals(call.getBoolean("vol", true)),
-            Boolean.TRUE.equals(call.getBoolean("test", false)));
         CounterNotifier.refreshAll(c);
         call.resolve(state());
     }

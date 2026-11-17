@@ -47,15 +47,14 @@
             </intent-filter>
         </service>
 
-        <!-- 끝 확인 시계: 지속시간 행동이 진행 중일 때만 돈다(앱이 꺼져 있어도 '아직 행동 중인가요?'를 띄우려고).
-             '버튼 3번'을 켜 두면 측정 알림이 있는 동안 계속 돌며 전원·음량 누름을 센다 -->
+        <!-- 끝 확인 시계: 지속시간 행동이 진행 중일 때만 돈다(앱이 꺼져 있어도 '아직 행동 중인가요?'를 띄우려고) -->
         <service
             android:name=".DurWatch"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="교사가 학생 행동을 재는 동안 일정 간격으로 진행 여부를 묻는 알림, 그리고 화면이 꺼진 채 전원·음량 버튼을 3번 눌러 측정을 시작하는 기능" />
+                android:value="교사가 학생 행동의 지속시간을 재는 동안 일정 간격으로 '아직 진행 중인지' 묻는 알림" />
         </service>
 
         <!-- 재부팅·앱 업데이트 뒤 측정 알림·위젯 다시 그리기 -->
@@ -84,8 +83,6 @@
     <!-- 알림창 측정 버튼 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
-    <!-- 버튼 3번: 기록을 기다리는 1~2초 동안 기기가 잠들지 않게 -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- 재부팅 뒤 측정 알림 다시 띄우기 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- 끝 확인 시계(지속시간 진행 중에만) -->
