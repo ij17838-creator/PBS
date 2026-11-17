@@ -6,5 +6,4 @@
     <string name="custom_url_scheme">io.github.ij17838creator.pbs</string>
     <string name="widget_desc">앱을 열지 않고 바로 측정</string>
     <string name="tile_label">PBS 측정</string>
-    <string name="quick_label">PBS 측정 시작</string>
 </resources>

@@ -4748,7 +4748,7 @@ function natBtnBox(m,on){
       <label class="check"><input type="checkbox" data-btn3="on"${b.on?' checked':''}> <span>3번 눌러 시작</span></label>
       <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}${b.on?'':' disabled'}> <span>누를 때마다 진동(시험)</span></label>
     </div>
-    <div class="dur-foot muted"><span>회기 없으면 시작</span><span>${next}</span><span>4번째 누름=취소</span><span>재생·통화 중엔 안 셈</span><span>화면 꺼졌을 때만</span><span>측면 두 번도 가능</span></div>
+    <div class="dur-foot muted"><span>회기 없으면 시작</span><span>${next}</span><span>4번째 누름=취소</span><span>재생·통화 중엔 안 셈</span><span>화면 꺼졌을 때만</span></div>
     ${b.on&&'alive' in b?`<div class="dur-foot"><strong>${b.alive?'누름 세는 중':'세지 않는 중'}</strong><button type="button" class="btn small" data-act="nat-btn-refresh">기록 새로 보기</button></div>
     <pre class="btn3-log">${esc(b.log||'아직 누른 기록 없음')}</pre>`:''}
   </details>`;

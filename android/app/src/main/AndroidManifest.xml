@@ -24,24 +24,6 @@
 
         </activity>
 
-        <!-- 'PBS 측정 시작' 바로가기: 갤럭시 측면 버튼 두 번 누르기 → 앱 열기에 연결하면 화면 없이 측정 시작 -->
-        <activity
-            android:name=".QuickStartActivity"
-            android:label="@string/quick_label"
-            android:icon="@mipmap/ic_launcher"
-            android:roundIcon="@mipmap/ic_launcher_round"
-            android:theme="@android:style/Theme.NoDisplay"
-            android:taskAffinity=""
-            android:excludeFromRecents="true"
-            android:noHistory="true"
-            android:launchMode="singleInstance"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
         <!-- 알림창·위젯의 ＋1 · −1 · 회기 끝 등 버튼을 받는 곳 (앱을 열지 않고 기록) -->
         <receiver android:name=".CounterReceiver" android:exported="false" />
 
