@@ -4994,6 +4994,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-17-14',d:'2026-11-17',k:'web',t:'대기 창은 측정 방법 뒤에',items:['측정 방법 \'빈도\'를 고른','공유 프로젝트가 있을 때만','대기 창이 저절로 뜸']},
   {id:'2026-11-17-13',d:'2026-11-17',k:'web',t:'＋1 대기 창 고침',items:['닫아도 다시 누르면 또 뜸','앱 안 ＋1도 칠판에 바로','못 보내면 휴대폰에 알림','칠판에 \'휴대폰 소식 없음\' 표시']},
   {id:'2026-11-17-12',d:'2026-11-17',k:'web',t:'＋1 대기 창 더 빨리',items:['화면을 처음 누르면 대기 창','회기 시작 뒤 한 번 누르면 ＋1','창에 \'진행 중\'·시작 시각','뒤에 있으면 탭 제목 깜빡임']},
   {id:'2026-11-17-11',d:'2026-11-17',k:'web',t:'휴대폰 회기를 칠판에서도 ＋1',items:['휴대폰 앱이 회기를 열면','공유 프로젝트 칠판·PC에 ＋1','양쪽 ＋1이 한 회기로 합쳐짐','PC는 \'＋1 창 대기\'를 미리']},
@@ -5334,10 +5335,10 @@ function liveAuto(){try{return localStorage.getItem('pbs-live-auto')!=='0';}catc
 function liveGesture(e){
   if(!liveCanPip()||(mini.on&&(mini.pip||!mini.live))||live.opening||cover.on)return;
   if(e.target&&e.target.closest&&e.target.closest('[data-act="live-arm"],[data-act="live-pip"],#mini'))return;
-  if(!store.projects.some(p=>p.shared)||!Sync.user)return;
+  if(!Sync.user)return;
   const r=liveActive();
   if(Date.now()-(live.closed||0)<3000)return;
-  if(!r&&!liveAuto())return;
+  if(!r&&(!liveAuto()||!store.projects.some(liveReady)))return;/* 측정 방법을 '빈도'로 고른 공유 프로젝트가 있을 때만 대기 */
   liveMini(true);setTimeout(liveNotePerm,600);
 }
 document.addEventListener('pointerup',liveGesture,true);
@@ -5387,8 +5388,10 @@ function liveBar(){
   $('#live-bar-pip').hidden=!!PCN;
 }
 /* 회기 화면: 작은 창을 미리 열어 두면 휴대폰 회기 때 저절로 ＋1이 된다(크롬 등 큰 화면) */
+/* 함께 세기를 기다릴 만한 프로젝트: 공유 중이고 측정 방법이 '빈도' */
+function liveReady(p){return !!(p&&p.shared&&p.procs.define.data.measure==='빈도');}
 function liveArmRow(p,ph){
-  if(PCN||!p.shared||!window.documentPictureInPicture||ph==='abc'||!matchMedia('(min-width:900px)').matches)return '';
+  if(PCN||!liveReady(p)||!window.documentPictureInPicture||ph==='abc'||!matchMedia('(min-width:900px)').matches)return '';
   return `<div class="bl-nat"><button type="button" class="btn small" data-act="live-arm">＋1 창 대기</button><label class="check"><input type="checkbox" data-live-auto${liveAuto()?' checked':''}> <span>자동으로 띄우기</span></label><span class="muted">휴대폰 회기 때 ＋1</span></div>`;
 }
 Object.assign(actions,{
