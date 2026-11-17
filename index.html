@@ -487,6 +487,20 @@ td.top{color:var(--accent);font-weight:700}
 .foot{border-top:1px solid var(--line);padding-block:16px 28px;color:var(--muted);font-size:.82rem;display:flex;flex-direction:column;gap:4px}
 .web-upd{position:fixed;left:50%;top:calc(var(--tb,56px) + 8px);transform:translateX(-50%);display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;background:var(--surface);border:1px solid var(--accent);color:var(--ink);padding:8px 12px;border-radius:12px;box-shadow:var(--shadow);z-index:19;max-width:calc(100% - 32px);font-weight:600;font-size:.92rem}
 .web-upd[hidden]{display:none}
+.notice-btn{position:relative}
+.notice-dot{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--rec,#C0392B);color:#fff;font-size:.7rem;font-weight:700;line-height:18px;text-align:center}
+.notice-dot[hidden]{display:none}
+.notice-list{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
+.notice-item{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.notice-item.new{border-color:var(--accent)}
+.notice-item ul{margin:0;padding-left:1.1em;font-size:.92rem}
+.notice-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.notice-head b{font-size:.95rem}
+.notice-head .meta{font-size:.78rem;color:var(--muted)}
+.notice-app{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-radius:10px;padding:10px 12px;background:var(--sunk);font-size:.9rem}
+.notice-app.warn{background:var(--warn-soft);color:var(--warn)}
+.card.notice-home{flex-direction:row;align-items:center;justify-content:flex-start;gap:8px;flex-wrap:wrap;padding:12px 16px;text-align:left}
+.notice-home p{margin:0;flex:1 1 auto;font-weight:600;text-align:left}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 18px;border-radius:10px;font-size:.9rem;font-weight:600;z-index:20;max-width:calc(100% - 32px);box-shadow:var(--shadow);text-align:center}
 
 @media (max-width:560px){
@@ -580,6 +594,7 @@ html.in-ink .ink-host{caret-color:transparent}
 <header class="topbar"><div class="wrap topbar-in">
   <nav class="crumbs" id="crumbs" aria-label="현재 위치"></nav>
   <div class="top-right">
+    <button type="button" class="btn mode-btn notice-btn" id="notice-btn" data-act="notice-open" title="바뀐 점 보기">공지<span class="notice-dot" id="notice-dot" hidden></span></button>
     <button type="button" class="btn mode-btn" id="input-mode" data-act="input-mode" title="손글씨 모드와 키보드 모드를 바꿉니다"></button>
     <div class="rec-mini" id="rec-mini" hidden><span class="mono" id="rec-mini-time">00:00</span><button class="btn small danger-solid" data-act="rec-stop" type="button">녹음 정지</button></div>
     <span class="sync-state" id="sync-state" aria-live="polite" hidden></span>
@@ -1064,6 +1079,7 @@ function viewHome(){
     <h1>행동 관찰 기록장</h1>
     <p class="lede">학생별 프로젝트로 기록</p>
   </section>
+  ${noticeHome()}
   <section class="card">
     <h2 class="h3">새 프로젝트</h2>
     <form id="new-form" class="new-form" novalidate>
@@ -4886,6 +4902,76 @@ function webInit(){
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')webCheck(false);});
 }
 
+/* ---------- 앱 안 공지: 바뀐 점과 '새 apk 필요 / 앱 재시작만' ----------
+   새 기능을 main에 올릴 때마다 NOTICES 맨 앞에 항목을 하나 넣는다(id는 겹치지 않게, 날짜-번호).
+   k: 'apk' = android 폴더가 바뀜(새 apk 덮어 설치) / 'web' = index.html만 바뀜(앱 재시작만).
+   need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
+   5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
+const NOTICES=[
+  {id:'2026-11-17-6',d:'2026-11-17',k:'web',t:'앱 안 공지',items:['바뀐 점을 여기서 확인','설치 앱이 옛 버전이면 홈에 알림']},
+  {id:'2026-11-17-5',d:'2026-11-17',k:'apk',need:5.1,t:'음량 버튼 누를 횟수',items:['누를 횟수 1·2·3번 선택(기본 1번)','1번이면 누를 때마다 바로 ＋1','꾹 누름은 세지 않음']},
+  {id:'2026-11-17-4',d:'2026-11-17',k:'apk',need:5,t:'측정 시간·자동 갱신',items:['회기 시작 때 ＋1 저절로 안 셈','측정 시간이 끝나면 새 회기로 갱신','갱신 때 횟수 0으로 고르기']},
+  {id:'2026-11-17-3',d:'2026-11-17',k:'apk',need:4,t:'음량 버튼으로 기록',items:['회기 중 화면이 꺼져 있을 때','음량 버튼으로 ＋1·시작/끝 기록']},
+  {id:'2026-11-17-2',d:'2026-11-17',k:'apk',need:3,t:'지연시간·강도·간격 기록',items:['세 방법도 앱 밖 측정 가능','간격 기록은 신호 알림(있음/없음)']},
+  {id:'2026-11-14-3',d:'2026-11-14',k:'apk',need:2,t:'지속시간 끝 확인',items:['진행 중인지 정해진 간격마다 확인','늦게 누른 시작 시각 보정','에피소드 목록 고치기']},
+  {id:'2026-11-14-2',d:'2026-11-14',k:'apk',need:1,t:'화면 자동 업데이트',items:['화면만 바뀌면 재설치 없이 반영','앱을 다시 열면 새 화면']},
+  {id:'2026-11-14-1',d:'2026-11-14',k:'apk',need:1,t:'앱 밖 측정',items:['홈 위젯·빠른 설정·알림창 기록','앱이 꺼져 있어도 기록']}
+];
+const NOTICE_KEY='pbs-notice-seen';
+const NOTICE_NEED=Math.max(...NOTICES.map(n=>n.need||0));/* 최신 apk의 단계 */
+const notice={lvl:null,u:null};/* 설치된 apk의 단계(설치형 앱에서만, 모르면 null) */
+function noticeSeen(){try{return localStorage.getItem(NOTICE_KEY)||'';}catch(e){return '';}}
+function noticeUnseen(){const s=noticeSeen();if(!s)return NOTICES.length;const i=NOTICES.findIndex(n=>n.id===s);return i<0?NOTICES.length:i;}
+function noticeOld(){return notice.lvl!=null&&notice.lvl<NOTICE_NEED;}
+function noticeKind(n){
+  if(n.k!=='apk')return '<span class="pill ok">앱 재시작만</span>';
+  let h='<span class="pill warn">새 apk 필요</span>';
+  if(notice.lvl!=null)h+=notice.lvl>=(n.need||0)?'<span class="pill muted">설치됨</span>':'<span class="pill warn">아직 안 깔림</span>';
+  return h;
+}
+function noticeAppLine(){
+  if(!PCN)return '<div class="notice-app">웹에서는 새로고침이면 반영</div>';
+  if(notice.lvl==null)return '<div class="notice-app">설치 앱 버전 확인 중</div>';
+  if(noticeOld())return `<div class="notice-app warn"><span style="flex:1 1 auto">새 apk가 있어요 · 덮어 설치</span><a class="btn small primary" href="${APP_DL_URL}" target="_blank" rel="noopener">apk 받기</a></div>`;
+  return '<div class="notice-app">설치 앱은 최신이에요</div>';
+}
+function noticeHome(){
+  const u=noticeUnseen(),old=noticeOld();
+  if(!u&&!old)return '';
+  const msg=old?'새 apk가 있어요':`새 소식 ${u}개`;
+  return `<section class="card notice-home" role="status"><p>${msg}</p>${old?`<a class="btn small primary" href="${APP_DL_URL}" target="_blank" rel="noopener">apk 받기</a>`:''}<button type="button" class="btn small" data-act="notice-open">공지 보기</button></section>`;
+}
+function noticeDot(){const d=$('#notice-dot');if(!d)return;const u=noticeUnseen();d.hidden=!u&&!noticeOld();d.textContent=u?String(u):'!';}
+function noticeOpen(){
+  const u=notice.u!=null?notice.u:noticeUnseen();notice.u=u;
+  let d=$('#notice-dlg');
+  if(!d){d=document.createElement('div');d.id='notice-dlg';d.className='sync-dlg';document.body.appendChild(d);
+    d.addEventListener('click',e=>{if(e.target===d)noticeClose();});}
+  d.innerHTML=`<div class="sync-box" role="dialog" aria-modal="true" aria-labelledby="notice-h">
+    <h2 class="h3" id="notice-h">공지 · 바뀐 점</h2>
+    ${noticeAppLine()}
+    <ul class="notice-list">${NOTICES.map((n,i)=>`<li class="notice-item${i<u?' new':''}"><div class="notice-head">${i<u?'<span class="pill">새 소식</span>':''}<b>${esc(n.t)}</b><span class="meta">${esc(n.d.slice(5).replace('-','/'))}</span>${noticeKind(n)}</div><ul>${n.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></li>`).join('')}</ul>
+    <p class="hint">apk는 지우지 말고 덮어 설치</p>
+    <div class="row end"><button type="button" class="btn small primary" data-act="notice-close">닫기</button></div>
+  </div>`;
+  d.hidden=false;const h=d.querySelector('h2');if(h){h.tabIndex=-1;h.focus();}
+  try{localStorage.setItem(NOTICE_KEY,NOTICES[0].id);}catch(e){}
+}
+function noticeClose(){const d=$('#notice-dlg');if(d){d.hidden=true;d.innerHTML='';}notice.u=null;noticeDot();if(ui.view==='home')render();}
+document.addEventListener('keydown',e=>{const d=$('#notice-dlg');if(e.key==='Escape'&&d&&!d.hidden)noticeClose();});
+Object.assign(actions,{'notice-open':()=>noticeOpen(),'notice-close':()=>noticeClose()});
+function noticeInit(){
+  noticeDot();
+  if(!PCN||!PCN.status)return;
+  PCN.status().then(r=>{
+    let v=Number(r&&r.ver)||1;
+    if(v===5&&r.btn&&r.btn.count!=null)v=5.1;
+    notice.lvl=v;noticeDot();
+    if(ui.view==='home')render();
+    const d=$('#notice-dlg');if(d&&!d.hidden)noticeOpen();
+  }).catch(()=>{});
+}
+
 /* ---------- boot ---------- */
 if(firstRun&&!store.projects.length){store.projects.push(exampleProject());}
 AudioDB.open().then(()=>{audioOK=true;}).catch(()=>{audioOK=false;});
@@ -4894,6 +4980,7 @@ render();
 resumeBoot();
 natInit();
 webInit();
+noticeInit();
 updateUsage();
 if(storageOK)setSaveState('');
 tick();setInterval(tick,1000);
