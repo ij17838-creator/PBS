@@ -5001,6 +5001,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-18-1',d:'2026-11-18',k:'web',t:'대기 창을 작게',items:['가로 한 줄 작은 창','대기 중엔 흐리게','회기 중엔 시작 시각·횟수','✕로 닫기']},
   {id:'2026-11-17-17',d:'2026-11-17',k:'web',t:'휴대폰 회기가 기록에 바로',items:['앱에서 측정 시작하면','PC 회기별 기록에 회기 추가','횟수도 실시간으로 바뀜','대기 창 연결 오류 표시']},
   {id:'2026-11-17-16',d:'2026-11-17',k:'apk',need:10,t:'앱이 꺼져도 칠판과 함께 세기',items:['빠른 설정·위젯으로 시작해도','칠판·PC에 ＋1이 바로 뜸','칠판 ＋1도 휴대폰에 바로','회기 중 알림 \'함께 세는 중\'']},
   {id:'2026-11-17-15',d:'2026-11-17',k:'web',t:'대기 창에 지금 횟수',items:['작은 창 위에 큰 숫자','휴대폰: 함께 세기 상태 줄','PC: 휴대폰 소식 시각 표시']},
@@ -5138,7 +5139,7 @@ function miniSes(){const p=curProject();if(!p||!mini.id)return null;const s=sesL
 function miniCount(){
   let t;if(mini.live){const n=liveCount();t=n==null?'대기':n+'회';}else{const r=miniSes();t=(r?(blNum(r.s.value)||0):0)+'회';}
   $('#mini-n').textContent=t;$('#mini-pad-n').textContent=t;if(mini.pip){const e=mini.pip.document.getElementById('mini-n');if(e)e.textContent=t;
-    const w=mini.pip.document.getElementById('mini-who');if(w){const r=mini.live&&liveActive();w.textContent=r?(Date.now()-(Number(r.v.at)||0)>90000?'휴대폰 소식 없음(앱 열기)':`● ${r.v.st?r.v.st+' 시작 · ':''}진행 중`):'휴대폰 회기 대기 중';w.title=r?(r.v.title||''):'';w.classList.toggle('on',!!r);}
+    const w=mini.pip.document.getElementById('mini-who');if(w){const r=mini.live&&liveActive();w.textContent=r?(Date.now()-(Number(r.v.at)||0)>90000?'소식 없음':`● ${r.v.st||'진행 중'}`):'대기';mini.pip.document.body.classList.toggle('idle',!r);w.title=r?(r.v.title||''):'';w.classList.toggle('on',!!r);}
     const c=mini.pip.document.getElementById('mini-cnt');if(c){const n=mini.live?liveCount():null;c.textContent=n==null?'—':n+'회';}}
 }
 function miniInc(d){
@@ -5172,11 +5173,30 @@ async function miniOn(el){
   return miniShow(true);
 }
 /* tryPip: 사용자가 누른 직후에만 작은 창(PiP)을 열 수 있다(브라우저 규칙). 아니면 화면 안에 띄운다 */
+/* 함께 세기 작은 창: 가로 한 줄로 작게(왼쪽 상태·횟수, 가운데 ＋1, 오른쪽 −1·닫기). 대기 중엔 흐리게 */
+function liveCompact(w,v,drawM){
+  w.document.head.innerHTML=`<meta charset="utf-8"><title>＋1 함께 세기</title><style>
+    body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 8px;box-sizing:border-box;background:${v('--bg')};font-family:system-ui,sans-serif;user-select:none;overflow:hidden}
+    button{font:inherit;cursor:pointer;touch-action:manipulation}
+    .info{display:flex;flex-direction:column;align-items:center;min-width:46px}
+    .who{font-size:11px;font-weight:700;color:${v('--muted')};white-space:nowrap}.who.on{color:${v('--accent')}}
+    .cnt{font-size:22px;font-weight:800;line-height:1.1;color:${v('--ink')}}
+    #mini-mark{width:60px;height:60px;flex:none;border-radius:50%;border:0;background:${v('--accent')};color:${v('--accent-ink')};font-size:20px;font-weight:800}
+    #mini-mark.hit{animation:h .35s ease}@keyframes h{40%{transform:scale(1.12)}}
+    .pad{flex:1;max-width:150px;height:64px;border:2px solid ${v('--accent')};border-radius:10px;overflow:hidden;background:${v('--surface')}}
+    .pad canvas{display:block;width:100%;height:100%;touch-action:none}.pad.ok canvas{background:${v('--accent-soft')}}
+    .t{display:flex;flex-direction:column;gap:4px}.t button{width:34px;height:28px;padding:0;border:1px solid ${v('--line-strong')};border-radius:8px;background:${v('--surface')};color:${v('--ink')};font-size:13px;font-weight:700}
+    body.idle #mini-mark,body.idle .pad{opacity:.35;filter:grayscale(1)}body.idle .cnt{color:${v('--muted')}}body.idle #mini-dec{display:none}
+  </style>`;
+  w.document.body.innerHTML=`<div class="info"><div class="who" id="mini-who"></div><div class="cnt" id="mini-cnt" aria-label="지금 횟수">—</div></div>`
+    +(drawM?'<div class="pad" title="그으면 ＋1"><canvas id="pip-cv" width="300" height="128" aria-label="그으면 1 더하기"></canvas></div>':'<button id="mini-mark" aria-label="1 더하기">＋1</button>')
+    +'<div class="t"><button id="mini-dec" aria-label="1 빼기">−1</button><button id="mini-out" aria-label="작은 창 닫기" title="닫기">✕</button></div>';
+}
 async function miniShow(tryPip){
   /* 다른 창 위에 띄우기(되는 브라우저만) */
   if(tryPip&&window.documentPictureInPicture&&matchMedia('(min-width:900px)').matches){
     try{
-      const req=documentPictureInPicture.requestWindow(miniTrig()==='draw'?{width:240,height:mini.live?280:230}:{width:180,height:mini.live?250:200});
+      const req=documentPictureInPicture.requestWindow(mini.live?(miniTrig()==='draw'?{width:280,height:100}:{width:220,height:84}):miniTrig()==='draw'?{width:240,height:230}:{width:180,height:200});
       const w=await Promise.race([req,new Promise((_,no)=>setTimeout(()=>no(new Error('late')),2500))]).catch(e=>{req.then(x=>{try{x.close();}catch(y){}}).catch(()=>{});throw e;});
       if(!mini.on){try{w.close();}catch(e){}return;}
       const st=getComputedStyle(document.documentElement);const v=k=>st.getPropertyValue(k);
@@ -5192,6 +5212,7 @@ async function miniShow(tryPip){
       const drawM=miniTrig()==='draw';
       w.document.head.insertAdjacentHTML('beforeend',`<style>.pad{width:94vw;border:2px solid ${v('--accent')};border-radius:12px;overflow:hidden;background:${v('--surface')}}.pad b{display:block;padding:4px 8px;background:${v('--accent')};color:${v('--accent-ink')};font-size:14px}.pad canvas{display:block;width:100%;height:110px;touch-action:none}.pad.ok canvas{background:${v('--accent-soft')}}</style>`);
       w.document.body.innerHTML=(mini.live?'<div class="who" id="mini-who"></div><div class="cnt" id="mini-cnt" aria-label="지금 횟수">—</div>':'')+(drawM?'<div class="pad"><b>그으면 ＋1 · <span id="mini-n">0</span></b><canvas id="pip-cv" width="360" height="220"></canvas></div>':'<button id="mini-mark" aria-label="1 더하기">＋1<small id="mini-n">0</small></button>')+'<div class="t"><button id="mini-dec" aria-label="1 빼기">−1</button><button id="mini-out">펼치기</button></div>';
+      if(mini.live)liveCompact(w,v,drawM);
       if(drawM)padBind(w.document.getElementById('pip-cv'),()=>miniInc(1));
       else w.document.getElementById('mini-mark').addEventListener('click',()=>miniInc(1));
       w.document.getElementById('mini-dec').addEventListener('click',()=>miniInc(-1));

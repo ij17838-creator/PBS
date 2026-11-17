@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-11-18 · 함께 세기 대기 창 작게
+### 한 일
+- 사용자 의견: PC 대기 창이 화면은 덜 가려도 존재감이 큼 → 더 작게.
+- 함께 세기 작은 창(PiP)을 가로 한 줄(220×84, 긋기면 280×100): 왼쪽 상태('대기'/'● 시작 시각')·횟수, 가운데 ＋1 원(60px) 또는 긋기 판, 오른쪽 −1·✕.
+- 대기 중엔 ＋1을 흐리고 회색으로, −1 숨김. 공지 k:'web'. '작게 띄워 세기'(이 기기 회기) 창은 그대로.
+### 확인한 것
+- Playwright(가짜 PiP) 화면 확인: 대기·회기 중(3회) 모양, 횟수 따라감.
+- 시험 못 함: 실제 크롬 PiP(크롬 최소 창 크기·사용자가 바꾼 크기 기억 여부).
+### 코드 위치 (index.html)
+- liveCompact, miniShow(requestWindow 크기), miniCount(body.idle)
+### 다음에 할 일
+- 사용자: 크롬에서 새로고침 후 크기 확인. 더 줄이려면 창 모서리를 끌어 줄이면 크롬이 기억할 수 있음[추정].
+
 ## 2026-11-18 · 실시간 함께 세기 실기기 확인 완료
 ### 한 일
 - 사용자가 실기기(휴대폰 앱 ver 10 + PC 브라우저)에서 함께 세기가 원하던 대로 작동함을 확인. 코드 변경 없음.
@@ -26,25 +39,4 @@
 - liveSes·liveSesId·liveTitlePh, natResolve, natDrain(liveMade 처리·r.count), liveWatch(werr)·liveSt
 ### 다음에 할 일
 - 사용자: 휴대폰 기초선 화면 '칠판 함께 세기: …' 문구와 PC '＋1 창 대기' 옆 문구 알려 주기.
-
-## 2026-11-17 · 앱이 꺼져 있어도 칠판·PC와 함께 세기(LiveSync, 새 apk)
-### 한 일
-- 원인: 빠른 설정으로 회기를 열면 앱 화면(JS)이 꺼져 있거나 멈춰 칠판으로 아무것도 안 보냄.
-- 안드로이드가 직접 처리: 공유 프로젝트(빈도) 회기가 열려 있는 동안 포그라운드 서비스 LiveSync가 2초마다 '~live/host' 쓰기 + '~live/tap/*' 읽어 칠판 ＋1을 CounterStore에 넣음(앱이 열리면 natDrain이 회기 기록으로). 회기 중 알림 '칠판·PC와 함께 세는 중'.
-- 서버는 Firestore REST(documents:commit, runQuery) + 구글 로그인 토큰. 앱 화면이 setLive로 로그인 정보·대상 프로젝트(로컬 id→공유 id)를 넘기고, 토큰은 refresh 토큰으로 새로 받음.
-- 웹: nat.ver>=10이면 liveHostTick 안 씀. 휴대폰 상태 줄은 nat.live(앱 상태) 기준.
-- 플러그인 ver 10, 공지 k:'apk' need 10.
-### 데이터
-- SharedPreferences lvOn·lvKey·lvProj·lvUid·lvName·lvDev·lvMap·lvRt·lvTok·lvExp·lvHost·lvSeen·lvSig·lvBeat·lvErr·lvOk. 회기 id는 key 세 번째 칸(new:시작ms 또는 회기 id).
-### 확인한 것
-- 웹 Playwright(옛 앱 ver 9 경로) 통과. GitHub Actions 빌드(아래 '다음에 할 일' 전 확인).
-- 시험 못 함: REST 요청 실제 서버 응답(에뮬레이터 실행이 이 환경에서 막힘), 실기기 전체.
-### 알려진 한계
-- 칠판(안드로이드 앱)에서 누른 ＋1은 여전히 그 기기 앱 화면(JS)이 보냄.
-- 서버 읽기: 회기 중 2초마다 1~2건(40분 약 2,400건).
-### 코드 위치
-- android LiveSync(config·want·sync·step·pushHost·sendEnd·pollTaps·writeCell·token), CounterStore.liveTap, CounterNotifier.refreshAll, PbsCounterPlugin.setLive·state.live
-- index.html liveNative, adapter liveCred, liveHostSt
-### 다음에 할 일
-- 사용자: 새 apk 덮어 설치 → 공유 프로젝트로 빠른 설정 회기 시작 → 휴대폰 상태 줄('칠판 함께 세기 중' 또는 '못 보냄(이유)')과 PC 대기 창 확인.
 
