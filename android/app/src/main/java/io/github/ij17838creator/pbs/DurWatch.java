@@ -26,6 +26,9 @@ public class DurWatch extends Service {
     private final Runnable tick = this::onTick;
     private PressWatch press;
 
+    /** 버튼 3번 감시가 지금 돌고 있는지 (진단용) */
+    static boolean pressAlive() { DurWatch w = inst; return alive && w != null && w.press != null; }
+
     /** 상태가 바뀔 때마다 부른다: 필요하면 시계를 켜고, 아니면 끈다 */
     static void sync(Context c) {
         Context a = c.getApplicationContext();
@@ -42,7 +45,7 @@ public class DurWatch extends Service {
                 w.h.post(w::schedule); // 간격이 바뀌었을 수 있으니 다시 잰다
             } else {
                 try { ContextCompat.startForegroundService(a, new Intent(a, DurWatch.class)); }
-                catch (Exception ignored) { /* 서비스를 못 띄우면 알람만으로 */ }
+                catch (Exception e) { if (CounterStore.pressOn(a)) PressWatch.log(a, "감시 서비스 못 띄움: " + e.getClass().getSimpleName()); }
             }
         } else {
             if (alive) {
@@ -77,6 +80,7 @@ public class DurWatch extends Service {
                 startForeground(CounterNotifier.ID, CounterNotifier.build(this));
             }
         } catch (Exception e) {
+            PressWatch.log(this, "감시 서비스 시작 실패: " + e.getClass().getSimpleName());
             stopSelf();
             return START_NOT_STICKY;
         }

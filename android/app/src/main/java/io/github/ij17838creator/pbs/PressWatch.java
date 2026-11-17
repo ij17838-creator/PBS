@@ -24,6 +24,9 @@ import androidx.core.content.ContextCompat;
  * DurWatch(포그라운드 서비스) 안에서 돈다. 켜 두면 측정 알림이 있는 동안 계속 돈다.
  *
  * 전원 버튼: 앱이 직접 받을 수 없어서 '화면 켜짐/꺼짐'이 바뀐 횟수를 센다(누를 때마다 화면이 켜졌다 꺼졌다 하므로).
+ *   화면 상태는 DisplayListener로 바로 받고, 화면 켜짐/꺼짐 방송은 늦게 올 수 있어 0.7초 뒤에도 안 바뀌었을 때만 보탠다.
+ *   기록 대기(GRACE) 동안 기기가 잠들지 않게 잠깐 깨움 잠금(WakeLock)을 건다.
+ *   진단: 최근 누름과 처리 결과를 btnLog에 남겨 앱의 '버튼 3번' 칸에서 보여 준다.
  *   갤럭시 '측면 버튼 두 번 누르기(카메라 빠른 실행)'가 켜져 있으면 두 번째 누름이 카메라를 열어 세지 못한다 → 꺼야 한다.
  * 음량 버튼: 화면이 꺼져 있는 동안에만 '원격 음량' 미디어 세션을 켜서 받는다(화면이 켜져 있으면 음량은 평소처럼).
  *   화면 꺼짐 상태에서 음량 버튼이 앱에 오는지는 기기·안드로이드 버전마다 다르다[추정].
@@ -36,15 +39,17 @@ import androidx.core.content.ContextCompat;
  */
 final class PressWatch {
     /** 누름 사이 최대 간격, 3번 전체 최대 길이, 3번째 뒤 취소를 기다리는 시간(ms) */
-    static final long GAP = 1200L, SPAN = 3000L, GRACE = 1200L;
+    static final long GAP = 1500L, SPAN = 4000L, GRACE = 1200L;
     /** 음량 버튼을 꾹 누를 때 반복되는 신호 간격보다 짧으면 '꾹 누름'으로 보고 세지 않는다 */
     static final long VOL_REPEAT = 120L;
 
-    static final int FB_START = 1, FB_TICK = 2, FB_END = 3, FB_CANCEL = 4, FB_NONE = 5;
+    static final int FB_START = 1, FB_TICK = 2, FB_END = 3, FB_CANCEL = 4, FB_NONE = 5, FB_TEST = 6;
 
     private final Context c;
     private final Handler h = new Handler(Looper.getMainLooper());
     private BroadcastReceiver scr;
+    private android.hardware.display.DisplayManager.DisplayListener disp;
+    private PowerManager.WakeLock wl;
     private AudioManager.AudioPlaybackCallback playCb;
     private MediaSession ms;
     private boolean msOn;
@@ -66,11 +71,13 @@ final class PressWatch {
             scr = new BroadcastReceiver() {
                 @Override public void onReceive(Context x, Intent i) {
                     String a = i.getAction();
-                    boolean on = Intent.ACTION_SCREEN_ON.equals(a);
+                    final boolean on = Intent.ACTION_SCREEN_ON.equals(a);
                     if (!on && !Intent.ACTION_SCREEN_OFF.equals(a)) return;
-                    if (lastScreen != null && lastScreen == on) { updateSession(); return; } // 같은 상태가 두 번 오면 한 번만
-                    lastScreen = on;
-                    press();
+                    // 화면 상태 신호가 놓쳤을 때만 보탠다(늦게 온 지난 방송은 지금 상태와 달라서 버린다)
+                    h.postDelayed(() -> {
+                        if (interactive() == on && (lastScreen == null || lastScreen != on)) screen(on, "방송");
+                        else updateSession();
+                    }, 700L);
                 }
             };
             IntentFilter f = new IntentFilter();
@@ -79,6 +86,22 @@ final class PressWatch {
             try { ContextCompat.registerReceiver(c, scr, f, ContextCompat.RECEIVER_EXPORTED); }
             catch (Exception e) { scr = null; }
             lastScreen = interactive();
+            try {
+                final android.hardware.display.DisplayManager dm = (android.hardware.display.DisplayManager) c.getSystemService(Context.DISPLAY_SERVICE);
+                disp = new android.hardware.display.DisplayManager.DisplayListener() {
+                    @Override public void onDisplayAdded(int id) {}
+                    @Override public void onDisplayRemoved(int id) {}
+                    @Override public void onDisplayChanged(int id) {
+                        if (id != android.view.Display.DEFAULT_DISPLAY) return;
+                        android.view.Display d = dm.getDisplay(id);
+                        if (d == null) return;
+                        int st = d.getState();
+                        screen(st == android.view.Display.STATE_ON || st == android.view.Display.STATE_VR, "화면");
+                    }
+                };
+                dm.registerDisplayListener(disp, h);
+            } catch (Exception e) { disp = null; }
+            log(c, "감시 시작" + (vol ? " · 음량도" : "") + (disp == null ? " · 화면신호 없음" : ""));
         }
         if (playCb == null && Build.VERSION.SDK_INT >= 26) { // 다른 앱이 재생을 시작·멈추면 음량 세션을 다시 정한다
             try {
@@ -99,12 +122,51 @@ final class PressWatch {
         h.removeCallbacks(idle);
         pending = false;
         n = 0;
+        boolean was = scr != null;
         if (scr != null) { try { c.unregisterReceiver(scr); } catch (Exception ignored) {} scr = null; }
+        if (disp != null) {
+            try { ((android.hardware.display.DisplayManager) c.getSystemService(Context.DISPLAY_SERVICE)).unregisterDisplayListener(disp); } catch (Exception ignored) {}
+            disp = null;
+        }
+        unlock();
+        if (was) log(c, "감시 멈춤");
         if (playCb != null && Build.VERSION.SDK_INT >= 26) {
             try { ((AudioManager) c.getSystemService(Context.AUDIO_SERVICE)).unregisterAudioPlaybackCallback(playCb); } catch (Exception ignored) {}
             playCb = null;
         }
         if (ms != null) { try { ms.setActive(false); ms.release(); } catch (Exception ignored) {} ms = null; msOn = false; }
+    }
+
+    /** 화면 상태가 바뀜 = 전원 누름 한 번 (같은 상태가 또 오면 무시) */
+    private void screen(boolean on, String src) {
+        if (lastScreen != null && lastScreen == on) { updateSession(); return; }
+        lastScreen = on;
+        press((on ? "전원(켜짐)" : "전원(꺼짐)") + ("방송".equals(src) ? "·방송" : ""));
+    }
+
+    private void lock() {
+        try {
+            if (wl == null) {
+                PowerManager pm = (PowerManager) c.getSystemService(Context.POWER_SERVICE);
+                wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pbs:press");
+                wl.setReferenceCounted(false);
+            }
+            wl.acquire(GRACE + 3000L);
+        } catch (Exception ignored) {}
+    }
+
+    private void unlock() {
+        try { if (wl != null && wl.isHeld()) wl.release(); } catch (Exception ignored) {}
+    }
+
+    private String busyWhy() {
+        try {
+            AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);
+            if (am == null) return "";
+            if (am.isMusicActive()) return "소리 재생 중";
+            int m = am.getMode();
+            return m == AudioManager.MODE_NORMAL ? "" : "통화 상태(" + m + ")";
+        } catch (Exception e) { return ""; }
     }
 
     private boolean interactive() {
@@ -158,18 +220,21 @@ final class PressWatch {
             if (pending) { h.removeCallbacks(commit); pending = false; }
             n = 0;
             ignoreUntil = now + GAP;
+            log(c, "음량 꾹 누름 · 무시");
             return;
         }
-        press();
+        press("음량");
     }
 
     /** 누름 한 번 (전원 = 화면 상태 바뀜, 음량 = 버튼 신호) */
-    private void press() {
+    private void press(String src) {
         long now = SystemClock.elapsedRealtime();
-        if (mediaBusy()) { // 음악·영상·통화 중엔 세지 않는다
-            if (pending) { pending = false; h.removeCallbacks(commit); }
+        String why = busyWhy();
+        if (!why.isEmpty()) { // 음악·영상·통화 중엔 세지 않는다
+            if (pending) { pending = false; h.removeCallbacks(commit); unlock(); }
             n = 0;
             updateSession();
+            log(c, src + " · " + why + "이라 안 셈");
             return;
         }
         if (n > 0 && now - lastPress > GAP) n = 0;
@@ -179,21 +244,29 @@ final class PressWatch {
             h.removeCallbacks(commit);
             n = 0;
             ignoreUntil = now + GAP;
+            unlock();
+            log(c, src + " · 4번째 = 취소");
             feedback(c, FB_CANCEL);
             scheduleIdle();
             return;
         }
-        if (now < ignoreUntil) { ignoreUntil = now + GAP; scheduleIdle(); return; } // 취소 뒤 이어진 누름(5번 등)은 무시
+        if (now < ignoreUntil) { ignoreUntil = now + GAP; scheduleIdle(); log(c, src + " · 이어진 누름 무시"); return; } // 취소 뒤 이어진 누름(5번 등)은 무시
         if (n < 3) ts[n++] = now;
+        String res = n + "번째";
         if (n >= 3) {
             if (now - ts[0] <= SPAN) {
                 pending = true;
                 n = 0;
+                lock();
                 h.postDelayed(commit, GRACE);
+                res = "3번째 · 기록 대기";
             } else { // 너무 느렸다: 앞의 것을 버리고 뒤 두 번만 남긴다
                 ts[0] = ts[1]; ts[1] = ts[2]; n = 2;
+                res = "느려서 다시 2번째";
             }
         }
+        log(c, src + " · " + res);
+        if (CounterStore.btnTest(c) && !pending) feedback(c, FB_TEST);
         updateSession();
         scheduleIdle();
     }
@@ -212,9 +285,12 @@ final class PressWatch {
     private void commit() {
         pending = false;
         n = 0;
-        if (mediaBusy()) { updateSession(); return; } // 기다리는 사이 재생·통화가 시작됐으면 기록하지 않는다
+        if (mediaBusy()) { updateSession(); unlock(); log(c, "재생·통화가 시작돼 기록 안 함"); return; } // 기다리는 사이 재생·통화가 시작됐으면 기록하지 않는다
         ignoreUntil = SystemClock.elapsedRealtime() + GAP;
-        feedback(c, act(c));
+        int fb = act(c);
+        log(c, "→ " + (fb == FB_START ? "시작" : fb == FB_TICK ? "＋1" : fb == FB_END ? "끝" : "기록 안 됨" + (CounterStore.anything(c) ? "(이 방법은 시작만)" : "(측정 대상 없음)")));
+        feedback(c, fb);
+        unlock();
         CounterNotifier.refreshAll(c);
         PbsCounterPlugin.fire();
         updateSession();
@@ -242,6 +318,7 @@ final class PressWatch {
             case FB_TICK: pat = new long[] { 0, 120 }; break;
             case FB_END: pat = new long[] { 0, 400, 200, 400 }; break;
             case FB_CANCEL: pat = new long[] { 0, 80, 120, 80 }; break;
+            case FB_TEST: pat = new long[] { 0, 30 }; break;
             default: pat = new long[] { 0, 80, 120, 80, 120, 80 }; break;
         }
         try {
@@ -262,6 +339,19 @@ final class PressWatch {
                 : kind == FB_END ? ToneGenerator.TONE_PROP_BEEP2 : ToneGenerator.TONE_PROP_NACK;
             tg.startTone(tone, 300);
             new Handler(Looper.getMainLooper()).postDelayed(tg::release, 600L);
+        } catch (Exception ignored) {}
+    }
+
+    /** 진단 기록: 최근 20줄만 남긴다 (앱의 '버튼 3번' 칸에 보임) */
+    static synchronized void log(Context c, String msg) {
+        try {
+            android.content.SharedPreferences p = CounterStore.prefs(c);
+            String t = new java.text.SimpleDateFormat("HH:mm:ss.S", java.util.Locale.KOREA).format(new java.util.Date());
+            String old = p.getString("btnLog", "");
+            String[] lines = old.isEmpty() ? new String[0] : old.split("\n");
+            StringBuilder b = new StringBuilder(t).append(' ').append(msg);
+            for (int k = 0; k < Math.min(lines.length, 19); k++) b.append('\n').append(lines[k]);
+            p.edit().putString("btnLog", b.toString()).apply();
         } catch (Exception ignored) {}
     }
 }

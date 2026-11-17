@@ -238,6 +238,7 @@ details.card.later summary small{font-weight:400;color:var(--muted);margin-left:
 .dur-ep .dur-run{padding-top:10px}
 .dur-ed .dur-foot,.nat-chk .dur-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 0 4px}
 .bl-nat .nat-chk{flex:1 1 100%}
+.btn3-log{margin:4px 0 6px;padding:6px 8px;max-height:12em;overflow:auto;white-space:pre-wrap;font-size:.8rem;line-height:1.45;background:var(--surface);border:1px solid var(--line);border-radius:8px}
 .dur-ep.off .dur-meta b{color:var(--muted,#667)}
 .dur-ep.off .t24-in{text-decoration:line-through}
 .measure-opts:empty{display:none}
@@ -2792,6 +2793,7 @@ const actions={
   'lat-cue':el=>latAct(el,'cue'),'lat-resp':el=>latAct(el,'resp'),'lat-stop':el=>latAct(el,'stop'),'lat-x':el=>latAct(el,'x'),'lat-del':el=>latAct(el,'del'),'lat-add':el=>latAct(el,'add'),
   'lvl-add':el=>lvlAct(el,'add'),'lvl-set':el=>lvlAct(el,'set'),'lvl-del':el=>lvlAct(el,'del'),
   'iv-cyc':el=>ivAct(el,'cyc'),'iv-make':el=>ivAct(el,'make'),'iv-add':el=>ivAct(el,'add'),'iv-pop':el=>ivAct(el,'pop'),
+  'nat-btn-refresh':async()=>{try{const r=await PCN.status();nat.btn=r.btn||nat.btn;}catch(e){}natUI();},
   'nat-pin':async()=>{try{const r=await PCN.pinWidget();if(!r.ok)toast('홈 화면을 길게 눌러 위젯 → PBS 기록');}catch(e){toast('홈 화면을 길게 눌러 위젯 → PBS 기록');}},
   'nat-tile':async()=>{try{const r=await PCN.addTile();toast(r.already?'이미 빠른 설정에 있습니다':r.ok?'빠른 설정에 추가했습니다':'빠른 설정 편집에서 PBS 측정을 끌어 놓으세요');}catch(e){toast('빠른 설정 편집에서 PBS 측정을 끌어 놓으세요');}},
   'bl-goal':()=>{
@@ -4745,15 +4747,18 @@ function natBtnBox(m,on){
     <div class="dur-foot">
       <label class="check"><input type="checkbox" data-btn3="on"${b.on?' checked':''}> <span>3번 눌러 시작</span></label>
       <label class="check"><input type="checkbox" data-btn3="vol"${b.vol?' checked':''}${b.on?'':' disabled'}> <span>음량 버튼도 세기</span></label>
+      <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}${b.on?'':' disabled'}> <span>누를 때마다 진동(시험)</span></label>
     </div>
     <div class="dur-foot muted"><span>회기 없으면 시작</span><span>${next}</span><span>4번째 누름=취소</span><span>재생·통화 중엔 안 셈</span><span>측면 두 번 누르기 끄기</span></div>
+    ${b.on&&'alive' in b?`<div class="dur-foot"><strong>${b.alive?'누름 세는 중':'세지 않는 중'}</strong><button type="button" class="btn small" data-act="nat-btn-refresh">기록 새로 보기</button></div>
+    <pre class="btn3-log">${esc(b.log||'아직 누른 기록 없음')}</pre>`:''}
   </details>`;
 }
 async function natBtnSet(){
   const box=$('[data-nat-btn]');if(!box||!PCN)return;
   const g=n=>box.querySelector(`[data-btn3="${n}"]`);
   try{
-    const r=await PCN.setButtons({on:!!g('on').checked,vol:!!g('vol').checked});
+    const r=await PCN.setButtons({on:!!g('on').checked,vol:!!g('vol').checked,test:!!(g('test')&&g('test').checked)});
     nat.btn=r.btn||nat.btn;toast(nat.btn&&nat.btn.on?'버튼 3번: 화면 꺼진 채 눌러요':'버튼 3번을 껐습니다');
   }catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
   if(document.activeElement)document.activeElement.blur();

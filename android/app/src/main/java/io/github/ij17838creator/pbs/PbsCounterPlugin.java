@@ -82,6 +82,9 @@ public class PbsCounterPlugin extends Plugin {
         JSObject b = new JSObject();
         b.put("on", CounterStore.btnOn(c));
         b.put("vol", CounterStore.btnVol(c));
+        b.put("test", CounterStore.btnTest(c));
+        b.put("alive", DurWatch.pressAlive());
+        b.put("log", CounterStore.btnLog(c));
         o.put("btn", b);
         JSObject k = new JSObject();
         k.put("sec", CounterStore.chkSec(c));
@@ -187,7 +190,8 @@ public class PbsCounterPlugin extends Plugin {
     @PluginMethod
     public void setButtons(PluginCall call) {
         Context c = getContext();
-        CounterStore.setBtn(c, Boolean.TRUE.equals(call.getBoolean("on", false)), !Boolean.FALSE.equals(call.getBoolean("vol", true)));
+        CounterStore.setBtn(c, Boolean.TRUE.equals(call.getBoolean("on", false)), !Boolean.FALSE.equals(call.getBoolean("vol", true)),
+            Boolean.TRUE.equals(call.getBoolean("test", false)));
         CounterNotifier.refreshAll(c);
         call.resolve(state());
     }

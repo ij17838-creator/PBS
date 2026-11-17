@@ -122,10 +122,13 @@ final class CounterStore {
     /** 버튼 3번(전원·음량)으로 측정 시작을 켰는지, 음량 버튼도 셀지(기본 셈) */
     static boolean btnOn(Context c) { return prefs(c).getBoolean("btnOn", false); }
     static boolean btnVol(Context c) { return prefs(c).getBoolean("btnVol", true); }
+    /** 시험용: 센 누름마다 아주 짧게 떨기 */
+    static boolean btnTest(Context c) { return prefs(c).getBoolean("btnTest", false); }
+    static String btnLog(Context c) { return prefs(c).getString("btnLog", ""); }
     /** 버튼 3번 감시가 지금 돌아야 하는지 */
     static boolean pressOn(Context c) { return btnOn(c) && anything(c); }
-    static void setBtn(Context c, boolean on, boolean vol) {
-        prefs(c).edit().putBoolean("btnOn", on).putBoolean("btnVol", vol).commit();
+    static void setBtn(Context c, boolean on, boolean vol, boolean test) {
+        prefs(c).edit().putBoolean("btnOn", on).putBoolean("btnVol", vol).putBoolean("btnTest", test).commit();
     }
 
     /* ---------- 내부 도우미 ---------- */
