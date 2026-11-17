@@ -26,6 +26,17 @@ public class CounterReceiver extends BroadcastReceiver {
     static final String ADJ10 = "io.github.ij17838creator.pbs.COUNTER_ADJ10";
     static final String ADJ30 = "io.github.ij17838creator.pbs.COUNTER_ADJ30";
     static final String ADJ60 = "io.github.ij17838creator.pbs.COUNTER_ADJ60";
+    /** 지연시간: 지시/반응 시작(같은 버튼) · 중단 */
+    static final String LAT = "io.github.ij17838creator.pbs.COUNTER_LAT";
+    static final String LAT_X = "io.github.ij17838creator.pbs.COUNTER_LAT_X";
+    /** 강도: 1·2·3단계 · 되돌리기 */
+    static final String LV1 = "io.github.ij17838creator.pbs.COUNTER_LV1";
+    static final String LV2 = "io.github.ij17838creator.pbs.COUNTER_LV2";
+    static final String LV3 = "io.github.ij17838creator.pbs.COUNTER_LV3";
+    static final String LV_UNDO = "io.github.ij17838creator.pbs.COUNTER_LV_UNDO";
+    /** 간격 기록: 신호에 있음/없음 */
+    static final String IV_YES = "io.github.ij17838creator.pbs.COUNTER_IV_YES";
+    static final String IV_NO = "io.github.ij17838creator.pbs.COUNTER_IV_NO";
 
     @Override
     public void onReceive(Context c, Intent intent) {
@@ -62,16 +73,41 @@ public class CounterReceiver extends BroadcastReceiver {
             case ADJ60:
                 if (CounterStore.adjust(c, ADJ10.equals(a) ? 10 : ADJ30.equals(a) ? 30 : 60) > 0) buzz(c, 30);
                 break;
+            case LAT:
+                buzz(c, CounterStore.latToggle(c) ? 60 : 120);
+                break;
+            case LAT_X:
+                if (CounterStore.latStop(c)) buzz(c, 200);
+                break;
+            case LV1:
+            case LV2:
+            case LV3: {
+                int lv = LV1.equals(a) ? 1 : LV2.equals(a) ? 2 : 3;
+                if (CounterStore.lvlAdd(c, lv)) buzz(c, 40L * lv); // 단계가 높을수록 길게 떨림
+                break;
+            }
+            case LV_UNDO:
+                if (CounterStore.lvlUndo(c)) buzz(c, 30);
+                break;
+            case IV_YES:
+            case IV_NO:
+                if (CounterStore.ivAnswer(c, IV_YES.equals(a))) buzz(c, IV_YES.equals(a) ? 80 : 40);
+                CounterNotifier.cancelIv(c);
+                break;
             case CHECK: {
                 int r = CounterStore.checkTick(c);
                 if (r == 0) { DurWatch.sync(c); return; } // 아직 때가 아님: 알람만 다시 건다
                 if (r == 1) { CounterNotifier.showCheck(c); DurWatch.sync(c); return; }
+                if (r == 3) { CounterNotifier.showLatMax(c); break; }
+                if (r == 4) { CounterNotifier.showIvSignal(c); break; }
+                if (r == 5) { CounterNotifier.cancelIv(c); CounterNotifier.showIvAutoEnd(c); break; }
                 CounterNotifier.cancelCheck(c);
                 CounterNotifier.showAutoEnd(c, CounterStore.last(c));
                 break;
             }
             case END:
                 CounterStore.stop(c);
+                CounterNotifier.cancelIv(c);
                 buzz(c, 200);
                 break;
             case DISMISS:

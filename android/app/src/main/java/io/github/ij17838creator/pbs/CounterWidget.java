@@ -13,6 +13,8 @@ import android.widget.RemoteViews;
 /**
  * 홈 화면 위젯. 버튼은 CounterReceiver로 바로 가서 기록되므로 앱이 꺼져 있어도 된다.
  * 빈도: ＋1(크게) · −1 · 회기 끝 / 지속시간: 행동 시작·끝(크게, 같은 버튼) · 회기 끝, 진행 중엔 −10초·−30초·−1분(늦은 시작 보정). 열린 회기가 없으면 '회기 시작'.
+ * 지연시간: 지시·반응 시작(크게, 같은 버튼) · 기다리는 동안 중단 / 강도: 1·2·3단계(큰 버튼 3개) · 되돌리기 · 회기 끝
+ * 간격 기록: 관찰 시작 → 신호 때 있음·없음(큰 버튼 2개) · 회기 끝.
  */
 public class CounterWidget extends AppWidgetProvider {
 
@@ -50,6 +52,8 @@ public class CounterWidget extends AppWidgetProvider {
         v.setViewVisibility(R.id.w_sub1, View.GONE);
         v.setViewVisibility(R.id.w_sub2, View.GONE);
         v.setViewVisibility(R.id.w_adj, View.GONE);
+        v.setViewVisibility(R.id.w_lvl, View.GONE);
+        v.setViewVisibility(R.id.w_main, View.VISIBLE);
         if (!CounterStore.anything(c)) {
             v.setTextViewText(R.id.w_title, "PBS 기록");
             v.setTextViewText(R.id.w_status, "앱에서 측정 대상을 고르세요");
@@ -62,8 +66,47 @@ public class CounterWidget extends AppWidgetProvider {
         v.setTextViewText(R.id.w_title, CounterNotifier.titleText(c));
         v.setTextViewText(R.id.w_status, CounterNotifier.statusText(c));
         boolean on = CounterStore.active(c);
-        boolean dur = CounterStore.DUR.equals(CounterStore.uiMode(c));
-        if (dur) {
+        String um = CounterStore.uiMode(c);
+        boolean dur = CounterStore.DUR.equals(um);
+        if (CounterStore.LAT.equals(um)) {
+            boolean run = on && CounterStore.running(c);
+            button(c, v, R.id.w_main, run ? "반응 시작" : "지시", CounterReceiver.LAT, 15);
+            if (run) {
+                long base = SystemClock.elapsedRealtime() - Math.max(0L, System.currentTimeMillis() - CounterStore.runStart(c));
+                v.setChronometer(R.id.w_chrono, base, null, true);
+                v.setViewVisibility(R.id.w_chrono, View.VISIBLE);
+                button(c, v, R.id.w_sub1, "중단", CounterReceiver.LAT_X, 16);
+                button(c, v, R.id.w_sub2, "회기 끝", CounterReceiver.END, 3);
+            } else if (on) {
+                button(c, v, R.id.w_sub1, "회기 끝", CounterReceiver.END, 3);
+            } else {
+                button(c, v, R.id.w_sub1, "회기 시작", CounterReceiver.BEGIN, 6);
+            }
+        } else if (CounterStore.LVL.equals(um)) {
+            v.setViewVisibility(R.id.w_main, View.GONE);
+            v.setViewVisibility(R.id.w_lvl, View.VISIBLE);
+            button(c, v, R.id.w_l1, "1 약", CounterReceiver.LV1, 17);
+            button(c, v, R.id.w_l2, "2 중", CounterReceiver.LV2, 18);
+            button(c, v, R.id.w_l3, "3 강", CounterReceiver.LV3, 19);
+            if (on) {
+                button(c, v, R.id.w_sub1, "되돌리기", CounterReceiver.LV_UNDO, 20);
+                button(c, v, R.id.w_sub2, "회기 끝", CounterReceiver.END, 3);
+            } else {
+                button(c, v, R.id.w_sub1, "회기 시작", CounterReceiver.BEGIN, 6);
+            }
+        } else if (CounterStore.INT.equals(um)) {
+            if (on) {
+                v.setViewVisibility(R.id.w_main, View.GONE);
+                v.setViewVisibility(R.id.w_lvl, View.VISIBLE);
+                button(c, v, R.id.w_l1, "있음", CounterReceiver.IV_YES, 21);
+                button(c, v, R.id.w_l2, "없음", CounterReceiver.IV_NO, 22);
+                v.setViewVisibility(R.id.w_l3, View.GONE);
+                button(c, v, R.id.w_sub1, "회기 끝", CounterReceiver.END, 3);
+            } else {
+                button(c, v, R.id.w_main, "관찰 시작", CounterReceiver.BEGIN, 6);
+                v.setViewVisibility(R.id.w_row, View.GONE);
+            }
+        } else if (dur) {
             boolean run = on && CounterStore.running(c);
             button(c, v, R.id.w_main, run ? "행동 끝" : "행동 시작", CounterReceiver.DUR, 5);
             if (run) {

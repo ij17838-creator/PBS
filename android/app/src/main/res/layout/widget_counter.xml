@@ -58,6 +58,52 @@
         android:textSize="24sp"
         android:textStyle="bold" />
 
+    <!-- 강도 1·2·3단계 / 간격 기록 있음·없음: 큰 버튼 줄 (그때는 w_main을 숨김) -->
+    <LinearLayout
+        android:id="@+id/w_lvl"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <Button
+            android:id="@+id/w_l1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@drawable/widget_btn"
+            android:minHeight="48dp"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/w_l2"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_btn"
+            android:minHeight="48dp"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/w_l3"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_btn"
+            android:minHeight="48dp"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
     <!-- 늦은 시작 보정: 행동 진행 중에만 보임 (시작을 10초·30초·1분 앞당김) -->
     <LinearLayout
         android:id="@+id/w_adj"

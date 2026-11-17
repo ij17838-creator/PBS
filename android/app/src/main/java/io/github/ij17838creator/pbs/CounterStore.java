@@ -25,11 +25,19 @@ import org.json.JSONObject;
  * 끝 확인(끝 깜빡 방지): 행동 진행 중이면 chkSec초마다 '아직 행동 중인가요?' 알림을 띄운다(DurWatch가 시간을 잰다).
  *   conf = 마지막으로 '진행 중'이 확인된 시각(행동 시작·계속·보정 버튼을 누른 때). miss = 그 뒤 응답 없이 띄운 확인 수.
  *   응답 없는 확인이 chkMiss번 쌓인 뒤 다음 확인 때가 되면 conf 시각으로 행동을 끝낸다(chkMiss 0 = 자동으로 끝내지 않음).
+ *
+ * 지연시간(lat): 같은 버튼으로 '지시'(k:'ls') → '반응 시작'(k:'le'). 최대 대기(latMax초)가 지나면 저절로 끝(f:'m', 반응 시각 = 지시+최대),
+ *   '중단'(문제행동·중재로 그 시도를 못 잼)은 f:'x'.
+ * 강도(lvl): 단계 버튼 한 번 = 행동 1건 {k:'lv', v:1~3}, 되돌리기 {k:'lu'}.
+ * 간격 기록(int, 순간 표집): 회기가 열려 있는 동안 ivSec초마다(정각 맞춤이면 벽시계 기준) 신호 알림을 띄우고,
+ *   교사가 '있음/없음'을 누르면 그 신호 시각으로 {k:'iv', v:'1'|'0'}. 다음 신호까지 답이 없으면 v:'?'(빈칸).
+ *   응답 없는 신호가 10분 넘게 이어지면 회기를 저절로 닫는다(회기 끝을 깜빡해도 신호가 끝없이 울리지 않게).
  */
 final class CounterStore {
     private static final String PREFS = "pbs_counter";
     static final String FREQ = "freq";
     static final String DUR = "dur";
+    static final String LAT = "lat", LVL = "lvl", INT = "int";
     /** 끝 확인 알림 방식 */
     static final String CHK_VIB = "vib", CHK_SOUND = "sound", CHK_BOTH = "both", CHK_QUIET = "quiet", CHK_OFF = "off";
 
@@ -73,13 +81,34 @@ final class CounterStore {
     static int chkMiss(Context c) { return Math.max(0, prefs(c).getInt("chkMiss", 3)); }
     /** 늦은 시작 보정 버튼(−10초·−30초·−1분)을 보일지, 기본 켬 */
     static boolean adjOn(Context c) { return prefs(c).getBoolean("adjOn", true); }
-    /** 끝 확인이 필요한지: 지속시간 행동이 진행 중이고 알림 방식이 '끄기'가 아닐 때 */
+    /** 지연시간 최대 대기(초), 기본 60 */
+    static int latMax(Context c) { return Math.max(5, Math.min(600, prefs(c).getInt("latMax", 60))); }
+    /** 간격 기록 신호 간격(초), 기본 120 */
+    static int ivSec(Context c) { return ivSecP(prefs(c)); }
+    static boolean ivAlign(Context c) { return prefs(c).getBoolean("ivAlign", true); }
+    /** 간격 신호 알림 방식 (vib·sound·both·quiet) */
+    static String ivMode(Context c) { return prefs(c).getString("ivMode", CHK_VIB); }
+    static long ivNext(Context c) { return prefs(c).getLong("ivNext", 0L); }
+    /** 답을 기다리는 신호 시각(ms), 없으면 0 */
+    static long ivPend(Context c) { return prefs(c).getLong("ivPend", 0L); }
+    static int ivYes(Context c) { return prefs(c).getInt("ivYes", 0); }
+    static int ivTot(Context c) { return prefs(c).getInt("ivTot", 0); }
+    static int lastLvl(Context c) { return prefs(c).getInt("lastLvl", 0); }
+
+    /** 시계가 필요한지: 지속시간 끝 확인 / 지연시간 최대 대기 / 간격 기록 신호 */
     static boolean watching(Context c) {
-        return active(c) && running(c) && DUR.equals(mode(c)) && !CHK_OFF.equals(chkMode(c));
+        if (!active(c)) return false;
+        String m = mode(c);
+        if (DUR.equals(m)) return running(c) && !CHK_OFF.equals(chkMode(c));
+        if (LAT.equals(m)) return running(c);
+        return INT.equals(m);
     }
-    /** 다음 끝 확인 시각(ms) */
+    /** 다음에 시계가 깨어날 시각(ms) */
     static long nextCheck(Context c) {
         SharedPreferences p = prefs(c);
+        String m = p.getString("mode", FREQ);
+        if (LAT.equals(m)) return p.getLong("runStart", 0L) + latMax(c) * 1000L;
+        if (INT.equals(m)) return p.getLong("ivNext", 0L);
         long base = Math.max(p.getLong("conf", 0L), p.getLong("runStart", 0L));
         return base + (long) (p.getInt("miss", 0) + 1) * chkSec(c) * 1000L;
     }
@@ -120,8 +149,33 @@ final class CounterStore {
     /** 진행 중인 회기를 닫는다(행동이 진행 중이면 '행동 끝'을 남긴다) */
     private static void endLocked(SharedPreferences p, SharedPreferences.Editor e, JSONArray ev, long now) {
         if (!p.getBoolean("active", false)) return;
-        if (p.getBoolean("running", false)) push(ev, now, p.getString("key", ""), "de", 0);
-        e.putBoolean("active", false).putBoolean("running", false).putBoolean("auto", false);
+        String key = p.getString("key", "");
+        String m = p.getString("mode", FREQ);
+        if (p.getBoolean("running", false)) {
+            if (LAT.equals(m)) flag(push(ev, now, key, "le", 0), "x"); // 반응 전에 회기를 닫으면 그 시도는 중단
+            else push(ev, now, key, "de", 0);
+        }
+        if (INT.equals(m) && p.getLong("ivPend", 0L) > 0) pushIv(ev, p.getLong("ivPend", 0L), key, "?");
+        e.putBoolean("active", false).putBoolean("running", false).putBoolean("auto", false).putLong("ivPend", 0L).putLong("ivNext", 0L);
+    }
+
+    private static JSONObject flag(JSONObject o, String f) {
+        try { o.put("f", f); } catch (JSONException ignored) {}
+        return o;
+    }
+
+    private static void pushIv(JSONArray ev, long t, String key, String v) {
+        JSONObject o = push(ev, t, key, "iv", 0);
+        try { o.put("v", v); } catch (JSONException ignored) {}
+    }
+
+    /** 간격 기록 첫 신호: 정각 맞춤이면 벽시계로 간격의 배수가 되는 다음 시각(예: 2분이면 10:02:00, 10:04:00 …) */
+    static long firstSignal(long now, int sec, boolean align) {
+        long per = sec * 1000L;
+        if (!align) return now + per;
+        long off = java.util.TimeZone.getDefault().getOffset(now);
+        long local = now + off;
+        return (local / per + 1) * per - off;
     }
 
     /** 측정 대상으로 새 회기를 연다. 측정 대상이 없으면 false */
@@ -139,10 +193,14 @@ final class CounterStore {
             .putBoolean("running", false)
             .putLong("runStart", 0L)
             .putLong("lastEnd", 0L)
-            .putLong("durMs", 0L);
+            .putLong("durMs", 0L)
+            .putLong("ivPend", 0L).putInt("ivYes", 0).putInt("ivTot", 0).putInt("ivMissRun", 0).putInt("lastLvl", 0)
+            .putLong("ivNext", INT.equals(p.getString("tMode", FREQ)) ? firstSignal(now, ivSecP(p), p.getBoolean("ivAlign", true)) : 0L);
         push(ev, now, key, "b", 0);
         return true;
     }
+
+    private static int ivSecP(SharedPreferences p) { return Math.max(10, Math.min(3600, p.getInt("ivSec", 120))); }
 
     /** 자동으로 연 회기가 어제 것이면 닫는다(다음 버튼부터 새 회기) */
     private static boolean staleLocked(SharedPreferences p, long now) {
@@ -188,11 +246,15 @@ final class CounterStore {
     }
 
     /** 앱 밖 측정 대상 정하기. 다른 대상의 자동 회기가 열려 있으면 닫는다 */
-    static synchronized void setTarget(Context c, String pid, String ph, String title, String mode) {
+    static synchronized void setTarget(Context c, String pid, String ph, String title, String mode,
+                                       int latMax, int ivSec, boolean ivAlign, String ivMode) {
         SharedPreferences p = prefs(c);
         JSONArray ev = events(p);
         SharedPreferences.Editor e = p.edit();
-        String m = DUR.equals(mode) ? DUR : FREQ;
+        String m = DUR.equals(mode) || LAT.equals(mode) || LVL.equals(mode) || INT.equals(mode) ? mode : FREQ;
+        String im = CHK_SOUND.equals(ivMode) || CHK_BOTH.equals(ivMode) || CHK_QUIET.equals(ivMode) ? ivMode : CHK_VIB;
+        e.putInt("latMax", Math.max(5, Math.min(600, latMax))).putInt("ivSec", Math.max(10, Math.min(3600, ivSec)))
+            .putBoolean("ivAlign", ivAlign).putString("ivMode", im);
         boolean same = pid.equals(p.getString("tPid", "")) && ph.equals(p.getString("tPh", "")) && m.equals(p.getString("tMode", ""));
         if (!same && p.getBoolean("auto", false)) endLocked(p, e, ev, System.currentTimeMillis());
         e.putBoolean("tOn", true).putString("tPid", pid).putString("tPh", ph).putString("tTitle", title).putString("tMode", m)
@@ -312,12 +374,129 @@ final class CounterStore {
         return (st - ns) / 1000L;
     }
 
-    /** 끝 확인 때가 됐을 때. 반환값: 0 = 아직 아님·해당 없음, 1 = 확인 알림을 띄울 것, 2 = 응답이 없어 자동으로 끝냄 */
+    /* ---------- 지연시간 ---------- */
+
+    /** 지연시간 시도 하나를 끝낸다. flag: null = 반응, "m" = 최대 대기 넘음, "x" = 중단(값에서 뺌) */
+    private static void latEndLocked(SharedPreferences p, SharedPreferences.Editor e, JSONArray ev, long t, String flag) {
+        long st = p.getLong("runStart", t);
+        t = Math.max(t, st);
+        JSONObject o = push(ev, t, p.getString("key", ""), "le", 0);
+        if (flag != null) flag(o, flag);
+        e.putBoolean("running", false).putLong("last", t);
+        if (!"x".equals(flag)) e.putInt("count", p.getInt("count", 0) + 1).putLong("durMs", p.getLong("durMs", 0L) + (t - st));
+    }
+
+    /** 지연시간 '지시' / '반응 시작'(같은 버튼). 열린 회기가 없으면 새 회기를 열고 바로 지시. 반환값: 지금 반응을 기다리는지 */
+    static synchronized boolean latToggle(Context c) {
+        SharedPreferences p = prefs(c);
+        long now = System.currentTimeMillis();
+        JSONArray ev = events(p);
+        if (!prepare(p, ev, now, LAT.equals(p.getString("tMode", FREQ)))) return false;
+        if (!LAT.equals(p.getString("mode", FREQ))) return false;
+        boolean run = p.getBoolean("running", false);
+        SharedPreferences.Editor e = p.edit();
+        if (run) {
+            long st = p.getLong("runStart", now);
+            long max = latMax(c) * 1000L;
+            if (now - st >= max) latEndLocked(p, e, ev, st + max, "m");
+            else latEndLocked(p, e, ev, now, null);
+        } else {
+            push(ev, now, p.getString("key", ""), "ls", 0);
+            e.putBoolean("running", true).putLong("runStart", now);
+        }
+        save(e, ev);
+        return !run;
+    }
+
+    /** 지연시간 '중단': 문제행동이 나와 중재하느라 이 시도를 못 잼 */
+    static synchronized boolean latStop(Context c) {
+        SharedPreferences p = prefs(c);
+        if (!p.getBoolean("active", false) || !p.getBoolean("running", false) || !LAT.equals(p.getString("mode", FREQ))) return false;
+        JSONArray ev = events(p);
+        SharedPreferences.Editor e = p.edit();
+        latEndLocked(p, e, ev, System.currentTimeMillis(), "x");
+        save(e, ev);
+        return true;
+    }
+
+    /* ---------- 강도 ---------- */
+
+    /** 단계 버튼(1~3) 한 번 = 행동 1건. 열린 회기가 없으면 새 회기를 연다 */
+    static synchronized boolean lvlAdd(Context c, int lv) {
+        SharedPreferences p = prefs(c);
+        long now = System.currentTimeMillis();
+        JSONArray ev = events(p);
+        if (!prepare(p, ev, now, LVL.equals(p.getString("tMode", FREQ)))) return false;
+        if (!LVL.equals(p.getString("mode", FREQ))) return false;
+        JSONObject o = push(ev, now, p.getString("key", ""), "lv", 0);
+        try { o.put("v", Math.max(1, Math.min(3, lv))); } catch (JSONException ignored) {}
+        save(p.edit().putInt("count", p.getInt("count", 0) + 1).putLong("last", now).putInt("lastLvl", lv), ev);
+        return true;
+    }
+
+    /** 강도 되돌리기: 마지막 1건 지우기 */
+    static synchronized boolean lvlUndo(Context c) {
+        SharedPreferences p = prefs(c);
+        if (!p.getBoolean("active", false) || !LVL.equals(p.getString("mode", FREQ)) || p.getInt("count", 0) <= 0) return false;
+        JSONArray ev = events(p);
+        push(ev, System.currentTimeMillis(), p.getString("key", ""), "lu", 0);
+        save(p.edit().putInt("count", p.getInt("count", 0) - 1).putInt("lastLvl", 0), ev);
+        return true;
+    }
+
+    /* ---------- 간격 기록 (순간 표집) ---------- */
+
+    /** 신호에 답하기. 답을 기다리는 신호가 없으면 false (신호 때가 아닌데 누른 것) */
+    static synchronized boolean ivAnswer(Context c, boolean yes) {
+        SharedPreferences p = prefs(c);
+        if (!p.getBoolean("active", false) || !INT.equals(p.getString("mode", FREQ))) return false;
+        long pend = p.getLong("ivPend", 0L);
+        if (pend <= 0) return false;
+        JSONArray ev = events(p);
+        pushIv(ev, pend, p.getString("key", ""), yes ? "1" : "0");
+        save(p.edit().putLong("ivPend", 0L).putInt("ivTot", p.getInt("ivTot", 0) + 1)
+            .putInt("ivYes", p.getInt("ivYes", 0) + (yes ? 1 : 0)).putInt("ivMissRun", 0).putLong("last", System.currentTimeMillis()), ev);
+        return true;
+    }
+
+    /** 간격 신호 때. 반환값: 0 = 아직 아님, 4 = 신호를 띄울 것, 5 = 응답이 오래 없어 회기를 닫음 */
+    private static int ivTickLocked(Context c, SharedPreferences p, long now) {
+        long nx = p.getLong("ivNext", 0L);
+        if (nx <= 0 || now < nx - 1500L) return 0;
+        long per = ivSec(c) * 1000L;
+        String key = p.getString("key", "");
+        JSONArray ev = events(p);
+        int missRun = p.getInt("ivMissRun", 0);
+        long pend = p.getLong("ivPend", 0L);
+        if (pend > 0) { pushIv(ev, pend, key, "?"); missRun++; }
+        long sig = nx;
+        while (sig + per <= now + 1500L) { pushIv(ev, sig, key, "?"); missRun++; sig += per; } // 기기가 잠들어 놓친 신호
+        SharedPreferences.Editor e = p.edit();
+        if (missRun >= 3 && (long) missRun * per >= 10 * 60 * 1000L) {
+            endLocked(p, e, ev, now);
+            save(e.putInt("ivMissRun", 0), ev);
+            return 5;
+        }
+        save(e.putLong("ivPend", sig).putLong("ivNext", sig + per).putInt("ivMissRun", missRun), ev);
+        return 4;
+    }
+
+    /** 시계가 깨어났을 때. 반환값: 0 = 아직 아님·해당 없음, 1 = 끝 확인 알림을 띄울 것, 2 = 응답이 없어 자동으로 끝냄,
+     *  3 = 지연시간 최대 대기 넘음(반응 없음으로 끝냄), 4 = 간격 신호, 5 = 간격 기록 응답이 오래 없어 회기를 닫음 */
     static synchronized int checkTick(Context c) {
         SharedPreferences p = prefs(c);
         if (!watching(c)) return 0;
         long now = System.currentTimeMillis();
         if (now < nextCheck(c) - 1500L) return 0;
+        String md = p.getString("mode", FREQ);
+        if (INT.equals(md)) return ivTickLocked(c, p, now);
+        if (LAT.equals(md)) {
+            JSONArray ev = events(p);
+            SharedPreferences.Editor e = p.edit();
+            latEndLocked(p, e, ev, p.getLong("runStart", now) + latMax(c) * 1000L, "m");
+            save(e, ev);
+            return 3;
+        }
         int miss = p.getInt("miss", 0);
         int lim = chkMiss(c);
         if (lim > 0 && miss >= lim) {

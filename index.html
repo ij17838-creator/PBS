@@ -238,6 +238,23 @@ details.card.later summary small{font-weight:400;color:var(--muted);margin-left:
 .dur-ep .dur-run{padding-top:10px}
 .dur-ed .dur-foot,.nat-chk .dur-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 0 4px}
 .bl-nat .nat-chk{flex:1 1 100%}
+.dur-ep.off .dur-meta b{color:var(--muted,#667)}
+.dur-ep.off .t24-in{text-decoration:line-through}
+.measure-opts:empty{display:none}
+.measure-opts{margin:4px 0 10px;padding:8px 10px;border:1px dashed var(--line);border-radius:10px}
+.lvl-b{min-width:64px;min-height:44px;font-weight:700}
+.lvl-crit{list-style:none;margin:2px 0 6px;padding:0;font-size:.86rem;display:grid;gap:2px}
+.lvl-crit b{display:inline-block;min-width:3em}
+.lvl-row{display:grid;grid-template-columns:auto minmax(0,190px) auto auto;justify-content:start;align-items:start;gap:6px 10px;padding:6px 0;border-top:1px solid var(--line)}
+.lvl-row>.dur-n{padding-top:10px}.lvl-row>.lvl-seg,.lvl-row>.btn{margin-top:4px}
+@media (max-width:480px){.lvl-row{grid-template-columns:auto minmax(0,1fr)}.lvl-row>.lvl-seg{grid-column:2}.lvl-row>.btn{grid-column:2;justify-self:start}}
+.lvl-seg{display:inline-flex;gap:4px}
+.lvl-seg .btn{min-width:40px}
+.iv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:6px;padding:6px 0}
+.iv-cell{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;padding:4px;border:1px solid var(--line);border-radius:8px;background:var(--surface,#fff);color:inherit;font:inherit;font-size:.8rem;cursor:pointer}
+.iv-cell b{font-size:.9rem}
+.iv-cell.v1{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.iv-cell.vq{border-style:dashed;color:var(--rec)}
 .nat-chk .nat-chk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 10px;padding-top:6px}
 .qc-legend{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px}
 .qc-legend li{display:flex;align-items:center;gap:6px}
@@ -658,7 +675,7 @@ const MEASURE_GUIDE={
   '지속시간':{tip:'오래 이어지는 행동',unit:'예: 분/회, 총 분/회기'},
   '지연시간':{tip:'시작까지 걸린 시간',unit:'예: 초/지시'},
   '강도':{tip:'세기 단계가 있을 때',unit:'예: 1~3단계 평균'},
-  '간격 기록':{tip:'잦거나 경계 흐린 행동',unit:'예: 나타난 간격 비율(%), 10초 간격'}
+  '간격 기록':{tip:'잦거나 경계 흐린 행동',unit:'예: 있음 칸 비율(%), 2분 순간 표집'}
 };
 const MIND_WORDS=['화가','화나','짜증','일부러','고의','관심을 끌','관심 끌','하기 싫','싫어서','불안','심심','기분','원해서','하고 싶어서','속상'];
 const DEF_CHECKS=['눈으로 보거나 귀로 들을 수 있는 행동인가','횟수를 세거나 시간을 잴 수 있는가','다른 관찰자도 같은 기준으로 판단할 수 있는가','시작과 끝이 분명한가','\'화가 나서\'처럼 마음 상태를 추측하는 말이 들어 있지 않은가'];
@@ -692,7 +709,7 @@ function loadStore(){
 function defaultData(key){
   switch(key){
     case 'profile':return {grade:'',age:'',gender:'',classType:'',classNote:'',homeroom:'',specialTeacher:'',referDate:'',referBy:'',referReason:'',disability:'',diagDate:'',meds:'',sensory:'',health:'',comm:[],commNote:'',academic:'',attention:'',social:'',daily:'',motor:'',strengths:'',likes:'',prefs:[],teach:'',hard:'',dislikes:'',triggers:'',history:[],supports:'',family:'',homeBeh:'',contact:'',homeWish:'',goalStudent:'',goalFamily:'',goalTeacher:''};
-    case 'define':return {name:'',definition:'',start:'',end:'',examples:'',nonExamples:'',measures:[],setting:'',checks:[],stage:'초안',sources:[],sourceNote:'',priority:[],priorityNote:'',boundary:'',episode:'',questions:'',planWhen:'',planLength:'',planPeriod:'',planObserver:'',planDate:'',planTools:'',planIoa:'',measure:'',unit:'',measureWhy:'',measureFixed:false,ioaDone:false,ioaNote:'',revLog:''};
+    case 'define':return {name:'',definition:'',start:'',end:'',examples:'',nonExamples:'',measures:[],setting:'',checks:[],stage:'초안',sources:[],sourceNote:'',priority:[],priorityNote:'',boundary:'',episode:'',questions:'',planWhen:'',planLength:'',planPeriod:'',planObserver:'',planDate:'',planTools:'',planIoa:'',measure:'',unit:'',measureWhy:'',measureFixed:false,ioaDone:false,ioaNote:'',revLog:'',latCue:'',latResp:'',latMax:'60',latPlan:'3',lvl1:'',lvl2:'',lvl3:'',lvlAgg:'평균',ivType:'순간 표집',ivSec:'120',ivAlign:true,ivAlert:'vib'};
     case 'qabf':return {forms:[],activeForm:null};
     case 'abc':return {sheets:[],session:null,interval:15,audio:{},plan:{start:'',end:'',fired:''}};
     case 'hypo':return {when:'',behavior:'',funcs:[],funcOther:'',evidence:'',confidence:'',memo:'',setting:'',cons:'',verify:[],verifyNote:'',more:[]};
@@ -1340,6 +1357,8 @@ function refreshDefine(p){
   const t=$('#measure-tip');if(t)t.innerHTML=measureTip(d);
   const u=$('#def-unit');if(u){const g=MEASURE_GUIDE[d.measure];u.placeholder=g?g.unit:'측정 방법을 먼저 고르세요';}
   const st=$('#stage-tip');if(st)st.textContent=DEF_STAGE_TIP[d.stage]||'';
+  const mo=$('#measure-opts');if(mo&&mo.dataset.m!==(d.measure||''))mo.outerHTML=measureOpts(d);
+  const it=$('#iv-type-tip');if(it)it.textContent=IV_TYPE_TIP[d.ivType]||'';
 }
 function viewDefine(p){
   const d=p.procs.define.data;const w=defWarnings(d);const g=MEASURE_GUIDE[d.measure];const nw=Object.keys(w).length;
@@ -1387,6 +1406,7 @@ function viewDefine(p){
     </fieldset>
     <fieldset class="field"><legend>측정 방법 (예정 1개)</legend><div class="chips">${MEASURES.map(m=>chip('measure',m,d.measure===m,'b')).join('')}</div></fieldset>
     <p class="measure-tip" id="measure-tip">${measureTip(d)}</p>
+    ${measureOpts(d)}
     <div class="two">
       <label class="field"><span>측정 단위</span><textarea rows="1" class="one" id="def-unit" data-f="define:unit" placeholder="${esc(g?g.unit:'측정 방법을 먼저 고르세요')}">${esc(d.unit)}</textarea></label>
       <label class="field"><span>이 방법을 고른 이유</span><textarea rows="1" class="one" id="def-mwhy" data-f="define:measureWhy" placeholder="예: 한 번 일어나면 짧게 끝나서 횟수로 셀 수 있음">${esc(d.measureWhy)}</textarea></label>
@@ -1904,7 +1924,7 @@ function sesRow(p,ph,s,i){
       <label class="field"><span>관찰자</span><textarea rows="1" class="one" id="ses-${s.id}-observer" data-f="ses:${k}:observer" placeholder="예: 담임">${esc(s.observer)}</textarea></label>
       <label class="field wide2"><span>메모</span><textarea rows="1" class="one" id="ses-${s.id}-note" data-f="ses:${k}:note" placeholder="예: 시험 주간, 결석 후 첫날">${esc(s.note)}</textarea></label>
     </div>
-    ${freq&&(PCN||s.tapLog)?natRow(p,ph,s,i):''}${p.procs.define.data.measure==='지속시간'||s.durLog?durEd(p,ph,s):''}
+    ${freq&&(PCN||s.tapLog)?natRow(p,ph,s,i):''}${p.procs.define.data.measure==='지속시간'||s.durLog?durEd(p,ph,s):''}${measEds(p,ph,s)}
     ${ui.confirm==='del-ses:'+k?confirmBox('이 회기 기록을 삭제합니다.','del-ses',k):''}
   </div>`;
 }
@@ -2769,6 +2789,9 @@ const actions={
   'nat-target':el=>natTargetToggle(el),
   'dur-add':el=>durAdd(el),
   'dur-del':el=>durDel(el),
+  'lat-cue':el=>latAct(el,'cue'),'lat-resp':el=>latAct(el,'resp'),'lat-stop':el=>latAct(el,'stop'),'lat-x':el=>latAct(el,'x'),'lat-del':el=>latAct(el,'del'),'lat-add':el=>latAct(el,'add'),
+  'lvl-add':el=>lvlAct(el,'add'),'lvl-set':el=>lvlAct(el,'set'),'lvl-del':el=>lvlAct(el,'del'),
+  'iv-cyc':el=>ivAct(el,'cyc'),'iv-make':el=>ivAct(el,'make'),'iv-add':el=>ivAct(el,'add'),'iv-pop':el=>ivAct(el,'pop'),
   'nat-pin':async()=>{try{const r=await PCN.pinWidget();if(!r.ok)toast('홈 화면을 길게 눌러 위젯 → PBS 기록');}catch(e){toast('홈 화면을 길게 눌러 위젯 → PBS 기록');}},
   'nat-tile':async()=>{try{const r=await PCN.addTile();toast(r.already?'이미 빠른 설정에 있습니다':r.ok?'빠른 설정에 추가했습니다':'빠른 설정 편집에서 PBS 측정을 끌어 놓으세요');}catch(e){toast('빠른 설정 편집에서 PBS 측정을 끌어 놓으세요');}},
   'bl-goal':()=>{
@@ -2929,9 +2952,9 @@ function onField(el){
       const [k,id,field]=name.split(':');const arr=p.procs.profile.data[k];const o=Array.isArray(arr)&&arr.find(x=>x.id===id);if(!o)return;
       o[field]=val;touch(p,'profile');break;}
     case 'define':
-      p.procs.define.data[name]=val;touch(p,'define');refreshDefine(p);break;
+      p.procs.define.data[name]=val;touch(p,'define');refreshDefine(p);if(NAT_OPT_F.has(name))natOptsPush(p);break;
     case 'defbool':
-      p.procs.define.data[name]=el.checked;touch(p,'define');break;
+      p.procs.define.data[name]=el.checked;touch(p,'define');if(NAT_OPT_F.has(name))natOptsPush(p);break;
     case 'defcheck':{
       const n=Number(name);const arr=p.procs.define.data.checks;const has=arr.includes(n);
       if(el.checked&&!has)arr.push(n);if(!el.checked&&has)arr.splice(arr.indexOf(n),1);
@@ -3027,6 +3050,8 @@ document.addEventListener('change',async e=>{
     if(el.matches('[data-plan]')){setPlanTime(el);return;}
     if(el.matches('[data-shdt]')){setSheetTime(el);return;}
     if(el.matches('[data-dur]')){durEdit(el);return;}
+    if(el.matches('[data-lat]')){latEdit(el);return;}
+    if(el.matches('[data-lvl]')){lvlEdit(el);return;}
     if(el.matches('[data-f]')){onField(el);return;}
     return;
   }
@@ -4330,7 +4355,8 @@ function natResolve(key){
   if(!p||(ph!=='bl'&&ph!=='iv')||!/^new:\d+$/.test(sid||''))return null;
   const list=sesList(p,ph);const st=new Date(Number(sid.slice(4)));
   const prev=blSorted(list).slice(-1)[0]||(ph==='iv'?blSorted(p.procs.baseline.data.sessions).slice(-1)[0]:null);
-  const s=blNew(prev);s.natId=sid;s.date=ymdLocal(st);s.time=natHms(st.getTime()).slice(0,5);s.value='0';
+  const s=blNew(prev);s.natId=sid;s.date=ymdLocal(st);s.time=natHms(st.getTime()).slice(0,5);
+  const nm=natMode(p,ph);s.value=nm==='freq'||nm==='dur'||!nm?'0':'';/* 지연시간·강도·간격 기록은 기록이 들어오면 계산 */
   list.push(s);return {p,ph,s,created:true};
 }
 /* ABC: 앱 밖에서 연 관찰은 관찰지 1장(타이머 없이)으로 만든다. 진행 중인 관찰이 없으면 '지금 관찰'로 보이게 한다 */
@@ -4414,7 +4440,186 @@ function durDel(el){
   const p=curProject();if(!p)return;const ph=el.dataset.ph;const s=sesList(p,ph).find(x=>x.id===el.dataset.id);if(!s)return;
   const L=durParse(s.durLog);L.splice(Number(el.dataset.i),1);durOpen.add(s.id);durApply(p,ph,s,L);toast('에피소드를 지웠습니다');
 }
-function natSync(p,ph,s){if(PCN&&nat.key===natKey(p,ph,s))PCN.setCount({key:nat.key,count:blNum(s.value)||0}).catch(()=>{});}
+/* ---------- 지연시간 · 강도 · 간격 기록: 회기 안 기록 ----------
+   지연시간 latLog: durLog와 같은 꼴 '지시-반응'(시:분:초). 뒤에 '/m'(최대 대기까지 반응 없음: 반응 = 지시+최대, 값은 최대로 셈)·
+     '/x'(문제행동·중재로 중단: 값에서 뺌). 측정값 = 중단을 뺀 시도의 평균 초.
+   강도 lvlLog: '시:분:초=단계'(1~3) 한 칸이 행동 1건. 측정값 = 평균 단계(정의에서 '최고'를 고르면 최고 단계).
+   간격 기록 ivLog: '시:분:초=1|0|?' 한 칸이 신호(표집) 1번. 1 있음, 0 없음, ? 빈칸(답 없음 → 비율에서 뺌). 측정값 = 있음 칸 %. */
+const LAT_MAXS=[30,60,120,180,300];
+const IV_SECS=[30,60,120,180,300,600];
+const IV_TYPES=['순간 표집','부분 간격','전체 간격'];
+const IV_TYPE_TIP={'순간 표집':'신호 순간만 보기','부분 간격':'녹음 보고 사후 기록','전체 간격':'녹음 보고 사후 기록'};
+const LVL_NAMES=['약','중','강'];
+const IV_ALERTS=[['vib','진동'],['sound','소리'],['both','소리+진동'],['quiet','무음 알림']];
+function secLabel(x){x=Number(x);return x>=60?`${x/60}분`:`${x}초`;}
+function latMaxSec(p){const n=Number(p.procs.define.data.latMax);return n>=5?n:60;}
+function ivSecOf(p){const n=Number(p.procs.define.data.ivSec);return n>=10?n:120;}
+/* 표적행동 정의 화면: 고른 측정 방법에 맞는 설정 칸 */
+function measureOpts(d){
+  const m=d.measure||'';const opt=(arr,v,f)=>arr.map(x=>`<option value="${x}"${String(x)===String(v)?' selected':''}>${f?f(x):x}</option>`).join('');
+  let h='';
+  if(m==='지연시간')h=`<div class="two">
+      <label class="field"><span>시작 신호 <small>교사가 주는 지시</small></span><textarea rows="1" class="one" id="def-latcue" data-f="define:latCue" placeholder="예: 학습지를 놓으며 '시작하자'">${esc(d.latCue)}</textarea></label>
+      <label class="field"><span>반응 시작 기준</span><textarea rows="1" class="one" id="def-latresp" data-f="define:latResp" placeholder="예: 연필을 쥐고 첫 글자를 씀">${esc(d.latResp)}</textarea></label>
+      <label class="field"><span>최대 대기 <small>넘으면 최대로 적음</small></span><select id="def-latmax" data-f="define:latMax">${opt(LAT_MAXS,d.latMax,secLabel)}</select></label>
+      <label class="field"><span>회기당 잴 지시</span><select id="def-latplan" data-f="define:latPlan">${opt([1,2,3,4,5],d.latPlan,x=>x+'회')}</select></label>
+    </div><p class="hint">정한 지시만 재기</p>`;
+  else if(m==='강도')h=`<div class="three">
+      ${[1,2,3].map(n=>`<label class="field"><span>${n}단계(${LVL_NAMES[n-1]}) 기준</span><textarea rows="1" class="one" id="def-lvl${n}" data-f="define:lvl${n}" placeholder="${['예: 말로만 거부','예: 물건을 밀어냄','예: 던지기·때리기'][n-1]}">${esc(d['lvl'+n])}</textarea></label>`).join('')}
+    </div>
+    <label class="field"><span>회기 값</span><select id="def-lvlagg" data-f="define:lvlAgg">${opt(['평균','최고'],d.lvlAgg,x=>x==='평균'?'평균 단계':'최고 단계')}</select></label>
+    <p class="hint">눈에 보이는 기준으로</p>`;
+  else if(m==='간격 기록')h=`<div class="three">
+      <label class="field"><span>간격 방식</span><select id="def-ivtype" data-f="define:ivType">${opt(IV_TYPES,d.ivType)}</select></label>
+      <label class="field"><span>간격 길이</span><select id="def-ivsec" data-f="define:ivSec">${opt(IV_SECS,d.ivSec,secLabel)}</select></label>
+      <label class="field"><span>신호 방식 <small>설치형 앱</small></span><select id="def-ivalert" data-f="define:ivAlert">${IV_ALERTS.map(([x,l])=>`<option value="${x}"${x===d.ivAlert?' selected':''}>${l}</option>`).join('')}</select></label>
+    </div>
+    <label class="check"><input type="checkbox" id="def-ivalign" data-f="defbool:ivAlign" ${d.ivAlign!==false?'checked':''}> <span>벽시계 정각에 맞추기</span></label>
+    <p class="hint" id="iv-type-tip">${esc(IV_TYPE_TIP[d.ivType]||'')}</p>`;
+  return `<div class="measure-opts" id="measure-opts" data-m="${esc(m)}">${h}</div>`;
+}
+/* 회기 줄에 붙는 방법별 기록 칸 */
+function measEds(p,ph,s){
+  const m=p.procs.define.data.measure;
+  return (m==='지연시간'||s.latLog?latEd(p,ph,s):'')+(m==='강도'||s.lvlLog?lvlEd(p,ph,s):'')+(m==='간격 기록'||s.ivLog?ivEd(p,ph,s):'');
+}
+function sesOf(el){const p=curProject();if(!p)return null;const ph=el.dataset.ph;const s=sesList(p,ph).find(x=>x.id===el.dataset.id);return s?{p,ph,s}:null;}
+function secOfDay(t){const d=new Date(t==null?Date.now():t);return d.getHours()*3600+d.getMinutes()*60+d.getSeconds();}
+const ED={
+  lat:{view:(p,ph,s)=>latEd(p,ph,s),val:(p,s)=>latValue(s)},
+  lvl:{view:(p,ph,s)=>lvlEd(p,ph,s),val:(p,s)=>lvlValue(p,s)},
+  iv:{view:(p,ph,s)=>ivEd(p,ph,s),val:(p,s)=>ivValue(s)}
+};
+/* 기록을 바꾼 뒤: 측정값 다시 계산 → 칸 다시 그리기 → 그래프 → 저장 */
+function edApply(p,ph,s,k){
+  s.value=ED[k].val(p,s);
+  const v=$(`#ses-${s.id}-value`);if(v)v.value=s.value;
+  const ae=document.activeElement;const old=$(`#ses-${s.id}-${k}`);if(old&&ae&&old.contains(ae)&&ae.matches('input'))ae.blur();
+  const box=$(`#ses-${s.id}-${k}`);if(box&&box.isConnected)box.outerHTML=ED[k].view(p,ph,s);
+  touch(p,sesProc(ph));refreshBl(p);saveNow();
+}
+function edRedraw(p,ph,s){['lat','lvl','iv'].forEach(k=>{const b=$(`#ses-${s.id}-${k}`);if(b&&!b.contains(document.activeElement))b.outerHTML=ED[k].view(p,ph,s);});}
+
+/* 지연시간 */
+function latValue(s){const L=durParse(s.latLog).filter(e=>e.b&&!e.f.includes('x'));return L.length?String(rnd(L.reduce((t,e)=>t+durLen(e),0)/L.length)):'';}
+function latEd(p,ph,s){
+  const d=p.procs.define.data;const L=durParse(s.latLog);const max=latMaxSec(p);const plan=Number(d.latPlan)||0;
+  const ok=L.filter(e=>e.b&&!e.f.includes('x'));const done=L.filter(e=>e.b).length;
+  const open=L.length&&!L[L.length-1].b?L[L.length-1]:null;
+  const avg=ok.length?rnd(ok.reduce((t,e)=>t+durLen(e),0)/ok.length):null;
+  const sum=`지시 ${done}${plan?'/'+plan:''}회${avg!=null?` · 평균 ${avg}초`:''}${open?' · 기다리는 중':''}`;
+  const A=`data-ph="${ph}" data-id="${s.id}"`;
+  const rows=L.map((e,i)=>{
+    const tag=[e.f.includes('m')?`<b>${max}초 넘음</b>`:'',e.f.includes('x')?'<b>중단 · 값 제외</b>':''].filter(Boolean).join(' ');
+    return `<div class="dur-ep${e.f.includes('x')?' off':''}">
+      <span class="dur-n">${i+1}</span>${t24(`data-lat="${ph}|${s.id}|${i}|a"`,e.a,true,`${i+1}번 지시`)}<span class="dur-to" aria-hidden="true">~</span>${e.b?t24(`data-lat="${ph}|${s.id}|${i}|b"`,e.b,true,`${i+1}번 반응`):'<span class="muted dur-run">기다리는 중</span>'}
+      <div class="dur-meta"><span class="muted">${e.b?durLen(e)+'초':''}</span>${tag}${e.b?`<button type="button" class="btn small ghost" data-act="lat-x" ${A} data-i="${i}">${e.f.includes('x')?'중단 풀기':'중단 표시'}</button>`:''}<button type="button" class="btn small ghost danger" data-act="lat-del" ${A} data-i="${i}" aria-label="${i+1}번 시도 지우기">지우기</button></div>
+    </div>`;}).join('');
+  const live=open?`<button type="button" class="btn small primary" data-act="lat-resp" ${A}>반응 시작</button><button type="button" class="btn small" data-act="lat-stop" ${A}>중단</button><span class="muted lat-live" ${A} data-since="${durSec(open.a)}" data-max="${max}"></span>`
+    :`<button type="button" class="btn small primary" data-act="lat-cue" ${A}>지시</button><span class="muted">${plan&&done>=plan?'계획한 지시 다 잼':'지시하는 순간 누르기'}</span>`;
+  const isOpen=durOpen.has(s.id+':lat');
+  return `<div class="meas-ed" id="ses-${s.id}-lat"><div class="bl-nat meas-live">${live}</div>
+    <details class="dur-ed" data-dur-box="${s.id}:lat"${isOpen?' open':''}><summary>지연시간 ${esc(sum)}</summary>${rows}
+    <div class="dur-foot"><button type="button" class="btn small" data-act="lat-add" ${A}>+ 시도</button><span class="muted">고치면 값도 바뀌어요</span></div></details></div>`;
+}
+function latAct(el,what){
+  const f=sesOf(el);if(!f)return;const {p,ph,s}=f;const L=durParse(s.latLog);const last=L[L.length-1];const open=last&&!last.b?last:null;const i=Number(el.dataset.i);
+  const max=latMaxSec(p);
+  if(what==='cue'){if(open)return;L.push({a:natHms(Date.now()),b:'',f:''});}
+  else if(what==='resp'){if(!open)return;const el2=(secOfDay()-durSec(open.a)+86400)%86400;if(el2>=max){open.b=durHms(durSec(open.a)+max);open.f+='m';}else open.b=natHms(Date.now());}
+  else if(what==='stop'){if(!open)return;open.b=natHms(Date.now());open.f+='x';}
+  else if(what==='x'){const e=L[i];if(!e)return;e.f=e.f.includes('x')?e.f.replace('x',''):e.f+'x';}
+  else if(what==='del'){L.splice(i,1);toast('시도를 지웠습니다');}
+  else if(what==='add'){if(open){toast('기다리는 시도의 반응을 먼저 적으세요');return;}const a=last?durHms(durSec(last.b)+60):(/^\d\d:\d\d$/.test(s.time||'')?s.time+':00':natHms(Date.now()));L.push({a,b:durHms(durSec(a)+10),f:''});}
+  durOpen.add(s.id+':lat');s.latLog=durStr(L);edApply(p,ph,s,'lat');
+}
+function latEdit(el){
+  const [ph,id,i,which]=String(el.dataset.lat).split('|');const p=curProject();if(!p)return;
+  const s=sesList(p,ph).find(x=>x.id===id);if(!s)return;const L=durParse(s.latLog);const e=L[Number(i)];if(!e)return;
+  const v=el.value.trim();
+  if(!/^\d\d:\d\d:\d\d$/.test(v)){toast('시각을 비울 수 없습니다');edApply(p,ph,s,'lat');return;}
+  const n={...e,[which]:v};
+  if(n.b&&durLen(n)>3600){toast('반응이 지시보다 빠릅니다');edApply(p,ph,s,'lat');return;}
+  if(which==='b')n.f=n.f.replace('m','');/* 손으로 고친 반응 시각은 실제 반응으로 본다 */
+  L[Number(i)]=n;s.latLog=durStr(L);edApply(p,ph,s,'lat');
+}
+/* 앱 화면에서 '지시'를 누른 뒤: 몇 초째인지 보여 주고, 최대 대기가 지나면 저절로 '최대'로 끝낸다 */
+function latTick(){
+  $$('.lat-live').forEach(el=>{
+    const sec=(secOfDay()-Number(el.dataset.since)+86400)%86400;const max=Number(el.dataset.max)||60;
+    if(sec>=max){const f=sesOf(el);if(f){const L=durParse(f.s.latLog);const o=L[L.length-1];if(o&&!o.b){o.b=durHms(durSec(o.a)+max);o.f+='m';f.s.latLog=durStr(L);edApply(f.p,f.ph,f.s,'lat');toast(`반응 없이 ${max}초: 최대로 적음`);}}return;}
+    el.textContent=`${sec}초째 · 최대 ${max}초`;
+  });
+}
+
+/* 강도 */
+function lvlParse(log){return String(log||'').split(/\s+/).filter(Boolean).map(x=>{const m=/^(\d\d:\d\d:\d\d)=([1-3])$/.exec(x);return m?{t:m[1],v:+m[2]}:null;}).filter(Boolean);}
+function lvlStr(L){return L.map(e=>`${e.t}=${e.v}`).join(' ');}
+function lvlValue(p,s){const L=lvlParse(s.lvlLog);if(!L.length)return '';return String(p.procs.define.data.lvlAgg==='최고'?Math.max(...L.map(e=>e.v)):rnd(L.reduce((t,e)=>t+e.v,0)/L.length));}
+function lvlEd(p,ph,s){
+  const d=p.procs.define.data;const L=lvlParse(s.lvlLog);const A=`data-ph="${ph}" data-id="${s.id}"`;
+  const crit=[d.lvl1,d.lvl2,d.lvl3].map(x=>String(x||'').trim());
+  const sum=L.length?`${L.length}회 · 평균 ${rnd(L.reduce((t,e)=>t+e.v,0)/L.length)} · 최고 ${Math.max(...L.map(e=>e.v))}`:'없음';
+  const btns=[1,2,3].map(n=>`<button type="button" class="btn small lvl-b lvl-${n}" data-act="lvl-add" ${A} data-v="${n}"${crit[n-1]?` title="${esc(crit[n-1])}"`:''}>${n} ${LVL_NAMES[n-1]}</button>`).join('');
+  const cr=crit.some(Boolean)?`<ul class="lvl-crit">${crit.map((x,i)=>`<li><b>${i+1} ${LVL_NAMES[i]}</b> ${esc(x||'—')}</li>`).join('')}</ul>`:'<p class="hint">단계 기준 먼저 정하기</p>';
+  const rows=L.map((e,i)=>`<div class="lvl-row"><span class="dur-n">${i+1}</span>${t24(`data-lvl="${ph}|${s.id}|${i}"`,e.t,true,`${i+1}번 시각`)}<span class="lvl-seg" role="group" aria-label="${i+1}번 단계">${[1,2,3].map(n=>`<button type="button" class="btn small${e.v===n?' primary':''}" data-act="lvl-set" ${A} data-i="${i}" data-v="${n}" aria-pressed="${e.v===n}">${n}</button>`).join('')}</span><button type="button" class="btn small ghost danger" data-act="lvl-del" ${A} data-i="${i}" aria-label="${i+1}번 지우기">지우기</button></div>`).join('');
+  return `<div class="meas-ed" id="ses-${s.id}-lvl"><div class="bl-nat meas-live">${btns}</div>
+    <details class="dur-ed" data-dur-box="${s.id}:lvl"${durOpen.has(s.id+':lvl')?' open':''}><summary>강도 ${esc(sum)}</summary>${cr}${rows}
+    <div class="dur-foot"><span class="muted">${d.lvlAgg==='최고'?'회기 값: 최고 단계':'회기 값: 평균 단계'}</span></div></details></div>`;
+}
+function lvlAct(el,what){
+  const f=sesOf(el);if(!f)return;const {p,ph,s}=f;const L=lvlParse(s.lvlLog);const i=Number(el.dataset.i);const v=Number(el.dataset.v);
+  if(what==='add')L.push({t:natHms(Date.now()),v});
+  else if(what==='set'){if(!L[i])return;L[i].v=v;}
+  else if(what==='del'){L.splice(i,1);toast('지웠습니다');}
+  durOpen.add(s.id+':lvl');s.lvlLog=lvlStr(L);edApply(p,ph,s,'lvl');
+}
+function lvlEdit(el){
+  const [ph,id,i]=String(el.dataset.lvl).split('|');const p=curProject();if(!p)return;
+  const s=sesList(p,ph).find(x=>x.id===id);if(!s)return;const L=lvlParse(s.lvlLog);if(!L[Number(i)])return;
+  const v=el.value.trim();if(/^\d\d:\d\d:\d\d$/.test(v))L[Number(i)].t=v;else toast('시각을 비울 수 없습니다');
+  s.lvlLog=lvlStr(L);edApply(p,ph,s,'lvl');
+}
+
+/* 간격 기록 */
+function ivParse(log){return String(log||'').split(/\s+/).filter(Boolean).map(x=>{const m=/^(\d\d:\d\d:\d\d)=([10?])$/.exec(x);return m?{t:m[1],v:m[2]}:null;}).filter(Boolean);}
+function ivStr(L){return L.slice().sort((a,b)=>durSec(a.t)-durSec(b.t)).map(e=>`${e.t}=${e.v}`).join(' ');}
+function ivCount(L){const y=L.filter(e=>e.v==='1').length,n=L.filter(e=>e.v==='0').length;return {y,n,q:L.length-y-n};}
+function ivValue(s){const c=ivCount(ivParse(s.ivLog));return c.y+c.n?String(Math.round(c.y*100/(c.y+c.n))):'';}
+function ivEd(p,ph,s){
+  const d=p.procs.define.data;const L=ivParse(s.ivLog);const c=ivCount(L);const A=`data-ph="${ph}" data-id="${s.id}"`;
+  const sum=L.length?`있음 ${c.y}/${c.y+c.n}칸${c.y+c.n?` · ${Math.round(c.y*100/(c.y+c.n))}%`:''}${c.q?` · 빈칸 ${c.q}`:''}`:'없음';
+  const lab={'1':'있음','0':'없음','?':'빈칸'};
+  const cells=L.map((e,i)=>`<button type="button" class="iv-cell v${e.v==='?'?'q':e.v}" data-act="iv-cyc" ${A} data-i="${i}" aria-label="${e.t} ${lab[e.v]}, 누르면 바꿈">${e.t.slice(0,5)}<b>${lab[e.v]}</b></button>`).join('');
+  const open=durOpen.has(s.id+':iv')||c.q>0||!L.length;
+  return `<details class="dur-ed${c.q?' warn':''}" id="ses-${s.id}-iv" data-dur-box="${s.id}:iv"${open?' open':''}><summary>간격 ${esc(sum)}${c.q?' · 확인 필요':''}</summary>
+    <p class="hint">${esc(d.ivType||'순간 표집')} · ${secLabel(ivSecOf(p))} 간격</p>
+    ${L.length?`<div class="iv-grid">${cells}</div>`:''}
+    <div class="dur-foot"><button type="button" class="btn small" data-act="iv-make" ${A}>칸 만들기</button><button type="button" class="btn small" data-act="iv-add" ${A}>+ 칸</button>${L.length?`<button type="button" class="btn small ghost danger" data-act="iv-pop" ${A}>마지막 칸 지우기</button>`:''}<span class="muted">${L.length?'누르면 있음·없음·빈칸':'시작 시각·관찰 시간으로'}</span></div></details>`;
+}
+/* 회기 시작 시각·관찰 시간으로 신호 칸을 만든다(정각 맞춤이면 간격의 배수 시각). 이미 있는 칸은 그대로 */
+function ivSlots(p,s){
+  if(!/^\d\d:\d\d$/.test(s.time||'')||!(blNum(s.mins)>0))return null;
+  const P=ivSecOf(p);const S=durSec(s.time+':00');const E=S+blNum(s.mins)*60;
+  const out=[];let t=p.procs.define.data.ivAlign!==false?(Math.floor(S/P)+1)*P:S+P;
+  for(;t<=E&&out.length<600;t+=P)out.push(durHms(t));
+  return out;
+}
+function ivAct(el,what){
+  const f=sesOf(el);if(!f)return;const {p,ph,s}=f;const L=ivParse(s.ivLog);const i=Number(el.dataset.i);
+  if(what==='cyc'){const e=L[i];if(!e)return;e.v=e.v==='?'?'1':e.v==='1'?'0':'?';}
+  else if(what==='make'){
+    const sl=ivSlots(p,s);if(!sl){toast('시작 시각·관찰 시간을 먼저 적으세요');return;}
+    const have=new Set(L.map(e=>e.t));let n=0;sl.forEach(t=>{if(!have.has(t)){L.push({t,v:'?'});n++;}});
+    toast(n?`칸 ${n}개를 만들었습니다`:'이미 칸이 다 있습니다');
+  }
+  else if(what==='add'){const srt=L.slice().sort((a,b)=>durSec(a.t)-durSec(b.t));const last=srt[srt.length-1];
+    const t=last?durHms(durSec(last.t)+ivSecOf(p)):(ivSlots(p,{time:s.time,mins:'9999'})||[natHms(Date.now())])[0];L.push({t,v:'?'});}
+  else if(what==='pop'){const srt=L.slice().sort((a,b)=>durSec(a.t)-durSec(b.t));srt.pop();L.length=0;L.push(...srt);}
+  durOpen.add(s.id+':iv');s.ivLog=ivStr(L);edApply(p,ph,s,'iv');
+}
+setInterval(latTick,1000);
+function natSync(p,ph,s){const m=natMode(p,ph);if(m&&m!=='freq'&&m!=='dur')return;/* 지연시간 등은 측정값이 횟수가 아니라서 알림 숫자에 넣지 않는다 */if(PCN&&nat.key===natKey(p,ph,s))PCN.setCount({key:nat.key,count:blNum(s.value)||0}).catch(()=>{});}
 async function natDrain(){
   if(!PCN)return;
   if(nat.busy){nat.again=true;return;}
@@ -4428,6 +4633,22 @@ async function natDrain(){
       const {s}=f;
       if(f.ph==='abc'){if(!e.k)natAbcTap(f,e);}
       else if(e.k==='b'){/* 회기 시작만 (0회도 기록) */}
+      else if(e.k==='ls'||e.k==='le'){/* 지연시간: 지시 / 반응(f:'m' 최대 대기 넘음, 'x' 중단) */
+        const L=durParse(s.latLog);const last=L[L.length-1];const open=!!(last&&!last.b);
+        if(e.k==='ls'){if(!open)L.push({a:natHms(e.t),b:'',f:''});}
+        else if(open){last.b=natHms(e.t);if(e.f&&!last.f.includes(e.f))last.f+=e.f;}
+        s.latLog=durStr(L);s.value=latValue(s);
+      }
+      else if(e.k==='lv'||e.k==='lu'){/* 강도: 단계 1건 / 되돌리기 */
+        const L=lvlParse(s.lvlLog);
+        if(e.k==='lv')L.push({t:natHms(e.t),v:Math.max(1,Math.min(3,Number(e.v)||1))});else L.pop();
+        s.lvlLog=lvlStr(L);s.value=lvlValue(f.p,s);
+      }
+      else if(e.k==='iv'){/* 간격 기록: 신호 시각에 있음(1)·없음(0)·빈칸(?) */
+        const L=ivParse(s.ivLog);const t=natHms(e.t);const v=['1','0','?'].includes(String(e.v))?String(e.v):'?';
+        const ex=L.find(x=>x.t===t);if(ex){if(v!=='?')ex.v=v;}else L.push({t,v});
+        s.ivLog=ivStr(L);s.value=ivValue(s);
+      }
       else if(e.k==='ds'||e.k==='de'||e.k==='adj'){
         const L=durParse(s.durLog);const last=L[L.length-1];const open=!!(last&&!last.b);
         if(e.k==='ds'){if(!open)L.push({a:natHms(e.t),b:'',f:''});}
@@ -4449,7 +4670,7 @@ async function natDrain(){
       if(p&&Array.from(hit.values()).some(f=>f.p===p&&f.ph==='abc')&&onAbcPage(p))renderAbcAll();
       if(made&&p&&Array.from(hit.values()).some(f=>f.p===p)&&ui.view==='proc'){const y=window.scrollY;render();window.scrollTo(0,y);}
       else{
-        hit.forEach(f=>{if(f.p!==p||f.ph==='abc')return;const v=$(`#ses-${f.s.id}-value`);if(v&&document.activeElement!==v)v.value=f.s.value;const dl=$(`#ses-${f.s.id}-dur`);if(dl&&!dl.contains(document.activeElement))dl.outerHTML=durEd(f.p,f.ph,f.s);});
+        hit.forEach(f=>{if(f.p!==p||f.ph==='abc')return;const v=$(`#ses-${f.s.id}-value`);if(v&&document.activeElement!==v)v.value=f.s.value;const dl=$(`#ses-${f.s.id}-dur`);if(dl&&!dl.contains(document.activeElement))dl.outerHTML=durEd(f.p,f.ph,f.s);edRedraw(f.p,f.ph,f.s);});
         if(p&&Array.from(hit.values()).some(f=>f.p===p))refreshBl(p);
       }
       const cur=nat.key&&hit.get(nat.key);if(cur&&cur.s&&!cur.s.durLog)natSync(cur.p,cur.ph,cur.s);
@@ -4463,17 +4684,32 @@ async function natDrain(){
   finally{nat.busy=false;natUI();if(nat.again){nat.again=false;natDrain();}}
 }
 /* 기초선·중재 화면의 '앱 밖 측정' 줄 (빈도·지속시간만) */
-function natMode(p,ph){if(ph==='abc')return 'freq';const m=p.procs.define.data.measure;return m==='빈도'?'freq':m==='지속시간'?'dur':null;}
+const NAT_MODES={'빈도':'freq','지속시간':'dur','지연시간':'lat','강도':'lvl','간격 기록':'int'};
+const NAT_MODE_NAME={freq:'빈도',dur:'지속시간',lat:'지연시간',lvl:'강도',int:'간격 기록'};
+/* 지연시간·강도·간격 기록은 새 앱(ver 3)부터 */
+function natMode(p,ph){if(ph==='abc')return 'freq';const m=NAT_MODES[p.procs.define.data.measure]||null;return (m==='lat'||m==='lvl'||m==='int')&&nat.ver<3?null:m;}
+function natNeedsApp(p,ph){const m=NAT_MODES[p.procs.define.data.measure];return ph!=='abc'&&!!m&&!natMode(p,ph);}
+/* 위젯에 보낼 측정 대상: 지연시간 최대 대기, 간격 길이·정각 맞춤·신호 방식도 같이 */
+function natTargetArgs(p,ph,m){const d=p.procs.define.data;return {pid:p.id,ph,mode:m,title:natTitle(p,ph,m),latMax:latMaxSec(p),ivSec:ivSecOf(p),ivAlign:d.ivAlign!==false,ivMode:d.ivAlert||'vib'};}
+/* 정의에서 최대 대기·간격 등을 바꾸면 켜져 있는 앱 밖 측정에도 보낸다 */
+const NAT_OPT_F=new Set(['latMax','ivSec','ivAlign','ivAlert']);
+function natOptsPush(p){
+  clearTimeout(nat.optT);
+  nat.optT=setTimeout(async()=>{
+    const t=nat.target;if(!PCN||!t||t.pid!==p.id)return;const m=natMode(p,t.ph);if(!m||m!==t.mode)return;
+    try{const r=await PCN.setTarget(natTargetArgs(p,t.ph,m));nat.target=r.target&&r.target.on?r.target:null;toast('위젯 설정도 바꿨습니다');}catch(e){}
+  },700);
+}
 function natTargetOn(p,ph){const t=nat.target;return !!(t&&t.pid===p.id&&t.ph===ph&&t.mode===natMode(p,ph));}
 function natTargetRow(p,ph){
   if(!PCN)return '';
   const m=natMode(p,ph);
-  if(!m)return `<div class="bl-nat nat-target" id="nat-target-${ph}"><span class="muted">앱 밖 측정 미지원</span></div>`;
+  if(!m)return `<div class="bl-nat nat-target" id="nat-target-${ph}"><span class="muted">${natNeedsApp(p,ph)?'새 앱 설치 필요':'앱 밖 측정 미지원'}</span></div>`;
   const on=natTargetOn(p,ph);
   return `<div class="bl-nat nat-target" id="nat-target-${ph}">
     <button type="button" class="btn small${on?' primary':''}" data-act="nat-target" data-ph="${ph}" aria-pressed="${on}">${on?'앱 밖 측정 끄기':'앱 밖 측정 켜기'}</button>
     ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>`:''}
-    <span class="muted">${on?(ph==='abc'?'＋1마다 시각 한 행':'앱이 꺼져도 기록돼요'):'위젯·알림창에서 기록'}</span>
+    <span class="muted">${on?(ph==='abc'?'＋1마다 시각 한 행':({lat:'지시·반응을 눌러요',lvl:'1·2·3을 눌러요',int:'신호 때 있음·없음'}[m]||'앱이 꺼져도 기록돼요')):'위젯·알림창에서 기록'}</span>
     ${on&&m==='dur'&&nat.ver>=2?natChkBox():''}
   </div>`;
 }
@@ -4507,7 +4743,7 @@ async function natChkSet(){
   if(document.activeElement)document.activeElement.blur();
   natUI();
 }
-function natTitle(p,ph,m){return ph==='abc'?`${p.code||'학생'} · ABC 발생 시각`:`${p.code||'학생'} · ${ph==='iv'?'중재':'기초선'} · ${m==='dur'?'지속시간':'빈도'}`;}
+function natTitle(p,ph,m){return ph==='abc'?`${p.code||'학생'} · ABC 발생 시각`:`${p.code||'학생'} · ${ph==='iv'?'중재':'기초선'} · ${NAT_MODE_NAME[m]||'빈도'}`;}
 /* 표적행동 정의의 측정 방법이 바뀌면 위젯·알림·타일도 따라간다(빈도↔지속시간).
    위젯이 못 하는 방법(지연시간 등)으로 바뀌면 잠시 끄고 기억해 두었다가, 빈도·지속시간으로 돌아오면 다시 켠다.
    앱을 열 때(natDrain)와 측정 방법 칩을 누를 때 확인한다. 사람이 직접 켜기/끄기를 누르면 기억은 지운다. */
@@ -4524,11 +4760,11 @@ async function natFollow(){
   if(!t&&!m)return;
   nat.following=true;
   try{
-    if(!m){const r=await PCN.clearTarget();nat.key=r.active?r.key:null;nat.target=null;natFollowSet(ref);toast('이 방법은 위젯 미지원');}
+    if(!m){const r=await PCN.clearTarget();nat.key=r.active?r.key:null;nat.target=null;natFollowSet(ref);toast(natNeedsApp(p,ref.ph)?'새 앱을 깔면 위젯 됨':'이 방법은 위젯 미지원');}
     else{
-      const r=await PCN.setTarget({pid:p.id,ph:ref.ph,mode:m,title:natTitle(p,ref.ph,m)});
+      const r=await PCN.setTarget(natTargetArgs(p,ref.ph,m));
       nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;natFollowSet(null);
-      toast(`위젯: ${m==='dur'?'지속시간':'빈도'}으로 바뀜`);
+      toast(`위젯: ${NAT_MODE_NAME[m]}(으)로 바뀜`);
     }
   }catch(e){console.error(e);}
   finally{nat.following=false;natUI();}
@@ -4540,7 +4776,7 @@ async function natTargetToggle(el){
     if(natTargetOn(p,ph)){const r=await PCN.clearTarget();nat.key=r.active?r.key:null;nat.target=null;toast('앱 밖 측정을 껐습니다');}
     else{
       const had=nat.target&&(nat.target.pid!==p.id||nat.target.ph!==ph);
-      const r=await PCN.setTarget({pid:p.id,ph,mode:m,title:natTitle(p,ph,m)});
+      const r=await PCN.setTarget(natTargetArgs(p,ph,m));
       nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;
       toast(had?'다른 대상은 끄고 이 대상으로 바꿨습니다':(r.enabled?'위젯·빠른 설정·알림창에서 누르세요':'알림이 꺼져 있어 위젯·빠른 설정만 됩니다'));
     }

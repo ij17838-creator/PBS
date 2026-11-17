@@ -23,6 +23,9 @@ final class CounterNotifier {
     static final int CHECK_ID = 1702;
     /** '응답이 없어 자동으로 끝냈어요' 알림 */
     static final int AUTO_ID = 1703;
+    /** 간격 기록 신호 '지금 행동 있나요?' / 지연시간 최대 대기 넘음 */
+    static final int IV_ID = 1704;
+    static final int LAT_ID = 1705;
 
     private CounterNotifier() {}
 
@@ -47,7 +50,29 @@ final class CounterNotifier {
     /** 알림 한 줄 설명 (위젯·타일도 같은 글을 쓴다) */
     static String statusText(Context c) {
         if (!CounterStore.active(c)) {
-            return CounterStore.DUR.equals(CounterStore.tMode(c)) ? "대기 · 행동 시작을 누르면 새 회기" : "대기 · ＋1을 누르면 새 회기";
+            switch (CounterStore.tMode(c)) {
+                case CounterStore.DUR: return "대기 · 행동 시작을 누르면 새 회기";
+                case CounterStore.LAT: return "대기 · 지시를 누르면 새 회기";
+                case CounterStore.LVL: return "대기 · 단계를 누르면 새 회기";
+                case CounterStore.INT: return "대기 · 관찰 시작을 누르세요";
+                default: return "대기 · ＋1을 누르면 새 회기";
+            }
+        }
+        String md = CounterStore.mode(c);
+        if (CounterStore.LAT.equals(md)) {
+            if (CounterStore.running(c)) return "반응 기다리는 중 · 최대 " + CounterStore.latMax(c) + "초";
+            int n = CounterStore.count(c);
+            return "지시 " + n + "회" + (n > 0 ? " · 평균 " + Math.round(CounterStore.durMs(c) / 1000.0 / n) + "초" : "");
+        }
+        if (CounterStore.LVL.equals(md)) {
+            int lv = CounterStore.lastLvl(c);
+            return "지금 " + CounterStore.count(c) + "회" + (lv > 0 ? " · 마지막 " + lv + "단계" : "");
+        }
+        if (CounterStore.INT.equals(md)) {
+            long nx = CounterStore.ivNext(c);
+            return "있음 " + CounterStore.ivYes(c) + "/" + CounterStore.ivTot(c) + "칸"
+                + (CounterStore.ivPend(c) > 0 ? " · 답할 신호 있음" : "")
+                + (nx > 0 ? " · 다음 " + new SimpleDateFormat("HH:mm:ss", Locale.KOREA).format(new Date(nx)) : "");
         }
         if (CounterStore.DUR.equals(CounterStore.mode(c))) {
             long min = Math.round(CounterStore.durMs(c) / 6000.0);
@@ -82,7 +107,8 @@ final class CounterNotifier {
         Intent open = new Intent(c, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent openPi = PendingIntent.getActivity(c, 10, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         boolean on = CounterStore.active(c);
-        boolean dur = CounterStore.DUR.equals(CounterStore.uiMode(c));
+        String um = CounterStore.uiMode(c);
+        boolean dur = CounterStore.DUR.equals(um);
         boolean run = on && CounterStore.running(c);
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_pbs)
@@ -98,7 +124,26 @@ final class CounterNotifier {
             .setContentIntent(openPi)
             .setDeleteIntent(action(c, CounterReceiver.DISMISS, 4));
         if (run) b.setWhen(CounterStore.runStart(c)).setUsesChronometer(true);
-        if (dur && run && CounterStore.adjOn(c)) {
+        if (CounterStore.LAT.equals(um)) {
+            // 지연시간: 지시 → 반응 시작(같은 버튼), 기다리는 동안 '중단'
+            b.addAction(0, run ? "반응 시작" : "지시", action(c, CounterReceiver.LAT, 15));
+            if (run) b.addAction(0, "중단", action(c, CounterReceiver.LAT_X, 16));
+            else if (on) b.addAction(0, "회기 끝", action(c, CounterReceiver.END, 3));
+            else b.addAction(0, "회기 시작", action(c, CounterReceiver.BEGIN, 6));
+        } else if (CounterStore.LVL.equals(um)) {
+            // 강도: 알림 버튼은 3개까지라 단계 버튼만 (되돌리기·회기 끝은 위젯·앱에서)
+            b.addAction(0, "1 약", action(c, CounterReceiver.LV1, 17))
+                .addAction(0, "2 중", action(c, CounterReceiver.LV2, 18))
+                .addAction(0, "3 강", action(c, CounterReceiver.LV3, 19));
+        } else if (CounterStore.INT.equals(um)) {
+            if (on) {
+                b.addAction(0, "있음", action(c, CounterReceiver.IV_YES, 21))
+                    .addAction(0, "없음", action(c, CounterReceiver.IV_NO, 22))
+                    .addAction(0, "회기 끝", action(c, CounterReceiver.END, 3));
+            } else {
+                b.addAction(0, "관찰 시작", action(c, CounterReceiver.BEGIN, 6));
+            }
+        } else if (dur && run && CounterStore.adjOn(c)) {
             // 진행 중: 같은 버튼으로 끝 + 늦게 눌렀을 때 시작 당기기 (알림 버튼은 3개까지라 −1분은 위젯에만)
             b.addAction(0, "행동 끝", action(c, CounterReceiver.DUR, 5))
                 .addAction(0, "−10초", action(c, CounterReceiver.ADJ10, 7))
@@ -121,8 +166,11 @@ final class CounterNotifier {
     /* ---------- 끝 확인 ---------- */
 
     /** 알림 방식마다 채널이 따로 있다(안드로이드는 채널을 만든 뒤 소리·진동을 못 바꾸기 때문) */
-    static String checkChannel(Context c, String mode) {
-        String id = "pbs_chk_" + mode;
+    static String checkChannel(Context c, String mode) { return alertChannel(c, mode, false); }
+
+    /** iv=true면 간격 기록 신호용 채널 (끝 확인과 따로 끄고 켤 수 있게) */
+    static String alertChannel(Context c, String mode, boolean iv) {
+        String id = (iv ? "pbs_iv_" : "pbs_chk_") + mode;
         if (Build.VERSION.SDK_INT < 26) return id;
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (nm.getNotificationChannel(id) != null) return id;
@@ -133,8 +181,9 @@ final class CounterNotifier {
             case CounterStore.CHK_QUIET: name = "끝 확인 (무음)"; break;
             default: name = "끝 확인 (진동)";
         }
+        if (iv) name = name.replace("끝 확인", "간격 신호");
         NotificationChannel ch = new NotificationChannel(id, name, NotificationManager.IMPORTANCE_HIGH);
-        ch.setDescription("지속시간 행동이 아직 진행 중인지 묻는 알림");
+        ch.setDescription(iv ? "간격 기록: 지금 행동이 있는지 묻는 신호" : "지속시간 행동이 아직 진행 중인지 묻는 알림");
         boolean snd = CounterStore.CHK_SOUND.equals(mode) || CounterStore.CHK_BOTH.equals(mode);
         boolean vib = CounterStore.CHK_VIB.equals(mode) || CounterStore.CHK_BOTH.equals(mode);
         if (snd) {
@@ -156,10 +205,12 @@ final class CounterNotifier {
         return s >= 60 ? (s / 60) + "분 " + (s % 60) + "초" : s + "초";
     }
 
-    private static NotificationCompat.Builder alertBase(Context c, String mode) {
+    private static NotificationCompat.Builder alertBase(Context c, String mode) { return alertBase(c, mode, false); }
+
+    private static NotificationCompat.Builder alertBase(Context c, String mode, boolean iv) {
         boolean snd = CounterStore.CHK_SOUND.equals(mode) || CounterStore.CHK_BOTH.equals(mode);
         boolean vib = CounterStore.CHK_VIB.equals(mode) || CounterStore.CHK_BOTH.equals(mode);
-        NotificationCompat.Builder b = new NotificationCompat.Builder(c, checkChannel(c, mode))
+        NotificationCompat.Builder b = new NotificationCompat.Builder(c, alertChannel(c, mode, iv))
             .setSmallIcon(R.drawable.ic_stat_pbs)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -198,6 +249,42 @@ final class CounterNotifier {
             .setContentTitle("행동을 자동으로 끝냈어요")
             .setContentText("끝 시각 " + new SimpleDateFormat("HH:mm:ss", Locale.KOREA).format(new Date(endAt)) + " · 앱에서 확인");
         try { NotificationManagerCompat.from(c).notify(AUTO_ID, b.build()); } catch (SecurityException ignored) {}
+    }
+
+    /* ---------- 지연시간 · 간격 기록 ---------- */
+
+    /** 지연시간: 최대 대기가 지나 '반응 없음(최대)'으로 적었을 때 */
+    static void showLatMax(Context c) {
+        NotificationCompat.Builder b = alertBase(c, CounterStore.CHK_VIB)
+            .setContentTitle("반응 없이 " + CounterStore.latMax(c) + "초 지남")
+            .setContentText("최대 대기로 적었어요 · 앱에서 확인")
+            .setTimeoutAfter(60 * 1000L);
+        try { NotificationManagerCompat.from(c).notify(LAT_ID, b.build()); } catch (SecurityException ignored) {}
+    }
+
+    /** 간격 기록 신호: 지금 이 순간 행동이 있나요? (있음 · 없음). 다음 신호 때 저절로 사라진다 */
+    static void showIvSignal(Context c) {
+        long t = CounterStore.ivPend(c);
+        if (t <= 0) return;
+        NotificationCompat.Builder b = alertBase(c, CounterStore.ivMode(c), true)
+            .setContentTitle("지금 보세요 · 행동 있나요?")
+            .setContentText(new SimpleDateFormat("HH:mm:ss", Locale.KOREA).format(new Date(t)) + " 신호 · 다음 신호 전까지 답하기")
+            .setTimeoutAfter(Math.max(5000L, CounterStore.ivSec(c) * 1000L - 1000L))
+            .addAction(0, "있음", action(c, CounterReceiver.IV_YES, 21))
+            .addAction(0, "없음", action(c, CounterReceiver.IV_NO, 22));
+        try { NotificationManagerCompat.from(c).notify(IV_ID, b.build()); } catch (SecurityException ignored) {}
+    }
+
+    /** 간격 기록: 응답 없는 신호가 10분 넘게 이어져 회기를 닫았을 때 */
+    static void showIvAutoEnd(Context c) {
+        NotificationCompat.Builder b = alertBase(c, CounterStore.CHK_QUIET, true)
+            .setContentTitle("간격 기록을 끝냈어요")
+            .setContentText("응답 없는 신호가 10분 넘게 이어짐 · 앱에서 확인");
+        try { NotificationManagerCompat.from(c).notify(AUTO_ID, b.build()); } catch (SecurityException ignored) {}
+    }
+
+    static void cancelIv(Context c) {
+        NotificationManagerCompat.from(c).cancel(IV_ID);
     }
 
     static void cancelCheck(Context c) {

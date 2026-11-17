@@ -76,7 +76,8 @@ public class PbsCounterPlugin extends Plugin {
         t.put("title", CounterStore.tTitle(c));
         o.put("target", t);
         // 2 = 끝 확인·늦은 시작 보정이 있는 앱 (웹 화면이 먼저 업데이트돼도 옛 앱에선 설정 칸을 숨기려고)
-        o.put("ver", 2);
+        // 3 = 지연시간·강도·간격 기록도 앱 밖 측정 가능
+        o.put("ver", 3);
         JSObject k = new JSObject();
         k.put("sec", CounterStore.chkSec(c));
         k.put("mode", CounterStore.chkMode(c));
@@ -140,7 +141,7 @@ public class PbsCounterPlugin extends Plugin {
         call.resolve(state());
     }
 
-    /** 앱 밖 측정 대상 정하기: {pid, ph:'bl'|'iv', title, mode:'freq'|'dur'}. 알림 권한이 없어도 위젯·타일은 된다 */
+    /** 앱 밖 측정 대상 정하기: {pid, ph:'bl'|'iv', title, mode:'freq'|'dur'|'lat'|'lvl'|'int', latMax:최대 대기(초), ivSec:간격(초), ivAlign:정각 맞춤, ivMode:신호 방식}. 알림 권한이 없어도 위젯·타일은 된다 */
     @PluginMethod
     public void setTarget(PluginCall call) {
         if (Build.VERSION.SDK_INT >= 33 && getPermissionState("notifications") != PermissionState.GRANTED) {
@@ -160,7 +161,9 @@ public class PbsCounterPlugin extends Plugin {
         String ph = call.getString("ph", "");
         if (pid == null || pid.isEmpty() || ph == null || ph.isEmpty()) { call.reject("측정 대상이 없습니다"); return; }
         Context c = getContext();
-        CounterStore.setTarget(c, pid, ph, call.getString("title", "PBS 기록"), call.getString("mode", CounterStore.FREQ));
+        CounterStore.setTarget(c, pid, ph, call.getString("title", "PBS 기록"), call.getString("mode", CounterStore.FREQ),
+            call.getInt("latMax", 60), call.getInt("ivSec", 120), !Boolean.FALSE.equals(call.getBoolean("ivAlign", true)),
+            call.getString("ivMode", CounterStore.CHK_VIB));
         CounterNotifier.refreshAll(c);
         call.resolve(state());
     }
