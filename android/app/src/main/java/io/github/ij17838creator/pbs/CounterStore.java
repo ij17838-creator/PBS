@@ -119,6 +119,22 @@ final class CounterStore {
     /** 버튼을 보여 줄 게 있는지 */
     static boolean anything(Context c) { return active(c) || hasTarget(c); }
 
+    /** 음량 3번을 켰는지 (btnVol은 쓰지 않음, 예전 값) */
+    static boolean btnOn(Context c) { return prefs(c).getBoolean("btnOn", false); }
+    static boolean btnVol(Context c) { return prefs(c).getBoolean("btnVol", true); }
+    /** 시험용: 센 누름마다 아주 짧게 떨기 */
+    static boolean btnTest(Context c) { return prefs(c).getBoolean("btnTest", false); }
+    static String btnLog(Context c) { return prefs(c).getString("btnLog", ""); }
+    /** 음량 3번 감시가 지금 돌아야 하는지: 켬 + 회기 열림 + 빈도·지속시간·지연시간 */
+    static boolean pressOn(Context c) {
+        if (!btnOn(c) || !active(c)) return false; // 배터리: 회기가 열려 있을 때만
+        String m = mode(c);
+        return FREQ.equals(m) || DUR.equals(m) || LAT.equals(m);
+    }
+    static void setBtn(Context c, boolean on, boolean vol, boolean test) {
+        prefs(c).edit().putBoolean("btnOn", on).putBoolean("btnVol", vol).putBoolean("btnTest", test).commit();
+    }
+
     /* ---------- 내부 도우미 ---------- */
     private static JSONArray events(SharedPreferences p) {
         try { return new JSONArray(p.getString("events", "[]")); }
