@@ -4739,7 +4739,7 @@ function natChkBox(){
     <div class="dur-foot"><label class="check"><input type="checkbox" data-chk="adj"${k.adj?' checked':''}> <span>늦은 시작 보정 버튼</span></label><span class="muted">끝 시각은 마지막 확인</span></div>
   </details>`;
 }
-/* 음량 3번: 회기가 열려 있을 때 화면이 꺼진 채 음량 버튼을 3번 빠르게 누르면 방법별 기본 버튼(＋1·시작/끝·지시/반응). 값은 기기(앱)에 저장된다 */
+/* 음량 버튼 기록: 회기가 열려 있을 때 화면이 꺼진 채 음량 버튼을 정한 횟수(1~3번, 기본 1번)만큼 누르면 방법별 기본 버튼(＋1·시작/끝·지시/반응). 값은 기기(앱)에 저장된다 */
 /* 측정 시간: 회기가 이 시간만큼 지나면 닫거나(기본) 자동 갱신. 갱신 때 횟수 0이면 새 회기, 아니면 같은 회기에서 시간만 다시. 값은 기기(앱)에 저장 */
 function natTimerBox(){
   const t=nat.timer||{min:0,renew:false,reset:true};
@@ -4767,17 +4767,19 @@ async function natTimerSet(){
   natUI();
 }
 function natBtnBox(m,on){
-  if(nat.ver<4)return `<div class="muted" style="flex:1 1 100%">음량 3번 · 새 앱 설치 필요</div>`;
-  if(!on)return `<div class="muted" style="flex:1 1 100%">음량 3번 · 켜기 후 사용</div>`;
-  const next={freq:'3번=＋1',dur:'3번=행동 시작·끝',lat:'3번=지시·반응'}[m];
-  if(!next)return `<div class="muted" style="flex:1 1 100%">음량 3번 · 이 방법 미지원</div>`;
-  const b=nat.btn||{on:false};
-  return `<details class="nat-chk" data-nat-btn${nat.btnOpen?' open':''}><summary>음량 3번 · ${b.on?'켬':'끔'}</summary>
+  if(nat.ver<4)return `<div class="muted" style="flex:1 1 100%">음량 버튼 · 새 앱 설치 필요</div>`;
+  if(!on)return `<div class="muted" style="flex:1 1 100%">음량 버튼 · 켜기 후 사용</div>`;
+  const next={freq:'＋1',dur:'행동 시작·끝',lat:'지시·반응'}[m];
+  if(!next)return `<div class="muted" style="flex:1 1 100%">음량 버튼 · 이 방법 미지원</div>`;
+  const b=nat.btn||{on:false};const k=Number(b.count)||1;
+  const cnt=[1,2,3].map(x=>`<option value="${x}"${x===k?' selected':''}>${x}번${x===1?'(기본)':''}</option>`).join('');
+  return `<details class="nat-chk" data-nat-btn${nat.btnOpen?' open':''}><summary>음량 버튼 · ${b.on?`${k}번=${next}`:'끔'}</summary>
     <div class="dur-foot">
-      <label class="check"><input type="checkbox" data-btn3="on"${b.on?' checked':''}> <span>회기 중 음량 3번</span></label>
+      <label class="check"><input type="checkbox" data-btn3="on"${b.on?' checked':''}> <span>회기 중 음량 버튼</span></label>
+      <label class="field"><span>누를 횟수</span><select data-btn3="count"${b.on?'':' disabled'}>${cnt}</select></label>
       <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}${b.on?'':' disabled'}> <span>누를 때마다 진동(시험)</span></label>
     </div>
-    <div class="dur-foot muted"><span>회기는 타일·위젯으로</span><span>${next}</span><span>4번째 누름=취소</span><span>재생·통화 중엔 안 셈</span><span>화면 꺼졌을 때만</span></div>
+    <div class="dur-foot muted"><span>회기는 타일·위젯으로</span><span>${k}번=${next}</span><span>${k>1?`${k+1}번째 누름=취소`:'잘못 누르면 −1'}</span><span>재생·통화 중엔 안 셈</span><span>화면 꺼졌을 때만</span></div>
     ${b.on&&'alive' in b?`<div class="dur-foot"><strong>${b.alive?'누름 세는 중':'회기 열면 셈'}</strong><button type="button" class="btn small" data-act="nat-btn-refresh">기록 새로 보기</button></div>
     <pre class="btn3-log">${esc(b.log||'아직 누른 기록 없음')}</pre>`:''}
   </details>`;
@@ -4786,8 +4788,8 @@ async function natBtnSet(){
   const box=$('[data-nat-btn]');if(!box||!PCN)return;
   const g=n=>box.querySelector(`[data-btn3="${n}"]`);
   try{
-    const r=await PCN.setButtons({on:!!g('on').checked,test:!!(g('test')&&g('test').checked)});
-    nat.btn=r.btn||nat.btn;toast(nat.btn&&nat.btn.on?'화면 끈 채 음량 3번':'음량 3번을 껐습니다');
+    const r=await PCN.setButtons({on:!!g('on').checked,test:!!(g('test')&&g('test').checked),count:Number(g('count').value)||1});
+    nat.btn=r.btn||nat.btn;toast(nat.btn&&nat.btn.on?`화면 끈 채 음량 ${Number(nat.btn.count)||1}번`:'음량 버튼 기록을 껐습니다');
   }catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
   if(document.activeElement)document.activeElement.blur();
   natUI();

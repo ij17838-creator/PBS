@@ -17,7 +17,7 @@ import androidx.core.content.ContextCompat;
  * 앱이 꺼져 있어도 시간을 재도록 '포그라운드 서비스'로 돌리고(알림창의 측정 알림을 그대로 같이 씀),
  * 서비스를 못 띄우는 기기·상황에 대비해 알람(정확하지 않을 수 있음)도 같이 걸어 둔다.
  * 두 쪽이 같은 때를 두 번 알려도 CounterStore.checkTick이 시각을 보고 한 번만 처리한다.
- * '음량 3번'(PressWatch)을 켜 두면 회기가 열려 있는 동안 돌며 화면 꺼짐 때 음량 누름을 센다. 전원·이어폰 버튼은 쓰지 않는다.
+ * '음량 버튼 기록'(PressWatch)을 켜 두면 회기가 열려 있는 동안 돌며 화면 꺼짐 때 음량 누름을 센다. 전원·이어폰 버튼은 쓰지 않는다.
  */
 public class DurWatch extends Service {
     private static volatile boolean alive;
@@ -26,7 +26,7 @@ public class DurWatch extends Service {
     private final Runnable tick = this::onTick;
     private PressWatch press;
 
-    /** 음량 3번 감시가 지금 돌고 있는지 (진단용) */
+    /** 음량 버튼 기록 감시가 지금 돌고 있는지 (진단용) */
     static boolean pressAlive() { DurWatch w = inst; return alive && w != null && w.press != null; }
 
     /** 상태가 바뀔 때마다 부른다: 필요하면 시계를 켜고, 아니면 끈다 */

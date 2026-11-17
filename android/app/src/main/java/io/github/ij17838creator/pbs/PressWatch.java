@@ -19,7 +19,7 @@ import android.os.Vibrator;
 import androidx.core.content.ContextCompat;
 
 /**
- * '음량 3번' — 회기가 열려 있고 화면이 꺼져 있을 때 음량 버튼(올림·내림 아무거나)을 3번 빠르게 누르면
+ * '음량 버튼 기록' — 회기가 열려 있고 화면이 꺼져 있을 때 음량 버튼(올림·내림 아무거나)을 정한 횟수(1~3번, 기본 1번)만큼 빠르게 누르면
  * 그 방법의 기본 버튼을 누른 것으로 기록한다: 빈도 ＋1, 지속시간 행동 시작/끝, 지연시간 지시/반응. 강도·간격 기록은 기록 안 함.
  * 회기 시작은 빠른 설정·위젯·알림창에서 한다(배터리 때문에 회기가 열려 있을 때만 돈다).
  *
@@ -27,11 +27,11 @@ import androidx.core.content.ContextCompat;
  * '소리 없는 재생'(0으로 채운 AudioTrack)을 틀어 두면 음량 키가 미디어 음량을 바꾸므로, 음량 바뀜 방송(VOLUME_CHANGED_ACTION)으로
  * 누름을 세고 곧바로 원래 칸(base)으로 되돌린다. 맨 위·맨 아래 칸에선 안 바뀌니 감시 중엔 한 칸 안쪽으로 옮기고, 화면이 켜지면 원래대로.
  * 음악·영상 재생 중(다른 앱 재생이 시작되면 재생 목록 수가 늘어남)이거나 통화 중이면 세지 않고 소리 없는 재생도 멈춘다.
- * 3번째 누름 뒤 GRACE 동안 한 번 더 누르면 취소. 그 사이 기기가 잠들지 않게 깨움 잠금을 건다.
- * 진단: 최근 처리 결과를 btnLog에 남겨 앱의 '음량 3번' 칸에서 보여 준다. 전원·이어폰 버튼은 쓰지 않는다.
+ * 2·3번일 때: 마지막 누름 뒤 GRACE 동안 한 번 더 누르면 취소. 1번일 때: 누를 때마다 바로 기록(취소 대기 없음, 잘못 누르면 알림창 −1). 그 사이 기기가 잠들지 않게 깨움 잠금을 건다.
+ * 진단: 최근 처리 결과를 btnLog에 남겨 앱의 '음량 버튼 기록' 칸에서 보여 준다. 전원·이어폰 버튼은 쓰지 않는다.
  */
 final class PressWatch {
-    /** 누름 사이 최대 간격, 3번 전체 최대 길이, 3번째 뒤 취소를 기다리는 시간(ms) */
+    /** 누름 사이 최대 간격, 정한 횟수 전체 최대 길이, 마지막 누름 뒤 취소를 기다리는 시간(ms) */
     static final long GAP = 1500L, SPAN = 4000L, GRACE = 1200L;
     /** 꾹 누를 때 반복되는 신호 간격보다 짧으면 '꾹 누름'으로 보고 세지 않는다 */
     static final long VOL_REPEAT = 120L;
@@ -47,7 +47,7 @@ final class PressWatch {
     private AudioTrack silent;
     private int base = -1, orig = -1, cfgBase = -1;
     private boolean others, started;
-    private final long[] ts = new long[3];
+    private final long[] ts = new long[3]; // 정한 횟수(1~3)까지
     private int n;
     private long lastPress, lastVolRaw, ignoreUntil;
     private boolean pending;
@@ -249,30 +249,38 @@ final class PressWatch {
         }
         if (n > 0 && now - lastPress > GAP) n = 0;
         lastPress = now;
-        if (pending) { // 3번 뒤 한 번 더 = 취소
+        int need = CounterStore.btnCount(c);
+        if (need <= 1) { // 1번: 누를 때마다 바로 기록(취소 대기 없음 = 빠르게 이어 눌러도 다 셈, 잘못 누르면 알림창 −1)
+            n = 0;
+            log(c, "음량 · 1번");
+            commitNow();
+            return;
+        }
+        if (pending) { // 정한 횟수 뒤 한 번 더 = 취소
             pending = false;
             h.removeCallbacks(commit);
             n = 0;
             ignoreUntil = now + GAP;
             unlock();
-            log(c, "음량 · 4번째 = 취소");
+            log(c, "음량 · " + (need + 1) + "번째 = 취소");
             feedback(c, FB_CANCEL);
             scheduleIdle();
             return;
         }
         if (now < ignoreUntil) { ignoreUntil = now + GAP; scheduleIdle(); log(c, "음량 · 이어진 누름 무시"); return; }
-        if (n < 3) ts[n++] = now;
+        if (n < need) ts[n++] = now;
         String res = n + "번째";
-        if (n >= 3) {
+        if (n >= need) {
             if (now - ts[0] <= SPAN) {
                 pending = true;
                 n = 0;
                 lock();
                 h.postDelayed(commit, GRACE);
-                res = "3번째 · 기록 대기";
-            } else { // 너무 느렸다: 앞의 것을 버리고 뒤 두 번만 남긴다
-                ts[0] = ts[1]; ts[1] = ts[2]; n = 2;
-                res = "느려서 다시 2번째";
+                res = need + "번째 · 기록 대기";
+            } else { // 너무 느렸다: 맨 앞 것을 버린다
+                for (int k = 1; k < need; k++) ts[k - 1] = ts[k];
+                n = need - 1;
+                res = "느려서 다시 " + n + "번째";
             }
         }
         log(c, "음량 · " + res);
@@ -294,6 +302,10 @@ final class PressWatch {
         pending = false;
         n = 0;
         ignoreUntil = SystemClock.elapsedRealtime() + GAP;
+        commitNow();
+    }
+
+    private void commitNow() {
         String why = busyWhy();
         if (!why.isEmpty()) { unlock(); log(c, why + " · 기록 안 함"); update(); return; }
         int fb = act(c);
