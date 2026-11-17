@@ -28,6 +28,8 @@ import androidx.core.content.ContextCompat;
  * 음량 버튼: 화면이 꺼져 있는 동안에만 '원격 음량' 미디어 세션을 켜서 받는다(화면이 켜져 있으면 음량은 평소처럼).
  *   화면 꺼짐 상태에서 음량 버튼이 앱에 오는지는 기기·안드로이드 버전마다 다르다[추정].
  *
+ * 음악·영상(유튜브 등)이 재생 중이거나 통화·영상통화 중이면 세지 않는다. 이때 음량 세션도 끄므로 음량 버튼은 평소처럼 음량을 바꾼다.
+ *
  * 3번째 누름 뒤 GRACE 동안 한 번 더 누르면 취소(짧게 2번 떨림). 아니면 기록하고 떨림으로 알린다.
  *   회기가 없으면 '회기 시작'(길게 1번). 회기가 열려 있으면 그 방법의 기본 버튼:
  *   빈도 ＋1(짧게 1번), 지속시간·지연시간 시작(길게 1번)/끝(길게 2번). 강도·간격 기록은 회기 시작만(이미 열려 있으면 짧게 3번 = 기록 안 함).
@@ -43,6 +45,7 @@ final class PressWatch {
     private final Context c;
     private final Handler h = new Handler(Looper.getMainLooper());
     private BroadcastReceiver scr;
+    private AudioManager.AudioPlaybackCallback playCb;
     private MediaSession ms;
     private boolean msOn;
     private boolean vol;
@@ -77,6 +80,17 @@ final class PressWatch {
             catch (Exception e) { scr = null; }
             lastScreen = interactive();
         }
+        if (playCb == null && Build.VERSION.SDK_INT >= 26) { // 다른 앱이 재생을 시작·멈추면 음량 세션을 다시 정한다
+            try {
+                AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);
+                playCb = new AudioManager.AudioPlaybackCallback() {
+                    @Override public void onPlaybackConfigChanged(java.util.List<android.media.AudioPlaybackConfiguration> l) {
+                        h.postDelayed(PressWatch.this::onIdle, 300L);
+                    }
+                };
+                if (am != null) am.registerAudioPlaybackCallback(playCb, h); else playCb = null;
+            } catch (Exception e) { playCb = null; }
+        }
         updateSession();
     }
 
@@ -86,6 +100,10 @@ final class PressWatch {
         pending = false;
         n = 0;
         if (scr != null) { try { c.unregisterReceiver(scr); } catch (Exception ignored) {} scr = null; }
+        if (playCb != null && Build.VERSION.SDK_INT >= 26) {
+            try { ((AudioManager) c.getSystemService(Context.AUDIO_SERVICE)).unregisterAudioPlaybackCallback(playCb); } catch (Exception ignored) {}
+            playCb = null;
+        }
         if (ms != null) { try { ms.setActive(false); ms.release(); } catch (Exception ignored) {} ms = null; msOn = false; }
     }
 
@@ -96,9 +114,19 @@ final class PressWatch {
         } catch (Exception e) { return true; }
     }
 
+    /** 음악·영상 재생 중이거나 통화(일반·인터넷 전화·영상통화) 중·벨 울리는 중인지 */
+    private boolean mediaBusy() {
+        try {
+            AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);
+            if (am == null) return false;
+            if (am.isMusicActive()) return true;
+            return am.getMode() != AudioManager.MODE_NORMAL;
+        } catch (Exception e) { return false; }
+    }
+
     /** 음량 세션은 화면이 꺼져 있을 때와 누르는 도중에만 켠다(화면이 켜져 있으면 음량 버튼은 평소처럼) */
     private void updateSession() {
-        boolean want = vol && (!interactive() || n > 0 || pending);
+        boolean want = vol && !mediaBusy() && (!interactive() || n > 0 || pending);
         if (want == msOn) return;
         try {
             if (want) {
@@ -138,6 +166,12 @@ final class PressWatch {
     /** 누름 한 번 (전원 = 화면 상태 바뀜, 음량 = 버튼 신호) */
     private void press() {
         long now = SystemClock.elapsedRealtime();
+        if (mediaBusy()) { // 음악·영상·통화 중엔 세지 않는다
+            if (pending) { pending = false; h.removeCallbacks(commit); }
+            n = 0;
+            updateSession();
+            return;
+        }
         if (n > 0 && now - lastPress > GAP) n = 0;
         lastPress = now;
         if (pending) { // 3번 뒤 한 번 더 = 취소
@@ -178,6 +212,7 @@ final class PressWatch {
     private void commit() {
         pending = false;
         n = 0;
+        if (mediaBusy()) { updateSession(); return; } // 기다리는 사이 재생·통화가 시작됐으면 기록하지 않는다
         ignoreUntil = SystemClock.elapsedRealtime() + GAP;
         feedback(c, act(c));
         CounterNotifier.refreshAll(c);
