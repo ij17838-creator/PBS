@@ -68,6 +68,16 @@
                 android:value="교사가 수업 자료를 띄운 채 학생 행동을 셀 수 있도록 다른 앱 위에 작은 기록 버튼을 띄움" />
         </service>
 
+        <!-- 칠판·PC와 함께 세기: 공유 프로젝트 빈도 회기가 열려 있는 동안만 돈다 -->
+        <service
+            android:name=".LiveSync"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="교사가 휴대폰으로 연 행동 측정 회기를 교실 전자칠판·컴퓨터와 실시간으로 함께 세도록 횟수를 주고받음" />
+        </service>
+
         <!-- 재부팅·앱 업데이트 뒤 측정 알림·위젯 다시 그리기 -->
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>

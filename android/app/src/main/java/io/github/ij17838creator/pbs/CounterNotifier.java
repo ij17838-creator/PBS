@@ -315,6 +315,7 @@ final class CounterNotifier {
         CounterWidget.updateAll(c);
         CounterTile.refresh(c);
         FloatBubble.sync(c);
+        LiveSync.sync(c);
     }
 
     static void cancel(Context c) {

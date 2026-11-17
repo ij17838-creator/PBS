@@ -369,6 +369,20 @@ final class CounterStore {
         return count;
     }
 
+    /** 칠판·PC에서 누른 ＋1·−1(LiveSync): 지금 열린 그 회기에만 넣는다. 회기를 새로 열지 않는다 */
+    static synchronized boolean liveTap(Context c, String key, int d, long t) {
+        SharedPreferences p = prefs(c);
+        if (!p.getBoolean("active", false) || !key.equals(p.getString("key", "")) || !FREQ.equals(p.getString("mode", FREQ))) return false;
+        int count = p.getInt("count", 0);
+        if (d < 0 && count <= 0) return false;
+        JSONArray ev = events(p);
+        push(ev, t, key, null, d);
+        SharedPreferences.Editor e = p.edit().putInt("count", Math.max(0, count + d));
+        if (d > 0) e.putLong("last", Math.max(p.getLong("last", 0L), t));
+        save(e, ev);
+        return true;
+    }
+
     /** 지속시간 '행동 시작/행동 끝'. 열린 회기가 없으면 새 회기를 열고 바로 시작한다. 반환값: 지금 진행 중인지 */
     static synchronized boolean durToggle(Context c) {
         SharedPreferences p = prefs(c);

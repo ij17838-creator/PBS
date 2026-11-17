@@ -79,7 +79,9 @@ public class PbsCounterPlugin extends Plugin {
         // 3 = 지연시간·강도·간격 기록도 앱 밖 측정 가능
         // 4 = 음량 버튼 기록(회기 중 화면 꺼짐) / 5 = 측정 시간·자동 갱신
         // 6 = 떠 있는 ＋1(다른 앱 위 버튼) / 7 = 떠 있는 ＋1은 회기 중에만·작고 반투명 / 8 = 트리거 누르기·긋기(작은 판) / 9 = 에어 커맨드처럼 작은 아이콘+펼치는 판
-        o.put("ver", 9);
+        // 10 = 칠판·PC와 함께 세기를 앱(LiveSync)이 직접(앱 화면이 꺼져 있어도)
+        o.put("ver", 10);
+        o.put("live", LiveSync.status(c));
         JSObject bub = new JSObject();
         bub.put("on", FloatBubble.on(c));
         bub.put("perm", FloatBubble.perm(c));
@@ -240,6 +242,15 @@ public class PbsCounterPlugin extends Plugin {
         super.handleOnResume();
         // 설정에서 '다른 앱 위에 표시'를 켜고 돌아왔을 때 바로 띄운다
         FloatBubble.sync(getContext());
+    }
+
+    /** 칠판·PC와 함께 세기 설정(LiveSync.config 참고). 바꾸면 바로 맞춘다 */
+    @PluginMethod
+    public void setLive(PluginCall call) {
+        Context c = getContext();
+        LiveSync.config(c, call.getData());
+        LiveSync.sync(c);
+        call.resolve(state());
     }
 
     @PluginMethod

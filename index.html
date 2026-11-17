@@ -3899,6 +3899,8 @@ async function makeFirestoreAdapter(){
     },
     /* 실시간 함께 세기: 칸 문서 하나를 덮어쓴다(수정 기록·충돌 없음) */
     async liveSet(pid,path,val,me){await F.setDoc(sub(pid,'cells',key(path)),{path,value:JSON.stringify(val),deleted:false,rev:0,baseRev:0,by:me.uid,byName:me.name,at:ts()});count(1);},
+    /* 설치형 앱이 직접(앱 화면이 꺼져 있어도) 서버에 쓰도록 넘겨 줄 로그인 정보 */
+    async liveCred(){const u=auth.currentUser;if(!u)return null;return {idToken:await u.getIdToken(),refresh:u.refreshToken||'',uid:u.uid};},
     liveWatchHost(pid,cb){return F.onSnapshot(sub(pid,'cells',key(LIVE_HOST)),s=>cb(s.exists()?syncParse(s.data().value):null),()=>{});},
     liveWatchTaps(pid,cb){return F.onSnapshot(F.query(sub(pid,'cells'),F.where('path','>=',LIVE_TAP),F.where('path','<',LIVE_TAP+'\uf8ff')),s=>cb(s.docs.map(d=>syncParse(d.data().value)).filter(Boolean)),()=>{});},
     watchDoc(pid,cb){return F.onSnapshot(pd(pid),s=>cb(s.exists()?s.data():null),()=>{});},
@@ -4729,7 +4731,7 @@ async function natDrain(){
   if(nat.busy){nat.again=true;return;}
   nat.busy=true;
   try{
-    const r=await PCN.drain();nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;nat.ver=r.ver||1;nat.chk=r.chk||null;nat.btn=r.btn||null;nat.timer=r.timer||null;nat.bub=r.bub||null;
+    const r=await PCN.drain();nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;nat.ver=r.ver||1;nat.chk=r.chk||null;nat.btn=r.btn||null;nat.timer=r.timer||null;nat.bub=r.bub||null;nat.live=r.live||null;
     const hit=new Map();let lost=0,made=0;
     (r.events||[]).forEach(e=>{
       if(String(e.key||'').startsWith('live|')){liveNatEv(e);return;}/* 다른 기기 회기를 이 기기 알림창·떠 있는 ＋1로 셈 */
@@ -4786,7 +4788,7 @@ async function natDrain(){
     if(lost)toast(`지워진 회기의 앱 밖 기록 ${lost}건은 버렸습니다`);
     setTimeout(natFollow,0);/* 측정 방법이 바뀌었으면 위젯도 맞춘다(공유로 바뀐 경우 포함) */
   }catch(e){console.error(e);}
-  finally{nat.busy=false;natUI();liveHostTick();if(nat.again){nat.again=false;natDrain();}}
+  finally{nat.busy=false;natUI();liveHostTick();liveNative();if(nat.again){nat.again=false;natDrain();}}
 }
 /* 기초선·중재 화면의 '앱 밖 측정' 줄 (빈도·지속시간만) */
 const NAT_MODES={'빈도':'freq','지속시간':'dur','지연시간':'lat','강도':'lvl','간격 기록':'int'};
@@ -4995,6 +4997,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-17-16',d:'2026-11-17',k:'apk',need:10,t:'앱이 꺼져도 칠판과 함께 세기',items:['빠른 설정·위젯으로 시작해도','칠판·PC에 ＋1이 바로 뜸','칠판 ＋1도 휴대폰에 바로','회기 중 알림 \'함께 세는 중\'']},
   {id:'2026-11-17-15',d:'2026-11-17',k:'web',t:'대기 창에 지금 횟수',items:['작은 창 위에 큰 숫자','휴대폰: 함께 세기 상태 줄','PC: 휴대폰 소식 시각 표시']},
   {id:'2026-11-17-14',d:'2026-11-17',k:'web',t:'대기 창은 측정 방법 뒤에',items:['측정 방법 \'빈도\'를 고른','공유 프로젝트가 있을 때만','대기 창이 저절로 뜸']},
   {id:'2026-11-17-13',d:'2026-11-17',k:'web',t:'＋1 대기 창 고침',items:['닫아도 다시 누르면 또 뜸','앱 안 ＋1도 칠판에 바로','못 보내면 휴대폰에 알림','칠판에 \'휴대폰 소식 없음\' 표시']},
@@ -5235,6 +5238,11 @@ function liveWrite(pid,path,val){const me=syncMe();if(!me||!Sync.ad||!Sync.ad.li
 function liveHostSt(p){
   if(!Sync.user)return '칠판 함께 세기: 로그인 필요';
   if(p.procs.define.data.measure!=='빈도')return '칠판 함께 세기: 빈도만 됨';
+  if(nat.ver>=10){const L=nat.live||{};
+    if(!L.on)return '칠판 함께 세기: 준비 중';
+    if(!L.host||String(L.host).split('|')[0]!==p.id)return '칠판 함께 세기: 앱 밖 측정 회기 시작 때';
+    if(L.err)return `칠판 함께 세기: 못 보냄(${L.err})`;
+    return `칠판 함께 세기 중 · ${L.ok?natHms(L.ok)+' 보냄':'보내는 중'}`;}
   const H=live.host;
   if(!H||H.pid!==p.shared.projectId)return '칠판 함께 세기: 앱 밖 측정 회기 시작 때';
   if(live.err)return `칠판 함께 세기: 못 보냄(${live.err})`;
@@ -5249,6 +5257,7 @@ function liveHostWant(){
 function liveSeenGet(id){try{const o=JSON.parse(localStorage.getItem('pbs-live-seen')||'{}');return o.id===id&&o.seen?o.seen:{};}catch(e){return {};}}
 function liveSeenSet(id,seen){try{localStorage.setItem('pbs-live-seen',JSON.stringify({id,seen}));}catch(e){}}
 function liveHostTick(){
+  if(nat.ver>=10)return;/* 새 앱(ver 10)은 앱이 직접 보낸다(LiveSync) */
   if(!Sync.ad||!Sync.user||!Sync.ad.liveSet)return;
   const f=liveHostWant();const H=live.host;
   const want=f?{pid:f.p.shared.projectId,id:f.s.id}:null;
@@ -5282,13 +5291,28 @@ function liveAbsorb(list){
   natUI();natSync(p,ph,s);liveHostTick();
 }
 /* ---- 다른 기기(컴퓨터·칠판) ---- */
+/* 새 앱(ver 10): 로그인 정보와 함께 셀 프로젝트 목록을 앱에 넘긴다(바뀔 때·20분마다 토큰 새로) */
+async function liveNative(){
+  if(!PCN||nat.ver<10||!PCN.setLive||!Sync.ad||!Sync.ad.liveCred)return;
+  if(!Sync.user){if(live.natSig!=='off'){live.natSig='off';PCN.setLive({on:false}).catch(()=>{});}return;}
+  const map={};store.projects.filter(liveReady).forEach(p=>{map[p.id]=p.shared.projectId;});
+  const me=syncMe();const sig=JSON.stringify([me.uid,me.name,map]);
+  if(sig===live.natSig&&Date.now()-(live.natAt||0)<20*60000)return;
+  live.natSig=sig;live.natAt=Date.now();
+  try{
+    const cr=await Sync.ad.liveCred();if(!cr||!cr.refresh){live.natSig='';return;}
+    const r=await PCN.setLive({on:true,apiKey:FIREBASE_CONFIG.apiKey,project:FIREBASE_CONFIG.projectId,uid:cr.uid,name:me.name,dev:liveDev(),idToken:cr.idToken,refresh:cr.refresh,map});
+    nat.live=r.live||nat.live;liveHostStUI();
+  }catch(e){live.natSig='';console.warn(e);}
+}
 function liveWatch(){
+  liveNative();
   if(!Sync.ad||!Sync.user||!Sync.ad.liveWatchHost)return;
   const want=new Set(store.projects.filter(x=>x.shared).map(x=>x.shared.projectId));
   live.watch.forEach((un,pid)=>{if(!want.has(pid)){un();live.watch.delete(pid);live.docs.delete(pid);}});
   want.forEach(pid=>{if(!live.watch.has(pid))live.watch.set(pid,Sync.ad.liveWatchHost(pid,v=>{live.docs.set(pid,v);liveRemote();}));});
 }
-function liveUnwatch(){live.watch.forEach(un=>{try{un();}catch(e){}});live.watch.clear();live.docs.clear();liveRemote();}
+function liveUnwatch(){liveNative();live.watch.forEach(un=>{try{un();}catch(e){}});live.watch.clear();live.docs.clear();liveRemote();}
 /* 지금 다른 기기에서 열린 회기(15분 넘게 소식이 없으면 끝난 것으로 봄) */
 function liveActive(){
   let best=null;
