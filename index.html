@@ -4811,7 +4811,8 @@ function natTargetRow(p,ph){
   const m=natMode(p,ph);
   if(!m)return `<div class="bl-nat nat-target" id="nat-target-${ph}"><span class="muted">${natNeedsApp(p,ph)?'새 앱 설치 필요':'앱 밖 측정 미지원'}</span></div>`;
   const on=natTargetOn(p,ph);
-  return `<div class="bl-nat nat-target" id="nat-target-${ph}">
+  const lst=p.shared&&ph!=='abc'?`<div class="muted live-host-st" style="flex:1 1 100%">${esc(liveHostSt(p))}</div>`:'';
+  return `<div class="bl-nat nat-target" id="nat-target-${ph}">${lst}
     <button type="button" class="btn small${on?' primary':''}" data-act="nat-target" data-ph="${ph}" aria-pressed="${on}">${on?'앱 밖 측정 끄기':'앱 밖 측정 켜기'}</button>
     ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>`:''}
     ${on&&nat.ver>=6?`<button type="button" class="btn small${nat.bub&&nat.bub.on&&nat.bub.perm?' primary':''}" data-act="nat-bub" aria-pressed="${!!(nat.bub&&nat.bub.on&&nat.bub.perm)}">${nat.bub&&nat.bub.on&&nat.bub.perm?'떠 있는 ＋1 끄기':'떠 있는 ＋1'}</button>${nat.ver>=8?trigSeg('nat-bub-trig',nat.bub&&nat.bub.trig):''}`:''}
@@ -4994,6 +4995,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-17-15',d:'2026-11-17',k:'web',t:'대기 창에 지금 횟수',items:['작은 창 위에 큰 숫자','휴대폰: 함께 세기 상태 줄','PC: 휴대폰 소식 시각 표시']},
   {id:'2026-11-17-14',d:'2026-11-17',k:'web',t:'대기 창은 측정 방법 뒤에',items:['측정 방법 \'빈도\'를 고른','공유 프로젝트가 있을 때만','대기 창이 저절로 뜸']},
   {id:'2026-11-17-13',d:'2026-11-17',k:'web',t:'＋1 대기 창 고침',items:['닫아도 다시 누르면 또 뜸','앱 안 ＋1도 칠판에 바로','못 보내면 휴대폰에 알림','칠판에 \'휴대폰 소식 없음\' 표시']},
   {id:'2026-11-17-12',d:'2026-11-17',k:'web',t:'＋1 대기 창 더 빨리',items:['화면을 처음 누르면 대기 창','회기 시작 뒤 한 번 누르면 ＋1','창에 \'진행 중\'·시작 시각','뒤에 있으면 탭 제목 깜빡임']},
@@ -5128,7 +5130,8 @@ function miniSes(){const p=curProject();if(!p||!mini.id)return null;const s=sesL
 function miniCount(){
   let t;if(mini.live){const n=liveCount();t=n==null?'대기':n+'회';}else{const r=miniSes();t=(r?(blNum(r.s.value)||0):0)+'회';}
   $('#mini-n').textContent=t;$('#mini-pad-n').textContent=t;if(mini.pip){const e=mini.pip.document.getElementById('mini-n');if(e)e.textContent=t;
-    const w=mini.pip.document.getElementById('mini-who');if(w){const r=mini.live&&liveActive();w.textContent=r?(Date.now()-(Number(r.v.at)||0)>90000?'휴대폰 소식 없음(앱 열기)':`● ${r.v.st?r.v.st+' 시작 · ':''}진행 중`):'휴대폰 회기 대기 중';w.title=r?(r.v.title||''):'';w.classList.toggle('on',!!r);}}
+    const w=mini.pip.document.getElementById('mini-who');if(w){const r=mini.live&&liveActive();w.textContent=r?(Date.now()-(Number(r.v.at)||0)>90000?'휴대폰 소식 없음(앱 열기)':`● ${r.v.st?r.v.st+' 시작 · ':''}진행 중`):'휴대폰 회기 대기 중';w.title=r?(r.v.title||''):'';w.classList.toggle('on',!!r);}
+    const c=mini.pip.document.getElementById('mini-cnt');if(c){const n=mini.live?liveCount():null;c.textContent=n==null?'—':n+'회';}}
 }
 function miniInc(d){
   if(mini.live){if(!liveInc(d))return;}
@@ -5165,7 +5168,7 @@ async function miniShow(tryPip){
   /* 다른 창 위에 띄우기(되는 브라우저만) */
   if(tryPip&&window.documentPictureInPicture&&matchMedia('(min-width:900px)').matches){
     try{
-      const req=documentPictureInPicture.requestWindow(miniTrig()==='draw'?{width:240,height:230}:{width:180,height:200});
+      const req=documentPictureInPicture.requestWindow(miniTrig()==='draw'?{width:240,height:mini.live?280:230}:{width:180,height:mini.live?250:200});
       const w=await Promise.race([req,new Promise((_,no)=>setTimeout(()=>no(new Error('late')),2500))]).catch(e=>{req.then(x=>{try{x.close();}catch(y){}}).catch(()=>{});throw e;});
       if(!mini.on){try{w.close();}catch(e){}return;}
       const st=getComputedStyle(document.documentElement);const v=k=>st.getPropertyValue(k);
@@ -5175,12 +5178,12 @@ async function miniShow(tryPip){
         #mini-mark{width:110px;height:110px;border-radius:50%;border:0;background:${v('--accent')};color:${v('--accent-ink')};font-size:30px;font-weight:800;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
         #mini-mark small{font-size:15px;font-weight:700;color:inherit}
         #mini-mark.hit{animation:h .35s ease}@keyframes h{40%{transform:scale(1.12)}}
-        .who{font-size:13px;font-weight:700;color:${v('--muted')};text-align:center;max-width:96vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.who.on{color:${v('--accent')}}
+        .who{font-size:13px;font-weight:700;color:${v('--muted')};text-align:center;max-width:96vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.who.on{color:${v('--accent')}}.cnt{font-size:34px;font-weight:800;line-height:1;color:${v('--ink')}}
         .t{display:flex;gap:6px}.t button{min-height:40px;min-width:52px;border:1px solid ${v('--line-strong')};border-radius:10px;background:${v('--surface')};color:${v('--ink')};font-weight:700}
       </style>`;
       const drawM=miniTrig()==='draw';
       w.document.head.insertAdjacentHTML('beforeend',`<style>.pad{width:94vw;border:2px solid ${v('--accent')};border-radius:12px;overflow:hidden;background:${v('--surface')}}.pad b{display:block;padding:4px 8px;background:${v('--accent')};color:${v('--accent-ink')};font-size:14px}.pad canvas{display:block;width:100%;height:110px;touch-action:none}.pad.ok canvas{background:${v('--accent-soft')}}</style>`);
-      w.document.body.innerHTML=(mini.live?'<div class="who" id="mini-who"></div>':'')+(drawM?'<div class="pad"><b>그으면 ＋1 · <span id="mini-n">0</span></b><canvas id="pip-cv" width="360" height="220"></canvas></div>':'<button id="mini-mark" aria-label="1 더하기">＋1<small id="mini-n">0</small></button>')+'<div class="t"><button id="mini-dec" aria-label="1 빼기">−1</button><button id="mini-out">펼치기</button></div>';
+      w.document.body.innerHTML=(mini.live?'<div class="who" id="mini-who"></div><div class="cnt" id="mini-cnt" aria-label="지금 횟수">—</div>':'')+(drawM?'<div class="pad"><b>그으면 ＋1 · <span id="mini-n">0</span></b><canvas id="pip-cv" width="360" height="220"></canvas></div>':'<button id="mini-mark" aria-label="1 더하기">＋1<small id="mini-n">0</small></button>')+'<div class="t"><button id="mini-dec" aria-label="1 빼기">−1</button><button id="mini-out">펼치기</button></div>';
       if(drawM)padBind(w.document.getElementById('pip-cv'),()=>miniInc(1));
       else w.document.getElementById('mini-mark').addEventListener('click',()=>miniInc(1));
       w.document.getElementById('mini-dec').addEventListener('click',()=>miniInc(-1));
@@ -5226,8 +5229,18 @@ Object.assign(actions,{'mini-on':el=>miniOn(el),
    안드로이드(칠판 앱)는 알림창 ＋1·떠 있는 ＋1을 그 회기로 띄운다(key 'live|공유ID|회기id'). */
 function liveDev(){try{let d=localStorage.getItem('pbs-dev');if(!d){d=uid('d');localStorage.setItem('pbs-dev',d);}return d;}catch(e){return live.dev||(live.dev=uid('d'));}}
 function liveWrite(pid,path,val){const me=syncMe();if(!me||!Sync.ad||!Sync.ad.liveSet)return;
-  Sync.ad.liveSet(pid,path,val,me).then(()=>{live.err='';live.okAt=Date.now();}).catch(e=>{console.warn(e);const c=(e&&e.code)||'오류';if(live.err!==c){live.err=c;toast(`칠판·PC로 못 보냄(${/permission/.test(c)?'권한':c})`);}});}
+  Sync.ad.liveSet(pid,path,val,me).then(()=>{live.err='';live.okAt=Date.now();liveHostStUI();}).catch(e=>{console.warn(e);const c=(e&&e.code)||'오류';setTimeout(liveHostStUI,0);if(live.err!==c){live.err=c;toast(`칠판·PC로 못 보냄(${/permission/.test(c)?'권한':c})`);}});}
 /* ---- 주인(회기를 연 앱) ---- */
+/* 휴대폰: 칠판·PC 함께 세기 상태 한 줄 */
+function liveHostSt(p){
+  if(!Sync.user)return '칠판 함께 세기: 로그인 필요';
+  if(p.procs.define.data.measure!=='빈도')return '칠판 함께 세기: 빈도만 됨';
+  const H=live.host;
+  if(!H||H.pid!==p.shared.projectId)return '칠판 함께 세기: 앱 밖 측정 회기 시작 때';
+  if(live.err)return `칠판 함께 세기: 못 보냄(${live.err})`;
+  return `칠판 함께 세기 중 · ${live.okAt?natHms(live.okAt)+' 보냄':'보내는 중'}`;
+}
+function liveHostStUI(){const p=curProject();if(!p||!p.shared)return;$$('.live-host-st').forEach(e=>{e.textContent=liveHostSt(p);});}
 function liveHostWant(){
   if(!PCN||!nat.key||nat.key.startsWith('live|'))return null;
   const f=natFind(nat.key);if(!f||f.ph==='abc'||!f.s||!f.p.shared)return null;
@@ -5379,6 +5392,7 @@ function liveShow(){
 }
 /* 위쪽 막대: 휴대폰 회기 중임을 알리고 바로 ＋1 */
 function liveBar(){
+  $$('.live-st').forEach(e=>{e.textContent=liveSt(e.dataset.pid);});
   const b=$('#live-bar');if(!b)return;const r=liveActive();
   const shown=mini.on&&mini.live&&(mini.pip||!$('#mini').hidden);
   if(!r||shown){b.hidden=true;return;}
@@ -5390,9 +5404,17 @@ function liveBar(){
 /* 회기 화면: 작은 창을 미리 열어 두면 휴대폰 회기 때 저절로 ＋1이 된다(크롬 등 큰 화면) */
 /* 함께 세기를 기다릴 만한 프로젝트: 공유 중이고 측정 방법이 '빈도' */
 function liveReady(p){return !!(p&&p.shared&&p.procs.define.data.measure==='빈도');}
+/* 브라우저: 그 프로젝트의 휴대폰 소식 */
+function liveSt(pid){
+  const v=live.docs.get(pid);if(!Sync.user)return '로그인하면 휴대폰과 연결';
+  if(!v||!v.at)return '휴대폰 소식 아직 없음';
+  const t=natHms(v.at);
+  if(v.dev===liveDev())return '이 기기에서 연 회기';
+  return v.on?`휴대폰 회기 중 · ${t} 소식`:`휴대폰 회기 끝 · ${t}`;
+}
 function liveArmRow(p,ph){
   if(PCN||!liveReady(p)||!window.documentPictureInPicture||ph==='abc'||!matchMedia('(min-width:900px)').matches)return '';
-  return `<div class="bl-nat"><button type="button" class="btn small" data-act="live-arm">＋1 창 대기</button><label class="check"><input type="checkbox" data-live-auto${liveAuto()?' checked':''}> <span>자동으로 띄우기</span></label><span class="muted">휴대폰 회기 때 ＋1</span></div>`;
+  return `<div class="bl-nat"><button type="button" class="btn small" data-act="live-arm">＋1 창 대기</button><label class="check"><input type="checkbox" data-live-auto${liveAuto()?' checked':''}> <span>자동으로 띄우기</span></label><span class="muted live-st" data-pid="${esc(p.shared.projectId)}">${esc(liveSt(p.shared.projectId))}</span></div>`;
 }
 Object.assign(actions,{
   'live-arm':()=>{liveNotePerm();liveMini(true);},
