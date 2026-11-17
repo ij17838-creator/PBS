@@ -95,16 +95,46 @@ final class CounterStore {
     static int ivTot(Context c) { return prefs(c).getInt("ivTot", 0); }
     static int lastLvl(Context c) { return prefs(c).getInt("lastLvl", 0); }
 
-    /** 시계가 필요한지: 지속시간 끝 확인 / 지연시간 최대 대기 / 간격 기록 신호 */
+    /** 측정 시간(분, 0 = 제한 없음), 끝나면 자동 갱신할지, 갱신 때 횟수를 0으로(새 회기) 할지 */
+    static int sesMin(Context c) { return Math.max(0, Math.min(240, prefs(c).getInt("sesMin", 0))); }
+    static boolean sesRenew(Context c) { return prefs(c).getBoolean("sesRenew", false); }
+    static boolean sesReset(Context c) { return prefs(c).getBoolean("sesReset", true); }
+    /** 이번 측정 시간이 끝나는 시각(ms), 측정 시간이 없으면 0 */
+    static long sesEnd(Context c) {
+        SharedPreferences p = prefs(c);
+        int m = sesMin(c);
+        long st = p.getLong("sesStart", 0L);
+        if (!p.getBoolean("active", false) || m <= 0 || st <= 0) return 0L;
+        return st + m * 60000L;
+    }
+    static void setTimer(Context c, int min, boolean renew, boolean reset) {
+        SharedPreferences p = prefs(c);
+        SharedPreferences.Editor e = p.edit().putInt("sesMin", Math.max(0, Math.min(240, min))).putBoolean("sesRenew", renew).putBoolean("sesReset", reset);
+        if (p.getBoolean("active", false) && p.getLong("sesStart", 0L) <= 0) e.putLong("sesStart", System.currentTimeMillis());
+        e.commit();
+    }
+
+    /** 시계가 필요한지: 측정 시간 / 지속시간 끝 확인 / 지연시간 최대 대기 / 간격 기록 신호 */
     static boolean watching(Context c) {
+        return sesEnd(c) > 0 || modeWatching(c);
+    }
+
+    private static boolean modeWatching(Context c) {
         if (!active(c)) return false;
         String m = mode(c);
         if (DUR.equals(m)) return running(c) && !CHK_OFF.equals(chkMode(c));
         if (LAT.equals(m)) return running(c);
         return INT.equals(m);
     }
-    /** 다음에 시계가 깨어날 시각(ms) */
+    /** 다음에 시계가 깨어날 시각(ms): 측정 시간 끝과 방법별 확인 중 빠른 것 */
     static long nextCheck(Context c) {
+        long se = sesEnd(c);
+        if (!modeWatching(c)) return se;
+        long m = modeNext(c);
+        return se > 0 ? Math.min(se, m) : m;
+    }
+
+    private static long modeNext(Context c) {
         SharedPreferences p = prefs(c);
         String m = p.getString("mode", FREQ);
         if (LAT.equals(m)) return p.getLong("runStart", 0L) + latMax(c) * 1000L;
@@ -212,6 +242,7 @@ final class CounterStore {
             .putLong("durMs", 0L)
             .putLong("ivPend", 0L).putInt("ivYes", 0).putInt("ivTot", 0).putInt("ivMissRun", 0).putInt("lastLvl", 0)
             .putLong("ivNext", INT.equals(p.getString("tMode", FREQ)) ? firstSignal(now, ivSecP(p), p.getBoolean("ivAlign", true)) : 0L);
+        e.putLong("sesStart", now);
         push(ev, now, key, "b", 0);
         return true;
     }
@@ -238,6 +269,7 @@ final class CounterStore {
             .putString("key", key)
             .putString("title", title)
             .putString("mode", FREQ)
+            .putLong("sesStart", now)
             .putInt("count", Math.max(0, count))
             .putLong("last", 0L)
             .putBoolean("running", false)
@@ -503,7 +535,9 @@ final class CounterStore {
         SharedPreferences p = prefs(c);
         if (!watching(c)) return 0;
         long now = System.currentTimeMillis();
-        if (now < nextCheck(c) - 1500L) return 0;
+        long se = sesEnd(c);
+        if (se > 0 && now >= se - 1500L) return timerLocked(c, p, se);
+        if (!modeWatching(c) || now < modeNext(c) - 1500L) return 0;
         String md = p.getString("mode", FREQ);
         if (INT.equals(md)) return ivTickLocked(c, p, now);
         if (LAT.equals(md)) {
@@ -524,6 +558,29 @@ final class CounterStore {
         }
         p.edit().putInt("miss", miss + 1).commit();
         return 1;
+    }
+
+    /** 측정 시간이 끝남. 반환값: 6 = 회기를 닫음, 7 = 새 회기로 갱신(횟수 0), 8 = 같은 회기에서 시간만 다시 */
+    private static int timerLocked(Context c, SharedPreferences p, long se) {
+        if (sesRenew(c) && !sesReset(c)) {
+            p.edit().putLong("sesStart", se).commit();
+            return 8;
+        }
+        JSONArray ev = events(p);
+        SharedPreferences.Editor e = p.edit();
+        boolean durRun = DUR.equals(p.getString("mode", FREQ)) && p.getBoolean("running", false);
+        endLocked(p, e, ev, se);
+        save(e, ev);
+        if (!sesRenew(c)) return 6;
+        e = p.edit();
+        if (!beginLocked(p, e, ev, se)) { save(e, ev); return 6; } // 측정 대상이 없으면(알림창 ＋1 회기) 닫기만
+        if (durRun) { // 진행 중이던 행동은 새 회기에서 이어서
+            e.commit();
+            push(ev, se, p.getString("key", ""), "ds", 0);
+            e = p.edit().putBoolean("running", true).putLong("runStart", se).putLong("conf", se).putInt("miss", 0);
+        }
+        save(e, ev);
+        return 7;
     }
 
     /** 끝 확인 설정 (앱의 '끝 확인 설정') */

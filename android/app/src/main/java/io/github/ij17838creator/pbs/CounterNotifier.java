@@ -49,13 +49,19 @@ final class CounterNotifier {
 
     /** 알림 한 줄 설명 (위젯·타일도 같은 글을 쓴다) */
     static String statusText(Context c) {
+        long se = CounterStore.sesEnd(c);
+        String t = statusBase(c);
+        return se > 0 ? t + " · " + CounterStore.hm(se) + "까지" : t;
+    }
+
+    private static String statusBase(Context c) {
         if (!CounterStore.active(c)) {
             switch (CounterStore.tMode(c)) {
                 case CounterStore.DUR: return "대기 · 행동 시작을 누르면 새 회기";
                 case CounterStore.LAT: return "대기 · 지시를 누르면 새 회기";
                 case CounterStore.LVL: return "대기 · 단계를 누르면 새 회기";
                 case CounterStore.INT: return "대기 · 관찰 시작을 누르세요";
-                default: return "대기 · ＋1을 누르면 새 회기";
+                default: return "대기 · 회기 시작을 누르세요";
             }
         }
         String md = CounterStore.mode(c);
@@ -280,6 +286,17 @@ final class CounterNotifier {
         NotificationCompat.Builder b = alertBase(c, CounterStore.CHK_QUIET, true)
             .setContentTitle("간격 기록을 끝냈어요")
             .setContentText("응답 없는 신호가 10분 넘게 이어짐 · 앱에서 확인");
+        try { NotificationManagerCompat.from(c).notify(AUTO_ID, b.build()); } catch (SecurityException ignored) {}
+    }
+
+    /** 측정 시간이 끝났을 때 (6 = 회기 닫음, 7 = 새 회기, 8 = 같은 회기에서 시간만 다시) */
+    static void showTimer(Context c, int r) {
+        int m = CounterStore.sesMin(c);
+        String text = r == 6 ? "회기를 닫았어요 · 다음 회기는 다시 시작"
+            : r == 7 ? "새 회기를 시작했어요 · 횟수 0부터" : "같은 회기에서 시간만 다시 재요";
+        NotificationCompat.Builder b = alertBase(c, CounterStore.CHK_QUIET, true)
+            .setContentTitle("측정 시간 " + m + "분 끝")
+            .setContentText(text);
         try { NotificationManagerCompat.from(c).notify(AUTO_ID, b.build()); } catch (SecurityException ignored) {}
     }
 

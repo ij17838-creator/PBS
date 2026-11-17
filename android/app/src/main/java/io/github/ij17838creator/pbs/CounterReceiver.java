@@ -49,7 +49,9 @@ public class CounterReceiver extends BroadcastReceiver {
     static void handle(Context c, String a) {
         switch (a) {
             case INC:
-                if (CounterStore.add(c, 1) > 0) buzz(c, 60);
+                // 열린 회기가 없을 때 ＋1은 회기 시작만 한다(시작하면서 1회가 저절로 세지지 않게)
+                if (CounterStore.begin(c)) buzz(c, 40);
+                else if (CounterStore.add(c, 1) > 0) buzz(c, 60);
                 break;
             case DEC:
                 CounterStore.add(c, -1);
@@ -101,6 +103,12 @@ public class CounterReceiver extends BroadcastReceiver {
                 if (r == 3) { CounterNotifier.showLatMax(c); break; }
                 if (r == 4) { CounterNotifier.showIvSignal(c); break; }
                 if (r == 5) { CounterNotifier.cancelIv(c); CounterNotifier.showIvAutoEnd(c); break; }
+                if (r >= 6 && r <= 8) { // 측정 시간 끝: 회기 닫음 / 새 회기로 갱신 / 시간만 다시
+                    if (r != 8) { CounterNotifier.cancelCheck(c); CounterNotifier.cancelIv(c); }
+                    CounterNotifier.showTimer(c, r);
+                    buzz(c, 400);
+                    break;
+                }
                 CounterNotifier.cancelCheck(c);
                 CounterNotifier.showAutoEnd(c, CounterStore.last(c));
                 break;
