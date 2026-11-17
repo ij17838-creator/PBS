@@ -20,16 +20,15 @@ import android.os.Vibrator;
 import androidx.core.content.ContextCompat;
 
 /**
- * '버튼 3번' — 기기를 주머니에 넣고 화면이 꺼진 채로 전원·음량 버튼을 섞어 3번 빠르게 누르면 측정을 시작한다.
+ * '버튼 3번' — 기기를 주머니에 넣고 화면이 꺼진 채로 음량 버튼(올림·내림 아무거나)을 3번 빠르게 누르면 측정을 시작한다.
  * DurWatch(포그라운드 서비스) 안에서 돈다. 켜 두면 측정 알림이 있는 동안 계속 돈다.
  *
- * 전원 버튼: 앱이 직접 받을 수 없어서 '화면 켜짐/꺼짐'이 바뀐 횟수를 센다(누를 때마다 화면이 켜졌다 꺼졌다 하므로).
- *   화면 상태는 DisplayListener로 바로 받고, 화면 켜짐/꺼짐 방송은 늦게 올 수 있어 0.7초 뒤에도 안 바뀌었을 때만 보탠다.
- *   기록 대기(GRACE) 동안 기기가 잠들지 않게 잠깐 깨움 잠금(WakeLock)을 건다.
- *   진단: 최근 누름과 처리 결과를 btnLog에 남겨 앱의 '버튼 3번' 칸에서 보여 준다.
- *   갤럭시 '측면 버튼 두 번 누르기(카메라 빠른 실행)'가 켜져 있으면 두 번째 누름이 카메라를 열어 세지 못한다 → 꺼야 한다.
  * 음량 버튼: 화면이 꺼져 있는 동안에만 '원격 음량' 미디어 세션을 켜서 받는다(화면이 켜져 있으면 음량은 평소처럼).
  *   화면 꺼짐 상태에서 음량 버튼이 앱에 오는지는 기기·안드로이드 버전마다 다르다[추정].
+ *   화면 상태는 DisplayListener와 화면 켜짐/꺼짐 방송으로 받아 세션을 켜고 끄는 데만 쓴다.
+ * 전원 버튼은 세지 않는다(2026-11-17 실기기: 갤럭시 탭이 빠른 전원 누름을 5초에 한 번만 화면에 반영해 셀 수 없었음).
+ * 기록 대기(GRACE) 동안 기기가 잠들지 않게 잠깐 깨움 잠금(WakeLock)을 건다.
+ * 진단: 최근 누름과 처리 결과를 btnLog에 남겨 앱의 '버튼 3번' 칸에서 보여 준다.
  *
  * 음악·영상(유튜브 등)이 재생 중이거나 통화·영상통화 중이면 세지 않는다. 이때 음량 세션도 끄므로 음량 버튼은 평소처럼 음량을 바꾼다.
  *
@@ -101,7 +100,7 @@ final class PressWatch {
                 };
                 dm.registerDisplayListener(disp, h);
             } catch (Exception e) { disp = null; }
-            log(c, "감시 시작" + (vol ? " · 음량도" : "") + (disp == null ? " · 화면신호 없음" : ""));
+            log(c, "감시 시작" + (disp == null ? " · 화면신호 없음" : ""));
         }
         if (playCb == null && Build.VERSION.SDK_INT >= 26) { // 다른 앱이 재생을 시작·멈추면 음량 세션을 다시 정한다
             try {
@@ -139,9 +138,8 @@ final class PressWatch {
 
     /** 화면 상태가 바뀜 = 전원 누름 한 번 (같은 상태가 또 오면 무시) */
     private void screen(boolean on, String src) {
-        if (lastScreen != null && lastScreen == on) { updateSession(); return; }
         lastScreen = on;
-        press((on ? "전원(켜짐)" : "전원(꺼짐)") + ("방송".equals(src) ? "·방송" : ""));
+        updateSession(); // 전원 누름은 세지 않고 음량 세션만 켜고 끈다
     }
 
     private void lock() {
@@ -188,7 +186,7 @@ final class PressWatch {
 
     /** 음량 세션은 화면이 꺼져 있을 때와 누르는 도중에만 켠다(화면이 켜져 있으면 음량 버튼은 평소처럼) */
     private void updateSession() {
-        boolean want = vol && !mediaBusy() && (!interactive() || n > 0 || pending);
+        boolean want = !mediaBusy() && (!interactive() || n > 0 || pending);
         if (want == msOn) return;
         try {
             if (want) {
@@ -207,8 +205,10 @@ final class PressWatch {
                 ms.setActive(false);
             }
             msOn = want;
+            log(c, want ? "화면 꺼짐 · 음량 받기 켬" : "음량 받기 끔" + (mediaBusy() ? "(재생·통화 중)" : ""));
         } catch (Exception e) {
             msOn = false;
+            log(c, "음량 받기 실패: " + e.getClass().getSimpleName());
         }
     }
 
