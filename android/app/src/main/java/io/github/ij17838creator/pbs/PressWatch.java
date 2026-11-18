@@ -20,7 +20,8 @@ import androidx.core.content.ContextCompat;
 
 /**
  * '음량 버튼 기록' — 회기가 열려 있고 화면이 꺼져 있을 때 음량 버튼(올림·내림 아무거나)을 정한 횟수(1~3번, 기본 1번)만큼 빠르게 누르면
- * 그 방법의 기본 버튼을 누른 것으로 기록한다: 빈도 ＋1, 지속시간 행동 시작/끝, 지연시간 지시/반응. 강도·간격 기록은 기록 안 함.
+ * 그 방법의 기본 버튼을 누른 것으로 기록한다: 빈도 ＋1, 지속시간 행동 시작/끝, 지연시간 지시/반응, 간격 기록 신호 때 '있음'.
+ * 강도는 정한 횟수와 상관없이 이어 누른 수(1~3번)가 단계: 마지막 누름 뒤 GAP 동안 더 누르지 않으면 기록(4번째부터는 3으로 봄).
  * 회기 시작은 빠른 설정·위젯·알림창에서 한다(배터리 때문에 회기가 열려 있을 때만 돈다).
  *
  * 받는 방법: 갤럭시는 화면이 꺼지면 음량 키를 앱에 주지 않는다(2026-11-17 실기기 진단). 그래서 화면이 꺼져 있는 동안
@@ -48,7 +49,7 @@ final class PressWatch {
     private int base = -1, orig = -1, cfgBase = -1;
     private boolean others, started;
     private final long[] ts = new long[3]; // 정한 횟수(1~3)까지
-    private int n;
+    private int n, lvN;
     private long lastPress, lastVolRaw, ignoreUntil;
     private boolean pending;
     private final Runnable commit = this::commit;
@@ -248,6 +249,19 @@ final class PressWatch {
             return;
         }
         if (n > 0 && now - lastPress > GAP) n = 0;
+        if (CounterStore.LVL.equals(CounterStore.mode(c)) && CounterStore.active(c)) { // 강도: 이어 누른 수 = 단계
+            if (!pending) lvN = 0;
+            lvN = Math.min(3, lvN + 1);
+            lastPress = now;
+            pending = true;
+            lock();
+            h.removeCallbacks(commit);
+            h.postDelayed(commit, GAP);
+            log(c, "음량 · 강도 " + lvN + " 대기");
+            if (CounterStore.btnTest(c)) feedback(c, FB_TEST);
+            scheduleIdle();
+            return;
+        }
         lastPress = now;
         int need = CounterStore.btnCount(c);
         if (need <= 1) { // 1번: 누를 때마다 바로 기록(취소 대기 없음 = 빠르게 이어 눌러도 다 셈, 잘못 누르면 알림창 −1)
@@ -308,8 +322,10 @@ final class PressWatch {
     private void commitNow() {
         String why = busyWhy();
         if (!why.isEmpty()) { unlock(); log(c, why + " · 기록 안 함"); update(); return; }
-        int fb = act(c);
-        log(c, "→ " + (fb == FB_START ? "시작" : fb == FB_TICK ? "＋1" : fb == FB_END ? "끝"
+        int lv = lvN;
+        lvN = 0;
+        int fb = act(c, lv);
+        log(c, "→ " + (fb == FB_START ? "시작" : fb == FB_TICK ? (lv > 0 ? "강도 " + lv : CounterStore.INT.equals(CounterStore.mode(c)) ? "있음" : "＋1") : fb == FB_END ? "끝"
             : "기록 안 됨" + (CounterStore.active(c) ? "(이 방법은 앱·알림창에서)" : "(열린 회기 없음)")));
         feedback(c, fb);
         unlock();
@@ -318,13 +334,16 @@ final class PressWatch {
         update();
     }
 
-    static int act(Context c) {
+    static int act(Context c) { return act(c, 0); }
+    static int act(Context c, int lv) {
         if (!CounterStore.active(c)) return FB_NONE; // 회기 시작은 빠른 설정·위젯·알림창에서
         switch (CounterStore.mode(c)) {
             case CounterStore.FREQ: return CounterStore.add(c, 1) > 0 ? FB_TICK : FB_NONE;
             case CounterStore.DUR: return CounterStore.durToggle(c) ? FB_START : FB_END;
             case CounterStore.LAT: return CounterStore.latToggle(c) ? FB_START : FB_END;
-            default: return FB_NONE; // 강도(단계를 골라야 함)·간격 기록(신호에 답함)은 알림창에서
+            case CounterStore.LVL: return lv > 0 && CounterStore.lvlAdd(c, lv) ? FB_TICK : FB_NONE;
+            case CounterStore.INT: return CounterStore.ivAnswer(c, true) ? FB_TICK : FB_NONE; // 신호 때만 '있음'
+            default: return FB_NONE;
         }
     }
     static void feedback(Context c, int kind) {

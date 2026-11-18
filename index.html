@@ -337,6 +337,9 @@ td.top{color:var(--accent);font-weight:700}
 
 /* 빠른 측정 */
 .qm-card{gap:12px}
+.cat-zone{display:flex;flex-direction:column;gap:10px}
+.qm-zone{margin-top:12px;padding-top:18px;border-top:1px solid var(--line-strong)}
+.zone-title{margin:0;font-size:1.05rem;font-weight:700}
 .qm-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .qm-head h2{margin:0;font-size:1.1rem}
 .qm-n{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-weight:600}
@@ -1276,10 +1279,11 @@ function viewCat(p,c){
   </section>
   <nav class="cat-tabs" aria-label="절차 영역">${CATS.map(x=>`<button type="button" class="cat-tab${x.key===c.key?' on':''}" data-act="open-cat" data-key="${x.key}" aria-current="${x.key===c.key?'page':'false'}"><span class="mono">${x.no}</span> ${esc(x.title)}</button>`).join('')}</nav>
   ${syncConflictCard(p)}
-  ${c.key==='measure'?qmCard(p):''}
-  <section>
+  <section class="cat-zone">
+    <h2 class="zone-title">절차</h2>
     <div class="proc-grid">${c.procs.map(k=>procCard(p,PROC[k])).join('')}</div>
-  </section>`;
+  </section>
+  ${c.key==='measure'?`<section class="cat-zone qm-zone"><h2 class="zone-title">빠른 측정</h2>${qmCard(p)}</section>`:''}`;
 }
 function procCard(p,x){
   const s=p.procs[x.key];const st=statusInfo(s);
@@ -4904,17 +4908,19 @@ async function natTimerSet(){
 function natBtnBox(m,on){
   if(nat.ver<4)return `<div class="muted" style="flex:1 1 100%">음량 버튼 · 새 앱 설치 필요</div>`;
   if(!on)return `<div class="muted" style="flex:1 1 100%">음량 버튼 · 켜기 후 사용</div>`;
-  const next={freq:'＋1',dur:'행동 시작·끝',lat:'지시·반응'}[m];
-  if(!next)return `<div class="muted" style="flex:1 1 100%">음량 버튼 · 이 방법 미지원</div>`;
+  const next={freq:'＋1',dur:'행동 시작·끝',lat:'지시·반응',int:'신호 때 있음'}[m];
+  if((m==='lvl'||m==='int')&&nat.ver<11)return `<div class="muted" style="flex:1 1 100%">음량 버튼 · 새 앱 설치 필요</div>`;
+  if(!next&&m!=='lvl')return `<div class="muted" style="flex:1 1 100%">음량 버튼 · 이 방법 미지원</div>`;
   const b=nat.btn||{on:false};const k=Number(b.count)||1;
   const cnt=[1,2,3].map(x=>`<option value="${x}"${x===k?' selected':''}>${x}번${x===1?'(기본)':''}</option>`).join('');
-  return `<details class="nat-chk" data-nat-btn${nat.btnOpen?' open':''}><summary>음량 버튼 · ${b.on?`${k}번=${next}`:'끔'}</summary>
+  const lv=m==='lvl';
+  return `<details class="nat-chk" data-nat-btn${nat.btnOpen?' open':''}><summary>음량 버튼 · ${b.on?(lv?'누른 수=강도':`${k}번=${next}`):'끔'}</summary>
     <div class="dur-foot">
       <label class="check"><input type="checkbox" data-btn3="on"${b.on?' checked':''}> <span>회기 중 음량 버튼</span></label>
-      <label class="field"><span>누를 횟수</span><select data-btn3="count"${b.on?'':' disabled'}>${cnt}</select></label>
+      ${lv?'':`<label class="field"><span>누를 횟수</span><select data-btn3="count"${b.on?'':' disabled'}>${cnt}</select></label>`}
       <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}${b.on?'':' disabled'}> <span>누를 때마다 진동(시험)</span></label>
     </div>
-    <div class="dur-foot muted"><span>회기는 타일·위젯으로</span><span>${k}번=${next}</span><span>${k>1?`${k+1}번째 누름=취소`:'잘못 누르면 −1'}</span><span>재생·통화 중엔 안 셈</span><span>화면 꺼졌을 때만</span></div>
+    <div class="dur-foot muted"><span>회기는 타일·위젯으로</span>${lv?'<span>1·2·3번=강도 1·2·3</span><span>1.5초 뒤 기록</span>':`<span>${k}번=${next}</span><span>${k>1?`${k+1}번째 누름=취소`:'잘못 누르면 −1'}</span>`}<span>재생·통화 중엔 안 셈</span><span>화면 꺼졌을 때만</span></div>
     ${b.on&&'alive' in b?`<div class="dur-foot"><strong>${b.alive?'누름 세는 중':'회기 열면 셈'}</strong><button type="button" class="btn small" data-act="nat-btn-refresh">기록 새로 보기</button></div>
     <pre class="btn3-log">${esc(b.log||'아직 누른 기록 없음')}</pre>`:''}
   </details>`;
@@ -4923,7 +4929,7 @@ async function natBtnSet(){
   const box=$('[data-nat-btn]');if(!box||!PCN)return;
   const g=n=>box.querySelector(`[data-btn3="${n}"]`);
   try{
-    const r=await PCN.setButtons({on:!!g('on').checked,test:!!(g('test')&&g('test').checked),count:Number(g('count').value)||1});
+    const r=await PCN.setButtons({on:!!g('on').checked,test:!!(g('test')&&g('test').checked),count:Number(g('count')?g('count').value:(nat.btn&&nat.btn.count))||1});
     nat.btn=r.btn||nat.btn;toast(nat.btn&&nat.btn.on?`화면 끈 채 음량 ${Number(nat.btn.count)||1}번`:'음량 버튼 기록을 껐습니다');
   }catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
   if(document.activeElement)document.activeElement.blur();
@@ -5077,6 +5083,9 @@ function qmEvent(e,hit){
   if(qmItem(run,'abc')){
     let d=0,note='';
     if(!e.k)d=Number(e.d)>0?1:-1;else if(e.k==='ds')d=1;else if(e.k==='lv'){d=1;note='강도 '+(Math.max(1,Math.min(3,Number(e.v)||1)));}else if(e.k==='lu')d=-1;
+    else if(e.k==='ls'){run.ls=t;qmRunSet(run);}
+    else if(e.k==='le'&&!String(e.f||'').includes('x')){d=1;note=String(e.f||'').includes('m')?'지시 뒤 반응 없음':(run.ls?`지시 뒤 ${Math.max(0,Math.round((t-run.ls)/1000))}초`:'반응');}/* 지연시간: 반응(또는 최대 대기 넘음) 때 한 행 */
+    else if(e.k==='iv'&&String(e.v)==='1'){d=1;note='간격 신호 있음';}/* 간격 기록: '있음'인 신호 때 한 행 */
     if(d){qmAbcRow(p,run,t,d,note);hit.set('qm|abc',{p,ph:'abc'});}
   }
   return false;
@@ -5139,7 +5148,7 @@ function qmCard(p){
     </div>`;
   };
   return `<section class="card qm-card" id="qm-card">
-    <div class="qm-head"><h2>빠른 측정</h2><span class="muted">트리거 한 번에 함께</span></div>
+    <div class="qm-head"><span class="muted">트리거 한 번에 함께</span></div>
     <div class="qm-n"><span>동시에</span><span class="trig-seg" role="group" aria-label="동시에 할 측정 수">${[1,2].map(n=>`<button type="button" class="seg-btn" data-act="qm-n" data-v="${n}" aria-pressed="${cfg.n===n}"${on?' disabled':''}>${n}개</button>`).join('')}</span><span class="muted">${cfg.n>1?'긴 측정 기준':'고른 측정만'}</span></div>
     <div class="qm-slots">${items.map(slot).join('')}</div>
     <div class="qm-go">${PCN?`<button type="button" class="btn${on?'':' primary'}" data-act="${on?'qm-off':'qm-on'}"${ok||on?'':' disabled'}>${on?'빠른 측정 끄기':'빠른 측정 켜기'}</button>
@@ -5188,7 +5197,8 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
-  {id:'2026-11-18-2',d:'2026-11-18',k:'web',t:'빠른 측정',items:['측정 화면 위 \'빠른 측정\'','트리거 한 번에 2개 함께','긴 측정이 기준·자동 갱신','짧은 쪽은 색 테두리 표시']},
+  {id:'2026-11-18-3',d:'2026-11-18',k:'apk',need:11,t:'강도·간격 기록도 트리거로',items:['음량: 이어 누른 수=강도','음량: 신호 때 누르면 있음','떠 있는 판에 1·2·3, 있음·없음','빠른 측정 5가지 모두 ABC 함께']},
+  {id:'2026-11-18-2',d:'2026-11-18',k:'web',t:'빠른 측정',items:['측정 화면 아래 \'빠른 측정\'','트리거 한 번에 2개 함께','긴 측정이 기준·자동 갱신','짧은 쪽은 색 테두리 표시']},
   {id:'2026-11-18-1',d:'2026-11-18',k:'web',t:'대기 창을 작게',items:['가로 한 줄 작은 창','대기 중엔 흐리게','회기 중엔 시작 시각·횟수','✕로 닫기']},
   {id:'2026-11-17-17',d:'2026-11-17',k:'web',t:'휴대폰 회기가 기록에 바로',items:['앱에서 측정 시작하면','PC 회기별 기록에 회기 추가','횟수도 실시간으로 바뀜','대기 창 연결 오류 표시']},
   {id:'2026-11-17-16',d:'2026-11-17',k:'apk',need:10,t:'앱이 꺼져도 칠판과 함께 세기',items:['빠른 설정·위젯으로 시작해도','칠판·PC에 ＋1이 바로 뜸','칠판 ＋1도 휴대폰에 바로','회기 중 알림 \'함께 세는 중\'']},

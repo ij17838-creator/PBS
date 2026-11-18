@@ -242,7 +242,24 @@ public class FloatBubble extends Service {
             box.addView(top);
 
             View main;
-            if (draw) {
+            boolean lvl = CounterStore.LVL.equals(mode), iv = CounterStore.INT.equals(mode);
+            if (lvl) top.addView(small("↶", () -> { CounterReceiver.handle(getApplicationContext(), CounterReceiver.LV_UNDO); poke(); }), 1);
+            if (lvl || iv) { // 강도 1·2·3 / 간격 신호 있음·없음: 판에 버튼을 늘어놓는다(긋기 대신)
+                LinearLayout row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                if (lvl) {
+                    row.addView(pick("1", CounterReceiver.LV1));
+                    row.addView(pick("2", CounterReceiver.LV2));
+                    row.addView(pick("3", CounterReceiver.LV3));
+                } else {
+                    row.addView(pick("있음", CounterReceiver.IV_YES));
+                    row.addView(pick("없음", CounterReceiver.IV_NO));
+                }
+                main = row;
+                LinearLayout.LayoutParams rl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                rl.topMargin = dp(6);
+                box.addView(row, rl);
+            } else if (draw) {
                 pad = new Pad(this);
                 main = pad;
                 box.addView(pad, new LinearLayout.LayoutParams(dp(190), dp(140)));
@@ -278,6 +295,29 @@ public class FloatBubble extends Service {
         }
     }
 
+    /** 강도·간격 기록 판의 큰 버튼 */
+    private TextView pick(String t, String action) {
+        TextView b = new TextView(this);
+        b.setText(t);
+        b.setGravity(Gravity.CENTER);
+        b.setTextColor(Color.WHITE);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.length() > 1 ? 18 : 24);
+        b.setTypeface(b.getTypeface(), android.graphics.Typeface.BOLD);
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(14));
+        g.setColor(Color.parseColor("#1B6862"));
+        b.setBackground(g);
+        b.setOnClickListener(x -> {
+            b.animate().scaleX(1.08f).scaleY(1.08f).setDuration(80).withEndAction(() -> b.animate().scaleX(1f).scaleY(1f).setDuration(110)).start();
+            CounterReceiver.handle(getApplicationContext(), action);
+            poke();
+        });
+        LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(dp(t.length() > 1 ? 76 : 56), dp(80));
+        l.leftMargin = dp(4); l.rightMargin = dp(4);
+        b.setLayoutParams(l);
+        return b;
+    }
+
     private TextView small(String t, Runnable r) {
         TextView b = new TextView(this);
         b.setText(t);
@@ -310,7 +350,7 @@ public class FloatBubble extends Service {
         h.postDelayed(dim, 800);
     }
 
-    /** ＋1(빈도) / 시작·끝(지속시간) / 지시·반응(지연시간). 그 밖은 앱을 연다 */
+    /** ＋1(빈도) / 시작·끝(지속시간) / 지시·반응(지연시간). 강도·간격 기록은 판의 버튼으로. 그 밖은 앱을 연다 */
     private void act() {
         String mode = CounterStore.uiMode(this);
         String a;
@@ -338,6 +378,8 @@ public class FloatBubble extends Service {
         if (freq) big = "＋1";
         else if (CounterStore.DUR.equals(mode)) big = run ? "행동 끝" : "행동 시작";
         else if (CounterStore.LAT.equals(mode)) big = run ? "반응" : "지시";
+        else if (CounterStore.LVL.equals(mode)) big = "강도 " + n + "회";
+        else if (CounterStore.INT.equals(mode)) big = CounterStore.ivPend(this) > 0 ? "지금 신호" : "간격 " + CounterStore.ivYes(this) + "/" + CounterStore.ivTot(this);
         else big = "앱 열기";
         // 아이콘: 지금 횟수(빈도) 또는 ＋
         v.setText(freq ? String.valueOf(n) : "＋");
