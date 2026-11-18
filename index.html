@@ -335,6 +335,28 @@ th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white
 td.num{font-family:var(--font-mono);text-align:right}
 td.top{color:var(--accent);font-weight:700}
 
+/* 빠른 측정 */
+.qm-card{gap:12px}
+.qm-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.qm-head h2{margin:0;font-size:1.1rem}
+.qm-n{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-weight:600}
+.qm-slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.qm-slot{border:2px solid var(--qc);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--surface-2);min-width:0}
+.qm-top{display:flex;align-items:flex-end;gap:10px}
+.qm-top .field{flex:1;min-width:0}
+.qm-dot{width:14px;height:14px;border-radius:50%;background:var(--qc);flex-shrink:0;margin-bottom:14px}
+.qm-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.88rem}
+.qm-role{font-size:.8rem;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid var(--qc);color:var(--ink)}
+.qm-role.main{background:var(--qc);color:#fff;border-color:var(--qc)}
+.qm-cols{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.qm-sw{width:30px;height:30px;border-radius:50%;border:2px solid var(--surface);background:var(--sw);box-shadow:0 0 0 1px var(--line-strong);cursor:pointer;padding:0}
+.qm-sw.on{box-shadow:0 0 0 3px var(--ink)}
+.qm-pick{display:inline-flex;align-items:center;gap:4px;font-size:.8rem;color:var(--muted);cursor:pointer}
+.qm-pick input{width:32px;height:30px;padding:0;border:1px solid var(--line-strong);border-radius:6px;background:none}
+.qm-go{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qm-co{border:2px solid var(--qc)!important}
+.sheet-past > .sheet.qm-co{border:2px solid var(--qc)!important}
+.qm-tag{display:inline-block;margin-left:8px;font-size:.76rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--qc);color:#fff;vertical-align:middle;white-space:nowrap}
 /* ABC */
 .rec-card{background:var(--surface);border-color:var(--line-strong)}
 .rec-card.live{border-color:var(--rec);background:var(--rec-soft)}
@@ -1254,6 +1276,7 @@ function viewCat(p,c){
   </section>
   <nav class="cat-tabs" aria-label="절차 영역">${CATS.map(x=>`<button type="button" class="cat-tab${x.key===c.key?' on':''}" data-act="open-cat" data-key="${x.key}" aria-current="${x.key===c.key?'page':'false'}"><span class="mono">${x.no}</span> ${esc(x.title)}</button>`).join('')}</nav>
   ${syncConflictCard(p)}
+  ${c.key==='measure'?qmCard(p):''}
   <section>
     <div class="proc-grid">${c.procs.map(k=>procCard(p,PROC[k])).join('')}</div>
   </section>`;
@@ -1694,13 +1717,13 @@ function obsStateText(p){
 }
 function sheetHead(p,sh){
   const act=isActive(p,sh);const n=sh.rows.filter(rowFilled).length;
-  return `<div class="sh-left"><span class="sheet-title">A-B-C 관찰지 ${sheetNo(p,sh)}</span><span class="sheet-range mono">${rangeText(sh)}</span></div>
+  return `<div class="sh-left"><span class="sheet-title">A-B-C 관찰지 ${sheetNo(p,sh)}</span>${qmTag(sh.qco)}<span class="sheet-range mono">${rangeText(sh)}</span></div>
   <div class="sh-right">${act?`<span class="status progress">기록 중</span><span class="mono meta" id="left-${sh.id}">${fmtDur(msLeft(sh)/1000)} 남음</span>`:`<span class="status none">종료</span>`}<span class="meta">${n}행 · 녹음 ${sh.audioIds.length}</span></div>`;
 }
 function rowsEmpty(){return `<p class="rows-empty">'지금 시각 찍기'로 기록</p>`;}
 function sheetView(p,sh){
   const act=isActive(p,sh);const id=sh.id;
-  return `<article class="sheet${act?' active':''}" id="sh-${id}">
+  return `<article class="sheet${act?' active':''}${sh.qco?' qm-co':''}" id="sh-${id}"${qmStyle(sh.qco)}>
     <header class="sheet-head" id="shh-${id}">${sheetHead(p,sh)}</header>
     <div class="sheet-meta">
       <label class="field"><span>아동</span><textarea rows="1" class="one" id="sf-${id}-child" data-f="sheet:${id}:child" placeholder="학생 코드">${esc(sh.child)}</textarea></label>
@@ -1994,8 +2017,8 @@ function blChart(p,withB){
 }
 function sesRow(p,ph,s,i){
   const k=`${ph}:${s.id}`;const freq=p.procs.define.data.measure==='빈도';
-  return `<div class="r-row bl-row" id="ses-${s.id}">
-    <div class="r-row-head"><b>${ph==='iv'?'중재':'기초선'} ${i+1}회기</b><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-ses:${k}">삭제</button></div>
+  return `<div class="r-row bl-row${s.qco?' qm-co':''}" id="ses-${s.id}"${qmStyle(s.qco)}>
+    <div class="r-row-head"><b>${ph==='iv'?'중재':'기초선'} ${i+1}회기${qmTag(s.qco)}</b><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-ses:${k}">삭제</button></div>
     <div class="r-grid score">
       <label class="field"><span>날짜</span><input type="date" id="ses-${s.id}-date" data-f="ses:${k}:date" value="${esc(s.date)}"></label>
       <label class="field"><span>시작 시각</span><input type="time" id="ses-${s.id}-time" data-f="ses:${k}:time" value="${esc(s.time)}"></label>
@@ -4445,6 +4468,7 @@ function natUI(){
     const t=$(`#ses-${s.id}-nat`);if(t)t.textContent=natLogText(p,ph,s);
   }));
   ['bl','iv','abc'].forEach(ph=>{const r=$(`#nat-target-${ph}`);const ae=document.activeElement;if(r&&!(r.contains(ae)&&ae.matches('select,input')))r.outerHTML=natTargetRow(p,ph);});
+  {const q=$('#qm-card');const ae=document.activeElement;if(q&&!(q.contains(ae)&&ae.matches('select,input')))q.outerHTML=qmCard(p);}
 }
 function natFind(key){
   const [pid,ph,sid]=String(key||'').split('|');const p=projById(pid);
@@ -4735,6 +4759,7 @@ async function natDrain(){
     const hit=new Map();let lost=0,made=0;
     (r.events||[]).forEach(e=>{
       if(String(e.key||'').startsWith('live|')){liveNatEv(e);return;}/* 다른 기기 회기를 이 기기 알림창·떠 있는 ＋1로 셈 */
+      if(qmEvent(e,hit))return;/* 빠른 측정: ABC도 함께(ABC만이면 여기서 끝) */
       const f=natResolve(e.key);if(!f){lost++;return;}
       if(f.created){made++;f.created=false;}
       const {s}=f;
@@ -4770,7 +4795,7 @@ async function natDrain(){
         if(d>0)t.push(natHms(e.t));else t.pop();
         s.tapLog=t.join(' ');
       }
-      hit.set(e.key,f);
+      hit.set(e.key,f);qmMark(f,e);
     });
     /* 열린 빈도 회기는 앱(알림창)의 횟수가 기준(칠판이 먼저 적어 둔 값과 겹쳐 세지 않게) */
     if(r.active&&r.key&&typeof r.count==='number'&&!String(r.key).startsWith('live|')){const f=natFind(r.key);
@@ -4789,6 +4814,7 @@ async function natDrain(){
     }
     if(nat.key&&!nat.key.startsWith('live|')&&!natFind(nat.key)&&!/\|new:\d+$/.test(nat.key)){await PCN.stop();nat.key=null;}/* 회기가 지워졌으면 알림도 끈다 */
     if(nat.target&&!projById(nat.target.pid)){await PCN.clearTarget();nat.target=null;}/* 프로젝트가 지워졌으면 대상도 끈다 */
+    {const q=qmRun();if(q&&(!nat.target||nat.target.pid!==q.pid||nat.target.ph!==q.tk))await qmFinish(true,true);}/* 위젯 대상이 바뀌었으면 빠른 측정도 끝 */
     if(lost)toast(`지워진 회기의 앱 밖 기록 ${lost}건은 버렸습니다`);
     setTimeout(natFollow,0);/* 측정 방법이 바뀌었으면 위젯도 맞춘다(공유로 바뀐 경우 포함) */
   }catch(e){console.error(e);}
@@ -4942,6 +4968,7 @@ async function natFollow(){
 async function natTargetToggle(el){
   const p=curProject();if(!p||!PCN)return;const ph=el.dataset.ph;const m=natMode(p,ph);if(!m)return;
   await natDrain();natFollowSet(null);
+  if(qmRun())await qmFinish(true,true);/* 화면별 켜기·끄기는 빠른 측정을 끝낸다 */
   try{
     if(natTargetOn(p,ph)){const r=await PCN.clearTarget();nat.key=r.active?r.key:null;nat.target=null;toast('앱 밖 측정을 껐습니다');}
     else{
@@ -4979,6 +5006,166 @@ function natInit(){
   natDrain().then(()=>{if(nat.key)render();});
 }
 
+/* ---------- 빠른 측정: 트리거(위젯·빠른 설정·떠 있는 ＋1·음량 버튼) 한 번에 고른 측정을 함께 기록 ----------
+   p.quick={n:동시 개수,items:[{k:'bl'|'iv'|'abc',c:'#색'}]} (프로젝트에 저장). 켜 둔 동안의 상태는 이 기기에만(QM_KEY).
+   위젯 대상은 기초선·중재가 있으면 그쪽(지속시간 등 방법별 버튼 그대로), ABC는 그 기록(＋1·행동 시작·강도)마다 시각 한 행을 따라 적는다.
+   시간: 기초선·중재 = 마지막 회기의 관찰 시간(분), ABC = 관찰 간격(분). 더 긴 쪽이 기준(자동 갱신), 짧은 쪽은 회기 하나로 이어 적고
+   그 회기·관찰지에 qco={w:기준 측정 이름,c:색}을 남겨 색 테두리와 '…과 동시 진행'을 붙인다. */
+const QM_KEY='pbs-quick-run';
+const QM_COLORS=['#2f7d6d','#c2410c','#2563eb','#9333ea','#ca8a04','#db2777'];
+const QM_NAME={bl:'기초선 측정',iv:'중재 측정',abc:'ABC 관찰 기록'};
+function qmCol(c,i){return /^#[0-9a-f]{6}$/i.test(c||'')?c:QM_COLORS[i%QM_COLORS.length];}
+function qmCfg(p){
+  const q=p.quick&&typeof p.quick==='object'?p.quick:{};
+  const its=Array.isArray(q.items)?q.items.filter(x=>x&&QM_NAME[x.k]):[];
+  const out=[];its.forEach(x=>{if(!out.some(y=>y.k===x.k||(y.k!=='abc'&&x.k!=='abc')))out.push({k:x.k,c:x.c});});
+  [{k:'bl'},{k:'abc'}].forEach(d=>{if(out.length<2&&!out.some(y=>y.k===d.k||(y.k!=='abc'&&d.k!=='abc')))out.push(d);});
+  out.forEach((x,i)=>{x.c=qmCol(x.c,i);});
+  return {n:Number(q.n)===1?1:2,items:out.slice(0,2)};
+}
+function qmItems(p){const c=qmCfg(p);return c.items.slice(0,c.n);}
+function qmTime(p,k){
+  if(k==='abc')return Math.max(1,Number(abcData(p).interval)||15);
+  let s=blSorted(sesList(p,k)).slice(-1)[0];if(!s&&k==='iv')s=blSorted(sesList(p,'bl')).slice(-1)[0];
+  const m=s?blNum(s.mins):null;return m>0?Math.round(m):0;
+}
+function qmMain(p,items){let best=null;items.forEach(x=>{const t=qmTime(p,x.k);if(!best||t>best.t||(t===best.t&&best.k==='abc'&&x.k!=='abc'))best={k:x.k,t};});return best?best.k:null;}
+function qmRun(){try{return JSON.parse(localStorage.getItem(QM_KEY)||'null');}catch(e){return null;}}
+function qmRunSet(v){try{if(v)localStorage.setItem(QM_KEY,JSON.stringify(v));else localStorage.removeItem(QM_KEY);}catch(e){}}
+function qmItem(run,k){return run&&run.items.find(x=>x.k===k)||null;}
+function qmTag(o){return o&&o.w?`<span class="qm-tag" style="--qc:${qmCol(o.c,0)}">${esc(o.w)}과 동시 진행</span>`:'';}
+function qmStyle(o){return o&&o.w?` style="--qc:${qmCol(o.c,0)}"`:'';}
+/* 빠른 측정 ABC 관찰지: 기준이면 관찰 간격마다 새 관찰지(빈 간격도 채움), 동시 진행이면 한 장에 이어 적는다 */
+function qmAbcSheetAt(p,run,t){
+  const a=abcData(p);const sid=run.sid;const list=a.sheets.filter(x=>x.sessionId===sid).sort(byStart);
+  if(!(a.session&&a.session.running))a.session={id:sid,running:false,activeSheetId:null,endAt:null};
+  if(run.main==='abc'){
+    const iv=qmTime(p,'abc')*60000;const base=list.length?Date.parse(list[0].start):(run.base||t);
+    const k=Math.max(0,Math.floor((t-base)/iv));
+    for(let j=list.length;j<=k&&j<200;j++){
+      const n=makeSheet(p,sid,new Date(base+j*iv).toISOString(),list[j-1]||null,null,sid+'-'+j);
+      n.end=new Date(base+(j+1)*iv).toISOString();n.endedAt=n.end;a.sheets.push(n);list.push(n);
+    }
+    return list[Math.min(k,list.length-1)];
+  }
+  let sh=list[0];
+  if(!sh){
+    sh=makeSheet(p,sid,new Date(run.base||t).toISOString(),null,null,sid+'-0');sh.endedAt=sh.end;
+    const m=qmItem(run,'abc');sh.qco={w:QM_NAME[run.main],c:m?m.c:QM_COLORS[1]};a.sheets.push(sh);
+  }
+  if(t>=Date.parse(sh.end)){sh.end=new Date(t+60000).toISOString();sh.endedAt=sh.end;}
+  return sh;
+}
+function qmAbcRow(p,run,t,d,note){
+  const a=abcData(p);
+  if(d<0){
+    const list=a.sheets.filter(x=>x.sessionId===run.sid).sort(byStart);
+    for(let j=list.length-1;j>=0;j--){const rs=list[j].rows;for(let i=rs.length-1;i>=0;i--){const r=rs[i];if(r.nat&&!String(r.a||'').trim()&&!String(r.c||'').trim()){rs.splice(i,1);list[j].updatedAt=nowISO();return;}}}
+    return;
+  }
+  const sh=qmAbcSheetAt(p,run,t);
+  sh.rows.push({id:'w'+uid('n'),time:new Date(t).toISOString(),a:'',b:(p.procs.define.data.name||'')+(note?` (${note})`:''),c:'',nat:1});
+  sh.updatedAt=nowISO();
+}
+/* natDrain에서: 이 이벤트가 빠른 측정에 들어가면 처리. true = ABC만 하는 빠른 측정이라 여기서 끝냄 */
+function qmEvent(e,hit){
+  const run=qmRun();if(!run)return false;
+  const [pid,ph,sid]=String(e.key||'').split('|');if(pid!==run.pid||ph!==run.tk)return false;
+  const p=projById(pid);const t=Number(e.t)||Date.now();if(!p||t<run.at-5000)return false;
+  if(!run.base){run.base=/^new:\d+$/.test(sid||'')?Math.min(t,Number(sid.slice(4))):t;qmRunSet(run);}
+  if(ph==='abc'){if(!e.k)qmAbcRow(p,run,t,Number(e.d)>0?1:-1,'');hit.set('qm|abc',{p,ph:'abc'});return true;}
+  if(qmItem(run,'abc')){
+    let d=0,note='';
+    if(!e.k)d=Number(e.d)>0?1:-1;else if(e.k==='ds')d=1;else if(e.k==='lv'){d=1;note='강도 '+(Math.max(1,Math.min(3,Number(e.v)||1)));}else if(e.k==='lu')d=-1;
+    if(d){qmAbcRow(p,run,t,d,note);hit.set('qm|abc',{p,ph:'abc'});}
+  }
+  return false;
+}
+/* 기초선·중재가 짧은 쪽이면 그 회기에 '동시 진행' 표시 */
+function qmMark(f,e){
+  const run=qmRun();if(!run||!f.s||f.p.id!==run.pid||f.ph!==run.tk||run.main===run.tk)return;
+  if((Number(e.t)||0)<run.at-5000)return;
+  const m=qmItem(run,run.tk);if(!f.s.qco)f.s.qco={w:QM_NAME[run.main],c:m?m.c:QM_COLORS[0]};
+  if(!run.co.includes(f.s.id)){run.co.push(f.s.id);qmRunSet(run);}
+}
+async function qmStart(){
+  const p=curProject();if(!p||!PCN)return;
+  const items=qmItems(p);const tgt=items.find(x=>x.k!=='abc')||items[0];if(!tgt)return;
+  const m=natMode(p,tgt.k);if(!m){toast(natNeedsApp(p,tgt.k)?'새 앱을 설치해야 합니다':'이 측정 방법은 앱 밖 측정 미지원');return;}
+  await natDrain();
+  if(qmRun())await qmFinish(true,true);
+  const main=qmMain(p,items);const prev=nat.timer?{min:Number(nat.timer.min)||0,renew:!!nat.timer.renew,reset:nat.timer.reset!==false}:null;
+  try{const r=await PCN.setTarget(natTargetArgs(p,tgt.k,m));nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;natFollowSet(null);}
+  catch(e){toast((e&&e.message)||'빠른 측정을 켜지 못했습니다');return;}
+  if(nat.ver>=5){
+    const min=tgt.k!=='abc'&&main===tgt.k?qmTime(p,tgt.k):0;
+    try{const r=await PCN.setTimer({min,renew:min>0,reset:true});nat.timer=r.timer||nat.timer;}catch(e){}
+  }
+  const at=Date.now();
+  qmRunSet({pid:p.id,at,sid:'q'+at,tk:tgt.k,main,items:items.map(x=>({k:x.k,c:x.c})),prev,co:[],base:0});
+  toast(items.length>1?`${QM_NAME[main]} 기준으로 함께 기록`:'트리거로 바로 기록');
+  const y=window.scrollY;render();window.scrollTo(0,y);
+}
+/* 끄기: 기준 ABC는 지금까지 관찰지를 채우고, 동시 진행한 회기의 관찰 시간은 실제 걸린 시간으로. 측정 시간 설정은 되돌린다 */
+async function qmFinish(quiet,keepTarget){
+  const run=qmRun();if(!run)return;qmRunSet(null);
+  const p=projById(run.pid);
+  if(p){
+    const now=Date.now();
+    if(run.main==='abc'&&run.base&&abcData(p).sheets.some(x=>x.sessionId===run.sid))qmAbcSheetAt(p,run,Math.min(now,run.base+300*60000));
+    if(run.tk!=='abc'&&run.main!==run.tk)run.co.forEach(id=>{const s=sesList(p,run.tk).find(x=>x.id===id);if(!s)return;
+      const st=/^\d\d:\d\d$/.test(s.time||'')&&s.date?Date.parse(s.date+'T'+s.time+':00'):run.base||run.at;const el=Math.round((now-st)/60000);if(el>0&&el<=300)s.mins=String(el);});
+    if(qmItem(run,'abc'))touch(p,'abc');if(run.tk!=='abc')touch(p,sesProc(run.tk));saveNow();
+  }
+  if(PCN){
+    if(!keepTarget){try{const r=await PCN.clearTarget();nat.key=r.active?r.key:null;nat.target=null;}catch(e){}}
+    if(run.prev&&nat.ver>=5){try{const r=await PCN.setTimer(run.prev);nat.timer=r.timer||nat.timer;}catch(e){}}
+  }
+  if(!quiet)toast('빠른 측정을 껐습니다');
+}
+function qmCard(p){
+  const cfg=qmCfg(p);const items=cfg.items.slice(0,cfg.n);const run=qmRun();const on=!!(run&&run.pid===p.id&&nat.target);
+  const main=on?run.main:qmMain(p,items);
+  const tgt=items.find(x=>x.k!=='abc')||items[0];const ok=!!(tgt&&natMode(p,tgt.k));
+  const slot=(x,i)=>{
+    const other=cfg.n>1?cfg.items[1-i]:null;
+    const opts=['bl','iv','abc'].map(k=>`<option value="${k}"${k===x.k?' selected':''}>${QM_NAME[k]}${k!=='abc'&&natMode(p,k)?' · '+NAT_MODE_NAME[natMode(p,k)]:''}</option>`).join('');
+    const t=qmTime(p,x.k);const tt=x.k==='abc'?`${t}분 간격`:(t?`${t}분 회기`:'관찰 시간 없음');
+    const role=cfg.n>1?(x.k===main?'<span class="qm-role main">기준 · 자동 갱신</span>':'<span class="qm-role">동시 진행</span>'):'';
+    return `<div class="qm-slot" style="--qc:${x.c}">
+      <div class="qm-top"><span class="qm-dot" aria-hidden="true"></span><label class="field"><span>측정 ${i+1}</span><select data-qm="k:${i}"${on?' disabled':''}>${opts}</select></label></div>
+      <div class="qm-meta"><span class="mono">${esc(tt)}</span>${role}</div>
+      <div class="qm-cols" role="group" aria-label="측정 ${i+1} 색">${QM_COLORS.map(c=>`<button type="button" class="qm-sw${c.toLowerCase()===x.c.toLowerCase()?' on':''}" style="--sw:${c}" data-act="qm-col" data-i="${i}" data-c="${c}" aria-label="색 ${c}" aria-pressed="${c.toLowerCase()===x.c.toLowerCase()}"></button>`).join('')}<label class="qm-pick" title="색 직접 고르기"><input type="color" value="${x.c}" data-qm="c:${i}" aria-label="측정 ${i+1} 색 직접 고르기"><span>직접</span></label></div>
+    </div>`;
+  };
+  return `<section class="card qm-card" id="qm-card">
+    <div class="qm-head"><h2>빠른 측정</h2><span class="muted">트리거 한 번에 함께</span></div>
+    <div class="qm-n"><span>동시에</span><span class="trig-seg" role="group" aria-label="동시에 할 측정 수">${[1,2].map(n=>`<button type="button" class="seg-btn" data-act="qm-n" data-v="${n}" aria-pressed="${cfg.n===n}"${on?' disabled':''}>${n}개</button>`).join('')}</span><span class="muted">${cfg.n>1?'긴 측정 기준':'고른 측정만'}</span></div>
+    <div class="qm-slots">${items.map(slot).join('')}</div>
+    <div class="qm-go">${PCN?`<button type="button" class="btn${on?'':' primary'}" data-act="${on?'qm-off':'qm-on'}"${ok||on?'':' disabled'}>${on?'빠른 측정 끄기':'빠른 측정 켜기'}</button>
+      ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>${nat.ver>=6?`<button type="button" class="btn small${nat.bub&&nat.bub.on&&nat.bub.perm?' primary':''}" data-act="nat-bub">${nat.bub&&nat.bub.on&&nat.bub.perm?'떠 있는 ＋1 끄기':'떠 있는 ＋1'}</button>`:''}`:''}
+      <span class="muted">${on?'위젯·음량으로 기록':ok?'켜면 트리거가 이쪽으로':'새 앱 설치 필요'}</span>`:'<span class="muted">설치형 앱에서 켜요</span>'}</div>
+  </section>`;
+}
+function qmSave(p,cfg){p.quick={n:cfg.n,items:cfg.items.map(x=>({k:x.k,c:x.c}))};p.updatedAt=nowISO();saveNow();const y=window.scrollY;render();window.scrollTo(0,y);}
+function qmSetKind(i,k){
+  const p=curProject();if(!p||!QM_NAME[k])return;const cfg=qmCfg(p);const it=cfg.items;if(!it[i])return;
+  it[i].k=k;const o=it[1-i];if(o)o.k=k==='abc'?(o.k==='abc'?'bl':o.k):'abc';/* 기초선·중재 중 하나 + ABC */
+  qmSave(p,cfg);
+}
+Object.assign(actions,{
+  'qm-n':el=>{const p=curProject();if(!p)return;const cfg=qmCfg(p);cfg.n=Number(el.dataset.v)===1?1:2;qmSave(p,cfg);},
+  'qm-col':el=>{const p=curProject();if(!p)return;const cfg=qmCfg(p);const x=cfg.items[Number(el.dataset.i)];if(!x)return;x.c=qmCol(el.dataset.c,0);qmSave(p,cfg);},
+  'qm-on':()=>qmStart(),
+  'qm-off':async()=>{await natDrain();await qmFinish(false,false);const y=window.scrollY;render();window.scrollTo(0,y);},
+});
+document.addEventListener('change',e=>{
+  const el=e.target;if(!(el.matches&&el.matches('[data-qm]')))return;
+  const [f,i]=el.dataset.qm.split(':');const p=curProject();if(!p)return;
+  if(f==='k'){qmSetKind(Number(i),el.value);return;}
+  if(f==='c'){const cfg=qmCfg(p);const x=cfg.items[Number(i)];if(!x)return;x.c=qmCol(el.value,0);qmSave(p,cfg);}
+});
+
 /* ---------- 설치형 앱: 화면 자동 업데이트 ----------
    앱(android WebUpdater)이 GitHub Pages의 index.html을 받아 두었다가 다음에 앱을 열 때 쓴다. 주소가 그대로라 자료는 남는다.
    여기서는 '다 열렸음' 신호(webReady: 받은 화면이 고장 나면 설치본으로 돌아가는 안전장치)와 새 버전 알림 막대만 다룬다. */
@@ -5001,6 +5188,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-18-2',d:'2026-11-18',k:'web',t:'빠른 측정',items:['측정 화면 위 \'빠른 측정\'','트리거 한 번에 2개 함께','긴 측정이 기준·자동 갱신','짧은 쪽은 색 테두리 표시']},
   {id:'2026-11-18-1',d:'2026-11-18',k:'web',t:'대기 창을 작게',items:['가로 한 줄 작은 창','대기 중엔 흐리게','회기 중엔 시작 시각·횟수','✕로 닫기']},
   {id:'2026-11-17-17',d:'2026-11-17',k:'web',t:'휴대폰 회기가 기록에 바로',items:['앱에서 측정 시작하면','PC 회기별 기록에 회기 추가','횟수도 실시간으로 바뀜','대기 창 연결 오류 표시']},
   {id:'2026-11-17-16',d:'2026-11-17',k:'apk',need:10,t:'앱이 꺼져도 칠판과 함께 세기',items:['빠른 설정·위젯으로 시작해도','칠판·PC에 ＋1이 바로 뜸','칠판 ＋1도 휴대폰에 바로','회기 중 알림 \'함께 세는 중\'']},
