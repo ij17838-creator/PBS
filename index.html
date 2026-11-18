@@ -5194,8 +5194,10 @@ function qmPcCur(p){
   if(r.main===r.tk)return now-r.at<Math.max(1,qmTime(p,r.tk)||40)*60000?r:null;
   return now-(r.last||r.at)<qmTime(p,'abc')*60000?r:null;
 }
-function qmPcStart(p){
-  const items=qmItems(p);const bi=items.find(x=>x.k!=='abc');const hasAbc=items.some(x=>x.k==='abc');
+function qmPcStart(p,ph){
+  let items=qmItems(p);
+  if(ph==='bl'||ph==='iv'){const o=items.find(x=>x.k!=='abc');items=[{k:ph,c:o?o.c:QM_COLORS[0]}].concat(items.filter(x=>x.k==='abc'));}/* '＋1 창 대기'를 누른 단계로 */
+  const bi=items.find(x=>x.k!=='abc');const hasAbc=items.some(x=>x.k==='abc');
   const freq=!!bi&&p.procs.define.data.measure==='빈도';
   if(!freq&&!hasAbc){toast('PC 단축키는 빈도·ABC만');return null;}
   const at=Date.now();const tk=freq?bi.k:null;const main=tk?qmMain(p,items):'abc';
@@ -5241,11 +5243,24 @@ function qmHot(){
   }
   const fresh=!qmPcCur(p);if(fresh&&!qmPcStart(p))return;
   qmPcInc(1);
+  qmPcShow();
+  const mk=mini.pip?mini.pip.document.getElementById('mini-mark'):$('#mini-mark');if(mk){mk.classList.remove('hit');void mk.offsetWidth;mk.classList.add('hit');}
+  if(fresh)toast('간편 측정 시작 · 1회');
+}
+/* PC 회기 대기 창: 열린 창이 있으면 간편 측정으로 바꾸고, 없으면 연다(누른 직후라 작은 창 가능) */
+function qmPcShow(){
   if(mini.on&&mini.pip){if(!mini.qpc){Object.assign(mini,{live:false,qpc:true,ph:null,id:null});miniFill(mini.pip);}miniCount();}
   else if(mini.on){Object.assign(mini,{live:false,qpc:true,ph:null,id:null});miniCount();}
   else{Object.assign(mini,{on:true,live:false,qpc:true,ph:null,id:null});miniShow(true);}
-  const mk=mini.pip?mini.pip.document.getElementById('mini-mark'):$('#mini-mark');if(mk){mk.classList.remove('hit');void mk.offsetWidth;mk.classList.add('hit');}
-  if(fresh)toast('간편 측정 시작 · 1회');
+}
+/* '＋1 창 대기'(컴퓨터·전자칠판): 휴대폰 회기가 있으면 그 창, 없으면 이 기기에서 바로 회기를 열고 ＋1을 켠다 */
+function qmArm(ph){
+  const p=curProject();if(!p)return;
+  const lr=liveActive();if(lr&&p.shared&&lr.pid===p.shared.projectId){liveMini(true);return;}
+  let r=qmPcCur(p);const fresh=!r||(r.tk&&r.tk!==ph);
+  if(fresh){r=qmPcStart(p,ph);if(!r)return;saveNow();const y=window.scrollY;render();window.scrollTo(0,y);}
+  qmPcShow();
+  toast(fresh?'회기 시작 · ＋1을 누르세요':'이어서 세요');
 }
 /* 단축키 설정(이 기기): mode 'tap'(같은 키 n번 연타) | 'combo'(조합키, code로 맞춤) */
 function qkGet(){let o=null;try{o=JSON.parse(localStorage.getItem(QK_KEY)||'null');}catch(e){}
@@ -5331,6 +5346,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-18-5',d:'2026-11-18',k:'web',t:'＋1 창 대기 = 회기 시작',items:['컴퓨터·전자칠판에서','누르면 바로 회기 열림','＋1 버튼 바로 켜짐','휴대폰 회기 중이면 그 회기']},
   {id:'2026-11-18-4',d:'2026-11-18',k:'web',t:'간편 측정 단축키(PC)',items:['\'빠른 측정\' → \'간편 측정\'','기본: 0을 세 번 연타','누르면 대기 창 + 바로 1회','위·아래 화살표로 ±1']},
   {id:'2026-11-18-3',d:'2026-11-18',k:'apk',need:11,t:'강도·간격 기록도 트리거로',items:['음량: 이어 누른 수=강도','음량: 신호 때 누르면 있음','떠 있는 판에 1·2·3, 있음·없음','간편 측정 5가지 모두 ABC 함께']},
   {id:'2026-11-18-2',d:'2026-11-18',k:'web',t:'간편 측정',items:['측정 화면 아래 \'간편 측정\'','트리거 한 번에 2개 함께','긴 측정이 기준·자동 갱신','짧은 쪽은 색 테두리 표시']},
@@ -5829,11 +5845,12 @@ function liveSt(pid){
   return v.on?`휴대폰 회기 중 · ${t} 소식`:`휴대폰 회기 끝 · ${t}`;
 }
 function liveArmRow(p,ph){
-  if(PCN||!liveReady(p)||!window.documentPictureInPicture||ph==='abc'||!matchMedia('(min-width:900px)').matches)return '';
-  return `<div class="bl-nat"><button type="button" class="btn small" data-act="live-arm">＋1 창 대기</button><label class="check"><input type="checkbox" data-live-auto${liveAuto()?' checked':''}> <span>자동으로 띄우기</span></label><span class="muted live-st" data-pid="${esc(p.shared.projectId)}">${esc(liveSt(p.shared.projectId))}</span></div>`;
+  if(ph==='abc'||p.procs.define.data.measure!=='빈도'||!matchMedia('(min-width:900px)').matches)return '';
+  const lr=!PCN&&liveReady(p)&&!!window.documentPictureInPicture;
+  return `<div class="bl-nat"><button type="button" class="btn small" data-act="live-arm" data-ph="${ph}">＋1 창 대기</button><span class="muted">누르면 회기 시작</span>${lr?`<label class="check"><input type="checkbox" data-live-auto${liveAuto()?' checked':''}> <span>자동으로 띄우기</span></label><span class="muted live-st" data-pid="${esc(p.shared.projectId)}">${esc(liveSt(p.shared.projectId))}</span>`:''}</div>`;
 }
 Object.assign(actions,{
-  'live-arm':()=>{liveNotePerm();liveMini(true);},
+  'live-arm':el=>{liveNotePerm();qmArm(el.dataset.ph);},
   'live-pip':()=>{liveNotePerm();liveMini(true);},
   'live-inc':()=>{liveInc(1);}
 });
