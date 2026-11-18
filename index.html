@@ -335,7 +335,7 @@ th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white
 td.num{font-family:var(--font-mono);text-align:right}
 td.top{color:var(--accent);font-weight:700}
 
-/* 빠른 측정 */
+/* 간편 측정 */
 .qm-card{gap:12px}
 .cat-zone{display:flex;flex-direction:column;gap:10px}
 .qm-zone{margin-top:12px;padding-top:18px;border-top:1px solid var(--line-strong)}
@@ -357,6 +357,11 @@ td.top{color:var(--accent);font-weight:700}
 .qm-pick{display:inline-flex;align-items:center;gap:4px;font-size:.8rem;color:var(--muted);cursor:pointer}
 .qm-pick input{width:32px;height:30px;padding:0;border:1px solid var(--line-strong);border-radius:6px;background:none}
 .qm-go{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qm-key{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1 1 100%}
+.qm-go .qm-go{flex:1 1 100%}
+.qm-key-t{font-weight:700}
+.qm-key-n select{min-height:36px;padding:4px 8px}
+.qm-key-l{font-weight:700;padding:4px 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface-2)}
 .qm-co{border:2px solid var(--qc)!important}
 .sheet-past > .sheet.qm-co{border:2px solid var(--qc)!important}
 .qm-tag{display:inline-block;margin-left:8px;font-size:.76rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--qc);color:#fff;vertical-align:middle;white-space:nowrap}
@@ -1283,7 +1288,7 @@ function viewCat(p,c){
     <h2 class="zone-title">절차</h2>
     <div class="proc-grid">${c.procs.map(k=>procCard(p,PROC[k])).join('')}</div>
   </section>
-  ${c.key==='measure'?`<section class="cat-zone qm-zone"><h2 class="zone-title">빠른 측정</h2>${qmCard(p)}</section>`:''}`;
+  ${c.key==='measure'?`<section class="cat-zone qm-zone"><h2 class="zone-title">간편 측정</h2>${qmCard(p)}</section>`:''}`;
 }
 function procCard(p,x){
   const s=p.procs[x.key];const st=statusInfo(s);
@@ -4763,7 +4768,7 @@ async function natDrain(){
     const hit=new Map();let lost=0,made=0;
     (r.events||[]).forEach(e=>{
       if(String(e.key||'').startsWith('live|')){liveNatEv(e);return;}/* 다른 기기 회기를 이 기기 알림창·떠 있는 ＋1로 셈 */
-      if(qmEvent(e,hit))return;/* 빠른 측정: ABC도 함께(ABC만이면 여기서 끝) */
+      if(qmEvent(e,hit))return;/* 간편 측정: ABC도 함께(ABC만이면 여기서 끝) */
       const f=natResolve(e.key);if(!f){lost++;return;}
       if(f.created){made++;f.created=false;}
       const {s}=f;
@@ -4818,7 +4823,7 @@ async function natDrain(){
     }
     if(nat.key&&!nat.key.startsWith('live|')&&!natFind(nat.key)&&!/\|new:\d+$/.test(nat.key)){await PCN.stop();nat.key=null;}/* 회기가 지워졌으면 알림도 끈다 */
     if(nat.target&&!projById(nat.target.pid)){await PCN.clearTarget();nat.target=null;}/* 프로젝트가 지워졌으면 대상도 끈다 */
-    {const q=qmRun();if(q&&(!nat.target||nat.target.pid!==q.pid||nat.target.ph!==q.tk))await qmFinish(true,true);}/* 위젯 대상이 바뀌었으면 빠른 측정도 끝 */
+    {const q=qmRun();if(q&&(!nat.target||nat.target.pid!==q.pid||nat.target.ph!==q.tk))await qmFinish(true,true);}/* 위젯 대상이 바뀌었으면 간편 측정도 끝 */
     if(lost)toast(`지워진 회기의 앱 밖 기록 ${lost}건은 버렸습니다`);
     setTimeout(natFollow,0);/* 측정 방법이 바뀌었으면 위젯도 맞춘다(공유로 바뀐 경우 포함) */
   }catch(e){console.error(e);}
@@ -4974,7 +4979,7 @@ async function natFollow(){
 async function natTargetToggle(el){
   const p=curProject();if(!p||!PCN)return;const ph=el.dataset.ph;const m=natMode(p,ph);if(!m)return;
   await natDrain();natFollowSet(null);
-  if(qmRun())await qmFinish(true,true);/* 화면별 켜기·끄기는 빠른 측정을 끝낸다 */
+  if(qmRun())await qmFinish(true,true);/* 화면별 켜기·끄기는 간편 측정을 끝낸다 */
   try{
     if(natTargetOn(p,ph)){const r=await PCN.clearTarget();nat.key=r.active?r.key:null;nat.target=null;toast('앱 밖 측정을 껐습니다');}
     else{
@@ -5012,7 +5017,7 @@ function natInit(){
   natDrain().then(()=>{if(nat.key)render();});
 }
 
-/* ---------- 빠른 측정: 트리거(위젯·빠른 설정·떠 있는 ＋1·음량 버튼) 한 번에 고른 측정을 함께 기록 ----------
+/* ---------- 간편 측정: 트리거(위젯·빠른 설정·떠 있는 ＋1·음량 버튼) 한 번에 고른 측정을 함께 기록 ----------
    p.quick={n:동시 개수,items:[{k:'bl'|'iv'|'abc',c:'#색'}]} (프로젝트에 저장). 켜 둔 동안의 상태는 이 기기에만(QM_KEY).
    위젯 대상은 기초선·중재가 있으면 그쪽(지속시간 등 방법별 버튼 그대로), ABC는 그 기록(＋1·행동 시작·강도)마다 시각 한 행을 따라 적는다.
    시간: 기초선·중재 = 마지막 회기의 관찰 시간(분), ABC = 관찰 간격(분). 더 긴 쪽이 기준(자동 갱신), 짧은 쪽은 회기 하나로 이어 적고
@@ -5041,7 +5046,7 @@ function qmRunSet(v){try{if(v)localStorage.setItem(QM_KEY,JSON.stringify(v));els
 function qmItem(run,k){return run&&run.items.find(x=>x.k===k)||null;}
 function qmTag(o){return o&&o.w?`<span class="qm-tag" style="--qc:${qmCol(o.c,0)}">${esc(o.w)}과 동시 진행</span>`:'';}
 function qmStyle(o){return o&&o.w?` style="--qc:${qmCol(o.c,0)}"`:'';}
-/* 빠른 측정 ABC 관찰지: 기준이면 관찰 간격마다 새 관찰지(빈 간격도 채움), 동시 진행이면 한 장에 이어 적는다 */
+/* 간편 측정 ABC 관찰지: 기준이면 관찰 간격마다 새 관찰지(빈 간격도 채움), 동시 진행이면 한 장에 이어 적는다 */
 function qmAbcSheetAt(p,run,t){
   const a=abcData(p);const sid=run.sid;const list=a.sheets.filter(x=>x.sessionId===sid).sort(byStart);
   if(!(a.session&&a.session.running))a.session={id:sid,running:false,activeSheetId:null,endAt:null};
@@ -5073,7 +5078,7 @@ function qmAbcRow(p,run,t,d,note){
   sh.rows.push({id:'w'+uid('n'),time:new Date(t).toISOString(),a:'',b:(p.procs.define.data.name||'')+(note?` (${note})`:''),c:'',nat:1});
   sh.updatedAt=nowISO();
 }
-/* natDrain에서: 이 이벤트가 빠른 측정에 들어가면 처리. true = ABC만 하는 빠른 측정이라 여기서 끝냄 */
+/* natDrain에서: 이 이벤트가 간편 측정에 들어가면 처리. true = ABC만 하는 간편 측정이라 여기서 끝냄 */
 function qmEvent(e,hit){
   const run=qmRun();if(!run)return false;
   const [pid,ph,sid]=String(e.key||'').split('|');if(pid!==run.pid||ph!==run.tk)return false;
@@ -5105,7 +5110,7 @@ async function qmStart(){
   if(qmRun())await qmFinish(true,true);
   const main=qmMain(p,items);const prev=nat.timer?{min:Number(nat.timer.min)||0,renew:!!nat.timer.renew,reset:nat.timer.reset!==false}:null;
   try{const r=await PCN.setTarget(natTargetArgs(p,tgt.k,m));nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;natFollowSet(null);}
-  catch(e){toast((e&&e.message)||'빠른 측정을 켜지 못했습니다');return;}
+  catch(e){toast((e&&e.message)||'간편 측정을 켜지 못했습니다');return;}
   if(nat.ver>=5){
     const min=tgt.k!=='abc'&&main===tgt.k?qmTime(p,tgt.k):0;
     try{const r=await PCN.setTimer({min,renew:min>0,reset:true});nat.timer=r.timer||nat.timer;}catch(e){}
@@ -5130,7 +5135,7 @@ async function qmFinish(quiet,keepTarget){
     if(!keepTarget){try{const r=await PCN.clearTarget();nat.key=r.active?r.key:null;nat.target=null;}catch(e){}}
     if(run.prev&&nat.ver>=5){try{const r=await PCN.setTimer(run.prev);nat.timer=r.timer||nat.timer;}catch(e){}}
   }
-  if(!quiet)toast('빠른 측정을 껐습니다');
+  if(!quiet)toast('간편 측정을 껐습니다');
 }
 function qmCard(p){
   const cfg=qmCfg(p);const items=cfg.items.slice(0,cfg.n);const run=qmRun();const on=!!(run&&run.pid===p.id&&nat.target);
@@ -5151,9 +5156,9 @@ function qmCard(p){
     <div class="qm-head"><span class="muted">트리거 한 번에 함께</span></div>
     <div class="qm-n"><span>동시에</span><span class="trig-seg" role="group" aria-label="동시에 할 측정 수">${[1,2].map(n=>`<button type="button" class="seg-btn" data-act="qm-n" data-v="${n}" aria-pressed="${cfg.n===n}"${on?' disabled':''}>${n}개</button>`).join('')}</span><span class="muted">${cfg.n>1?'긴 측정 기준':'고른 측정만'}</span></div>
     <div class="qm-slots">${items.map(slot).join('')}</div>
-    <div class="qm-go">${PCN?`<button type="button" class="btn${on?'':' primary'}" data-act="${on?'qm-off':'qm-on'}"${ok||on?'':' disabled'}>${on?'빠른 측정 끄기':'빠른 측정 켜기'}</button>
+    <div class="qm-go">${PCN?`<button type="button" class="btn${on?'':' primary'}" data-act="${on?'qm-off':'qm-on'}"${ok||on?'':' disabled'}>${on?'간편 측정 끄기':'간편 측정 켜기'}</button>
       ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>${nat.ver>=6?`<button type="button" class="btn small${nat.bub&&nat.bub.on&&nat.bub.perm?' primary':''}" data-act="nat-bub">${nat.bub&&nat.bub.on&&nat.bub.perm?'떠 있는 ＋1 끄기':'떠 있는 ＋1'}</button>`:''}`:''}
-      <span class="muted">${on?'위젯·음량으로 기록':ok?'켜면 트리거가 이쪽으로':'새 앱 설치 필요'}</span>`:'<span class="muted">설치형 앱에서 켜요</span>'}</div>
+      <span class="muted">${on?'위젯·음량으로 기록':ok?'켜면 트리거가 이쪽으로':'새 앱 설치 필요'}</span>`:qkRow(p)}</div>
   </section>`;
 }
 function qmSave(p,cfg){p.quick={n:cfg.n,items:cfg.items.map(x=>({k:x.k,c:x.c}))};p.updatedAt=nowISO();saveNow();const y=window.scrollY;render();window.scrollTo(0,y);}
@@ -5173,6 +5178,135 @@ document.addEventListener('change',e=>{
   const [f,i]=el.dataset.qm.split(':');const p=curProject();if(!p)return;
   if(f==='k'){qmSetKind(Number(i),el.value);return;}
   if(f==='c'){const cfg=qmCfg(p);const x=cfg.items[Number(i)];if(!x)return;x.c=qmCol(el.value,0);qmSave(p,cfg);}
+});
+
+/* ---------- 간편 측정(컴퓨터): 단축키로 대기 창을 띄우고 곧바로 ＋1 ----------
+   단축키(기본: 0 세 번 연타, 또는 조합키)를 누르면 휴대폰 회기가 있으면 그 회기에, 없으면 이 PC에서 바로 회기를 열어(휴대폰을 기다리지 않음) 1회 더한다.
+   PC 회기 상태는 이 기기 localStorage(QPC_KEY): {pid,at,sid,tk,sesId,main,items,co,base,last}. ABC는 간편 측정과 같은 규칙(qmAbcRow).
+   기초선·중재 횟수는 측정 방법이 '빈도'일 때만 센다(다른 방법은 ABC 행만). 단축키는 이 페이지나 작은 창에 초점이 있을 때만 받는다. */
+const QPC_KEY='pbs-quick-pc',QK_KEY='pbs-quick-key';
+function qmPcGet(){try{return JSON.parse(localStorage.getItem(QPC_KEY)||'null');}catch(e){return null;}}
+function qmPcSet(v){try{if(v)localStorage.setItem(QPC_KEY,JSON.stringify(v));else localStorage.removeItem(QPC_KEY);}catch(e){}}
+/* 지금 이어 쓸 PC 회기: 기준이 기초선이면 그 관찰 시간 안, 기준이 ABC면 관찰 간격 넘게 쉬지 않았을 때 */
+function qmPcCur(p){
+  const r=qmPcGet();if(!r||!p||r.pid!==p.id)return null;const now=Date.now();
+  if(r.tk&&!sesList(p,r.tk).some(x=>x.id===r.sesId))return null;
+  if(r.main===r.tk)return now-r.at<Math.max(1,qmTime(p,r.tk)||40)*60000?r:null;
+  return now-(r.last||r.at)<qmTime(p,'abc')*60000?r:null;
+}
+function qmPcStart(p){
+  const items=qmItems(p);const bi=items.find(x=>x.k!=='abc');const hasAbc=items.some(x=>x.k==='abc');
+  const freq=!!bi&&p.procs.define.data.measure==='빈도';
+  if(!freq&&!hasAbc){toast('PC 단축키는 빈도·ABC만');return null;}
+  const at=Date.now();const tk=freq?bi.k:null;const main=tk?qmMain(p,items):'abc';
+  let sesId=null;
+  if(tk){
+    const list=sesList(p,tk);const prev=blSorted(list).slice(-1)[0]||(tk==='iv'?blSorted(p.procs.baseline.data.sessions).slice(-1)[0]:null);
+    const s=blNew(prev);s.id='bpc'+at;s.date=ymdLocal();s.time=natHms(at).slice(0,5);s.value='0';
+    if(main!==tk){const m=items.find(x=>x.k===tk);s.qco={w:QM_NAME[main],c:m?m.c:QM_COLORS[0]};}
+    list.push(s);sesId=s.id;touch(p,sesProc(tk));
+  }
+  const r={pid:p.id,at,sid:'q'+at,tk,sesId,main,items:items.map(x=>({k:x.k,c:x.c})),co:[],base:at,last:at};
+  qmPcSet(r);return r;
+}
+function qmPcCount(){
+  const r=qmPcGet();const p=r&&projById(r.pid);if(!p)return 0;
+  if(r.tk){const s=sesList(p,r.tk).find(x=>x.id===r.sesId);return s?(blNum(s.value)||0):0;}
+  return abcData(p).sheets.filter(x=>x.sessionId===r.sid).reduce((n,sh)=>n+sh.rows.filter(x=>x.nat).length,0);
+}
+function qmPcInc(d){
+  const r0=qmPcGet();const p=r0&&projById(r0.pid);const r=p&&qmPcCur(p);if(!r){toast('간편 측정 회기가 끝났습니다');return false;}
+  const now=Date.now();let s=null;
+  if(r.tk){s=sesList(p,r.tk).find(x=>x.id===r.sesId);
+    const v=blNum(s.value)||0;if(d<0&&v<=0)return false;
+    s.value=String(Math.max(0,v+d));const t=natTimes(s);if(d>0)t.push(natHms(now));else t.pop();s.tapLog=t.join(' ');
+    if(r.main!==r.tk)s.mins=String(Math.max(1,Math.ceil((now-r.at)/60000)));/* 동시 진행: 관찰 시간 = 지금까지 */
+    touch(p,sesProc(r.tk));}
+  if(qmItem(r,'abc')){qmAbcRow(p,r,now,d,'');touch(p,'abc');}
+  r.last=now;qmPcSet(r);saveNow();
+  if(curProject()===p&&ui.view==='proc'){
+    if(ui.proc==='abc')renderAbcAll();
+    else if(s){const el=$(`#ses-${s.id}-value`);if(el){if(document.activeElement!==el)el.value=s.value;refreshBl(p);}else{const y=window.scrollY;render();window.scrollTo(0,y);}}
+  }else if(curProject()===p&&ui.view==='project'){const q=$('#qm-card');if(q)q.outerHTML=qmCard(p);}
+  if(Sync.cur&&Sync.cur.localId===p.id)syncFlushSoon(300);
+  return true;
+}
+/* 단축키를 눌렀을 때 */
+function qmHot(){
+  const k=qkGet();const p=(k.pid&&projById(k.pid))||curProject();if(!p){toast('간편 측정할 프로젝트를 여세요');return;}
+  const lr=liveActive();
+  if(lr&&p.shared&&lr.pid===p.shared.projectId){/* 휴대폰 회기 중: 그 회기에 ＋1 */
+    if(!(mini.on&&mini.live)){if(mini.on)miniOff();liveMini(true);}
+    liveInc(1);miniCount();return;
+  }
+  const fresh=!qmPcCur(p);if(fresh&&!qmPcStart(p))return;
+  qmPcInc(1);
+  if(mini.on&&mini.pip){if(!mini.qpc){Object.assign(mini,{live:false,qpc:true,ph:null,id:null});miniFill(mini.pip);}miniCount();}
+  else if(mini.on){Object.assign(mini,{live:false,qpc:true,ph:null,id:null});miniCount();}
+  else{Object.assign(mini,{on:true,live:false,qpc:true,ph:null,id:null});miniShow(true);}
+  const mk=mini.pip?mini.pip.document.getElementById('mini-mark'):$('#mini-mark');if(mk){mk.classList.remove('hit');void mk.offsetWidth;mk.classList.add('hit');}
+  if(fresh)toast('간편 측정 시작 · 1회');
+}
+/* 단축키 설정(이 기기): mode 'tap'(같은 키 n번 연타) | 'combo'(조합키, code로 맞춤) */
+function qkGet(){let o=null;try{o=JSON.parse(localStorage.getItem(QK_KEY)||'null');}catch(e){}
+  o=Object.assign({on:true,mode:'tap',key:'0',n:3,combo:null,pid:null},o||{});o.n=Math.min(5,Math.max(2,Number(o.n)||3));return o;}
+function qkSet(o){try{localStorage.setItem(QK_KEY,JSON.stringify(o));}catch(e){}}
+function qkCodeName(c){return String(c||'').replace(/^Key/,'').replace(/^Digit/,'').replace(/^Numpad(\d)$/,'숫자판 $1');}
+function qkKeyName(k){return k===' '?'Space':k;}
+function qkLabel(o){
+  if(o.mode==='combo'){const c=o.combo;if(!c)return '조합 없음';return [c.ctrl&&'Ctrl',c.alt&&'Alt',c.shift&&'Shift',c.meta&&'⌘',qkCodeName(c.code)].filter(Boolean).join('+');}
+  return `${qkKeyName(o.key)} ${o.n}번`;
+}
+const qk={cap:false,taps:[]};
+function qkTyping(e){const t=e.target;return !!(t&&t.closest&&t.closest('input,textarea,select,[contenteditable=""],[contenteditable="true"]'));}
+function qkDown(e,fromPip){
+  if(qk.cap&&!fromPip){
+    if(['Shift','Control','Alt','Meta'].includes(e.key))return;
+    e.preventDefault();e.stopPropagation();
+    if(e.key==='Escape'){qk.cap=false;qkRefresh();return;}
+    const o=qkGet();
+    if(o.mode==='combo'){if(!(e.ctrlKey||e.altKey||e.metaKey||e.shiftKey)){toast('Ctrl·Alt·Shift와 함께 누르세요');return;}
+      o.combo={ctrl:e.ctrlKey,alt:e.altKey,shift:e.shiftKey,meta:e.metaKey,code:e.code};}
+    else o.key=e.key;
+    o.pid=(curProject()||{}).id||o.pid;o.on=true;qkSet(o);qk.cap=false;qkRefresh();toast('단축키: '+qkLabel(o));return;
+  }
+  if(mini.on&&(e.key==='ArrowUp'||e.key==='ArrowDown')&&(fromPip||!qkTyping(e))&&!e.altKey&&!e.ctrlKey&&!e.metaKey){e.preventDefault();miniInc(e.key==='ArrowUp'?1:-1);return;}
+  const o=qkGet();if(!o.on||e.repeat||PCN)return;
+  if(o.mode==='combo'){const c=o.combo;if(c&&e.code===c.code&&!!e.ctrlKey===!!c.ctrl&&!!e.altKey===!!c.alt&&!!e.shiftKey===!!c.shift&&!!e.metaKey===!!c.meta){e.preventDefault();qmHot();}return;}
+  if(!fromPip&&qkTyping(e))return;
+  if(e.ctrlKey||e.altKey||e.metaKey||e.key!==o.key){qk.taps=[];return;}
+  const now=Date.now();if(qk.taps.length&&now-qk.taps[qk.taps.length-1]>700)qk.taps=[];
+  qk.taps.push(now);
+  if(qk.taps.length>=o.n){qk.taps=[];e.preventDefault();qmHot();}
+}
+document.addEventListener('keydown',e=>qkDown(e,false),true);
+function qkRefresh(){const p=curProject();const q=$('#qm-card');if(p&&q)q.outerHTML=qmCard(p);}
+/* 간편 측정 카드(컴퓨터): 단축키 줄 */
+function qkRow(p){
+  const o=qkGet();const tp=o.pid&&projById(o.pid);const other=tp&&tp.id!==p.id;const r=qmPcGet();const runHere=!!(r&&r.pid===p.id&&qmPcCur(p));
+  const ns=[2,3,4,5].map(n=>`<option value="${n}"${n===o.n?' selected':''}>${n}번</option>`).join('');
+  return `<div class="qm-key">
+    <span class="qm-key-t">대기 창 단축키</span>
+    <span class="trig-seg" role="group" aria-label="단축키 방식"><button type="button" class="seg-btn" data-act="qk-mode" data-v="tap" aria-pressed="${o.mode!=='combo'}">연타</button><button type="button" class="seg-btn" data-act="qk-mode" data-v="combo" aria-pressed="${o.mode==='combo'}">조합</button></span>
+    ${o.mode==='combo'?'':`<label class="field qm-key-n"><span class="sr-only">연타 횟수</span><select data-qk="n">${ns}</select></label>`}
+    <button type="button" class="btn small${qk.cap?' primary':''}" data-act="qk-cap">${qk.cap?(o.mode==='combo'?'조합키를 누르세요':'키를 누르세요'):'커맨드 입력'}</button>
+    <span class="mono qm-key-l">${esc(qkLabel(o))}</span>
+    <label class="check"><input type="checkbox" data-qk="on"${o.on?' checked':''}> <span>켜기</span></label>
+  </div>
+  <div class="qm-go">${other?`<span class="muted">대상: ${esc(tp.code||'다른 프로젝트')}</span><button type="button" class="btn small" data-act="qk-here">이 학생으로</button>`:`<span class="muted">${o.on?'누르면 바로 ＋1':'단축키 꺼짐'}</span>`}
+    ${runHere?`<span class="muted">· PC 회기 ${qmPcCount()}회</span><button type="button" class="btn small" data-act="qk-end">PC 회기 끝</button>`:''}
+    <span class="muted">· 위·아래 화살표=±1</span></div>`;
+}
+Object.assign(actions,{
+  'qk-mode':el=>{const o=qkGet();o.mode=el.dataset.v==='combo'?'combo':'tap';o.pid=(curProject()||{}).id||o.pid;qkSet(o);qk.cap=o.mode==='combo'&&!o.combo;qkRefresh();},
+  'qk-cap':()=>{qk.cap=!qk.cap;qkRefresh();},
+  'qk-here':()=>{const o=qkGet();o.pid=(curProject()||{}).id||null;qkSet(o);qkRefresh();toast('단축키 대상을 바꿨습니다');},
+  'qk-end':()=>{qmPcSet(null);if(mini.qpc)miniOff();qkRefresh();toast('PC 회기를 끝냈습니다');},
+});
+document.addEventListener('change',e=>{
+  const el=e.target;if(!(el.matches&&el.matches('[data-qk]')))return;const o=qkGet();
+  if(el.dataset.qk==='n')o.n=Number(el.value)||3;else if(el.dataset.qk==='on')o.on=el.checked;
+  o.pid=(curProject()||{}).id||o.pid;qkSet(o);qkRefresh();
 });
 
 /* ---------- 설치형 앱: 화면 자동 업데이트 ----------
@@ -5197,8 +5331,9 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
-  {id:'2026-11-18-3',d:'2026-11-18',k:'apk',need:11,t:'강도·간격 기록도 트리거로',items:['음량: 이어 누른 수=강도','음량: 신호 때 누르면 있음','떠 있는 판에 1·2·3, 있음·없음','빠른 측정 5가지 모두 ABC 함께']},
-  {id:'2026-11-18-2',d:'2026-11-18',k:'web',t:'빠른 측정',items:['측정 화면 아래 \'빠른 측정\'','트리거 한 번에 2개 함께','긴 측정이 기준·자동 갱신','짧은 쪽은 색 테두리 표시']},
+  {id:'2026-11-18-4',d:'2026-11-18',k:'web',t:'간편 측정 단축키(PC)',items:['\'빠른 측정\' → \'간편 측정\'','기본: 0을 세 번 연타','누르면 대기 창 + 바로 1회','위·아래 화살표로 ±1']},
+  {id:'2026-11-18-3',d:'2026-11-18',k:'apk',need:11,t:'강도·간격 기록도 트리거로',items:['음량: 이어 누른 수=강도','음량: 신호 때 누르면 있음','떠 있는 판에 1·2·3, 있음·없음','간편 측정 5가지 모두 ABC 함께']},
+  {id:'2026-11-18-2',d:'2026-11-18',k:'web',t:'간편 측정',items:['측정 화면 아래 \'간편 측정\'','트리거 한 번에 2개 함께','긴 측정이 기준·자동 갱신','짧은 쪽은 색 테두리 표시']},
   {id:'2026-11-18-1',d:'2026-11-18',k:'web',t:'대기 창을 작게',items:['가로 한 줄 작은 창','대기 중엔 흐리게','회기 중엔 시작 시각·횟수','✕로 닫기']},
   {id:'2026-11-17-17',d:'2026-11-17',k:'web',t:'휴대폰 회기가 기록에 바로',items:['앱에서 측정 시작하면','PC 회기별 기록에 회기 추가','횟수도 실시간으로 바뀜','대기 창 연결 오류 표시']},
   {id:'2026-11-17-16',d:'2026-11-17',k:'apk',need:10,t:'앱이 꺼져도 칠판과 함께 세기',items:['빠른 설정·위젯으로 시작해도','칠판·PC에 ＋1이 바로 뜸','칠판 ＋1도 휴대폰에 바로','회기 중 알림 \'함께 세는 중\'']},
@@ -5332,16 +5467,17 @@ function padBind(cv,onHit){
     t=setTimeout(()=>{const ok=len>=14;len=0;c.clearRect(0,0,cv.width,cv.height);if(!ok)return;box.classList.add('ok');setTimeout(()=>box.classList.remove('ok'),400);onHit();},700);};
   cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
 }
-const mini={on:false,live:false,ph:null,id:null,pip:null,tuck:false,x:0,y:0};/* live: 다른 기기(휴대폰) 회기를 함께 세는 창 */
+const mini={on:false,live:false,qpc:false,ph:null,id:null,pip:null,tuck:false,x:0,y:0};/* qpc: 이 PC에서 단축키로 연 간편 측정 *//* live: 다른 기기(휴대폰) 회기를 함께 세는 창 */
 function miniSes(){const p=curProject();if(!p||!mini.id)return null;const s=sesList(p,mini.ph).find(x=>x.id===mini.id);return s?{p,s}:null;}
 function miniCount(){
-  let t;if(mini.live){const n=liveCount();t=n==null?'대기':n+'회';}else{const r=miniSes();t=(r?(blNum(r.s.value)||0):0)+'회';}
+  let t;if(mini.qpc){t=qmPcCount()+'회';}else if(mini.live){const n=liveCount();t=n==null?'대기':n+'회';}else{const r=miniSes();t=(r?(blNum(r.s.value)||0):0)+'회';}
   $('#mini-n').textContent=t;$('#mini-pad-n').textContent=t;if(mini.pip){const e=mini.pip.document.getElementById('mini-n');if(e)e.textContent=t;
-    const w=mini.pip.document.getElementById('mini-who');if(w){const r=mini.live&&liveActive();w.textContent=r?(Date.now()-(Number(r.v.at)||0)>90000?'소식 없음':`● ${r.v.st||'진행 중'}`):'대기';mini.pip.document.body.classList.toggle('idle',!r);w.title=r?(r.v.title||''):'';w.classList.toggle('on',!!r);}
-    const c=mini.pip.document.getElementById('mini-cnt');if(c){const n=mini.live?liveCount():null;c.textContent=n==null?'—':n+'회';}}
+    const w=mini.pip.document.getElementById('mini-who');if(w&&mini.qpc){w.textContent='● 간편 측정';w.classList.add('on');mini.pip.document.body.classList.remove('idle');w.title='';}else if(w){const r=mini.live&&liveActive();w.textContent=r?(Date.now()-(Number(r.v.at)||0)>90000?'소식 없음':`● ${r.v.st||'진행 중'}`):'대기';mini.pip.document.body.classList.toggle('idle',!r);w.title=r?(r.v.title||''):'';w.classList.toggle('on',!!r);}
+    const c=mini.pip.document.getElementById('mini-cnt');if(c){const n=mini.qpc?qmPcCount():mini.live?liveCount():null;c.textContent=n==null?'—':n+'회';}}
 }
 function miniInc(d){
-  if(mini.live){if(!liveInc(d))return;}
+  if(mini.qpc){if(!qmPcInc(d))return;}
+  else if(mini.live){if(!liveInc(d))return;}
   else{const r=miniSes();if(!r){toast('회기를 찾지 못했습니다');miniOff();return;}
   actions['ses-inc']({dataset:{ph:mini.ph,id:mini.id,d:String(d)}});}
   miniCount();
@@ -5358,7 +5494,7 @@ function miniPlace(){
   try{localStorage.setItem(MINI_POS,JSON.stringify({x:mini.x,y:mini.y,t:mini.tuck}));}catch(e){}
 }
 function miniOff(){
-  if(!mini.on)return;mini.on=false;$('#mini').hidden=true;if(mini.live){mini.live=false;setTimeout(liveBar,0);}
+  if(!mini.on)return;mini.on=false;mini.qpc=false;$('#mini').hidden=true;if(mini.live){mini.live=false;setTimeout(liveBar,0);}
   if(mini.pip){const w=mini.pip;mini.pip=null;try{w.close();}catch(e){}}
   coverSet(false);
   const r=miniSes();if(r&&ui.view==='proc'){const el=$('#ses-'+mini.id);if(el)el.scrollIntoView({block:'center'});}
@@ -5366,14 +5502,14 @@ function miniOff(){
 async function miniOn(el){
   const p=curProject();if(!p)return;const s=sesList(p,el.dataset.ph).find(x=>x.id===el.dataset.id);if(!s)return;
   if(mini.on&&mini.live)miniOff();/* 함께 세기 창은 닫고 이 회기로 */
-  Object.assign(mini,{on:true,live:false,ph:el.dataset.ph,id:s.id});
+  Object.assign(mini,{on:true,live:false,qpc:false,ph:el.dataset.ph,id:s.id});
   coverSet(true);
   return miniShow(true);
 }
 /* tryPip: 사용자가 누른 직후에만 작은 창(PiP)을 열 수 있다(브라우저 규칙). 아니면 화면 안에 띄운다 */
 /* 함께 세기 작은 창: 가로 한 줄로 작게(왼쪽 상태·횟수, 가운데 ＋1, 오른쪽 −1·닫기). 대기 중엔 흐리게 */
 function liveCompact(w,v,drawM){
-  w.document.head.innerHTML=`<meta charset="utf-8"><title>＋1 함께 세기</title><style>
+  w.document.head.innerHTML=`<meta charset="utf-8"><title>${mini.qpc?'＋1 간편 측정':'＋1 함께 세기'}</title><style>
     body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 8px;box-sizing:border-box;background:${v('--bg')};font-family:system-ui,sans-serif;user-select:none;overflow:hidden}
     button{font:inherit;cursor:pointer;touch-action:manipulation}
     .info{display:flex;flex-direction:column;align-items:center;min-width:46px}
@@ -5390,13 +5526,8 @@ function liveCompact(w,v,drawM){
     +(drawM?'<div class="pad" title="그으면 ＋1"><canvas id="pip-cv" width="300" height="128" aria-label="그으면 1 더하기"></canvas></div>':'<button id="mini-mark" aria-label="1 더하기">＋1</button>')
     +'<div class="t"><button id="mini-dec" aria-label="1 빼기">−1</button><button id="mini-out" aria-label="작은 창 닫기" title="닫기">✕</button></div>';
 }
-async function miniShow(tryPip){
-  /* 다른 창 위에 띄우기(되는 브라우저만) */
-  if(tryPip&&window.documentPictureInPicture&&matchMedia('(min-width:900px)').matches){
-    try{
-      const req=documentPictureInPicture.requestWindow(mini.live?(miniTrig()==='draw'?{width:280,height:100}:{width:220,height:84}):miniTrig()==='draw'?{width:240,height:230}:{width:180,height:200});
-      const w=await Promise.race([req,new Promise((_,no)=>setTimeout(()=>no(new Error('late')),2500))]).catch(e=>{req.then(x=>{try{x.close();}catch(y){}}).catch(()=>{});throw e;});
-      if(!mini.on){try{w.close();}catch(e){}return;}
+/* 작은 창(PiP) 안을 지금 모드(이 기기 회기·함께 세기·간편 측정)로 채운다. 열린 창을 다른 모드로 바꿀 때도 쓴다 */
+function miniFill(w){
       const st=getComputedStyle(document.documentElement);const v=k=>st.getPropertyValue(k);
       w.document.head.innerHTML=`<meta charset="utf-8"><title>${mini.live?'＋1 함께 세기':'＋1'}</title><style>
         body{margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:${v('--bg')};font-family:system-ui,sans-serif;user-select:none}
@@ -5410,12 +5541,22 @@ async function miniShow(tryPip){
       const drawM=miniTrig()==='draw';
       w.document.head.insertAdjacentHTML('beforeend',`<style>.pad{width:94vw;border:2px solid ${v('--accent')};border-radius:12px;overflow:hidden;background:${v('--surface')}}.pad b{display:block;padding:4px 8px;background:${v('--accent')};color:${v('--accent-ink')};font-size:14px}.pad canvas{display:block;width:100%;height:110px;touch-action:none}.pad.ok canvas{background:${v('--accent-soft')}}</style>`);
       w.document.body.innerHTML=(mini.live?'<div class="who" id="mini-who"></div><div class="cnt" id="mini-cnt" aria-label="지금 횟수">—</div>':'')+(drawM?'<div class="pad"><b>그으면 ＋1 · <span id="mini-n">0</span></b><canvas id="pip-cv" width="360" height="220"></canvas></div>':'<button id="mini-mark" aria-label="1 더하기">＋1<small id="mini-n">0</small></button>')+'<div class="t"><button id="mini-dec" aria-label="1 빼기">−1</button><button id="mini-out">펼치기</button></div>';
-      if(mini.live)liveCompact(w,v,drawM);
+      if(mini.live||mini.qpc)liveCompact(w,v,drawM);
       if(drawM)padBind(w.document.getElementById('pip-cv'),()=>miniInc(1));
       else w.document.getElementById('mini-mark').addEventListener('click',()=>miniInc(1));
       w.document.getElementById('mini-dec').addEventListener('click',()=>miniInc(-1));
       w.document.getElementById('mini-out').addEventListener('click',()=>{miniOff();try{window.focus();}catch(e){}});
-      w.addEventListener('pagehide',()=>{if(mini.pip===w){mini.pip=null;if(mini.live)live.closed=Date.now();/* 사람이 닫음: 3초 동안만 저절로 다시 열지 않음(닫자마자 다시 뜨지 않게) */if(mini.on&&mini.live&&!liveActive())miniOff();else if(mini.on){$('#mini').hidden=false;miniPlace();}liveBar();}});
+}
+async function miniShow(tryPip){
+  /* 다른 창 위에 띄우기(되는 브라우저만) */
+  if(tryPip&&window.documentPictureInPicture&&matchMedia('(min-width:900px)').matches){
+    try{
+      const req=documentPictureInPicture.requestWindow(mini.live||mini.qpc?(miniTrig()==='draw'?{width:280,height:100}:{width:220,height:84}):miniTrig()==='draw'?{width:240,height:230}:{width:180,height:200});
+      const w=await Promise.race([req,new Promise((_,no)=>setTimeout(()=>no(new Error('late')),2500))]).catch(e=>{req.then(x=>{try{x.close();}catch(y){}}).catch(()=>{});throw e;});
+      if(!mini.on){try{w.close();}catch(e){}return;}
+      miniFill(w);
+      w.document.addEventListener('keydown',e=>qkDown(e,true));/* 작은 창에서도 단축키·위아래 화살표 */
+      w.addEventListener('pagehide',()=>{if(mini.pip===w){mini.pip=null;if(mini.live)live.closed=Date.now();/* 사람이 닫음: 3초 동안만 저절로 다시 열지 않음(닫자마자 다시 뜨지 않게) */if(mini.on&&(mini.qpc||mini.live&&!liveActive()))miniOff();else if(mini.on){$('#mini').hidden=false;miniPlace();}liveBar();}});
       mini.pip=w;miniCount();toast(mini.live&&!liveActive()?'휴대폰 회기를 기다립니다':'작은 창 ＋1을 누르세요');return;
     }catch(e){mini.pip=null;}
   }
@@ -5611,7 +5752,7 @@ async function liveMini(gesture){
   if(mini.on&&mini.pip){try{mini.pip.focus();}catch(e){}return;}
   if(live.opening)return;
   if(mini.on){if(!gesture)return;$('#mini').hidden=true;}
-  Object.assign(mini,{on:true,live:true,ph:null,id:null});
+  Object.assign(mini,{on:true,live:true,qpc:false,ph:null,id:null});
   live.opening=true;try{await miniShow(gesture);}finally{live.opening=false;}
   if(mini.pip)liveFlash(false);
   liveShow();
