@@ -3229,6 +3229,8 @@ const INPUT_MODE_KEY='pbs-input-mode';/* 'ink'(손글씨) | 'kb'(키보드, 기�
 function inputModeGet(){try{return localStorage.getItem(INPUT_MODE_KEY)==='ink'?'ink':'kb';}catch(e){return 'kb';}}
 const inkUI={pad:null,penSeen:inkModeGet()==='pen',penDown:false,pending:{},mode:inputModeGet(),kb:null};
 document.documentElement.classList.toggle('in-ink',inkUI.mode==='ink');
+/* 숫자 칸(측정값·관찰 시간·목표 값·원점수 등, inputmode가 decimal·numeric)은 손글씨 모드에서도 키보드(숫자)로 쓴다 */
+function inkNum(el){const m=el.dataset.im!=null?el.dataset.im:el.getAttribute('inputmode');return m==='decimal'||m==='numeric';}
 function inkSpec(el){return el.dataset.f||(el.id==='new-code'?'new:code':el.id==='new-memo'?'new:memo':'');}
 /* 칸 이름(data-f)으로 손글씨를 담을 객체와 필드를 찾는다 */
 function inkTarget(spec){
@@ -3286,7 +3288,7 @@ function inkInner(spec){
 function inkHost(spec){
   if(spec==='new:code')return document.getElementById('new-code');
   if(spec==='new:memo')return document.getElementById('new-memo');
-  return Array.from(document.querySelectorAll(INK_SEL)).find(el=>el.dataset.f===spec)||null;
+  return Array.from(document.querySelectorAll(INK_SEL)).find(el=>el.dataset.f===spec&&!inkNum(el))||null;
 }
 function inkHostMark(el,spec){
   const t=inkTarget(spec);
@@ -3300,7 +3302,7 @@ function inkHostMark(el,spec){
 /* 화면이 그려질 때마다 입력칸 바로 뒤에 손글씨 자리를 붙인다 */
 function inkScan(){
   document.querySelectorAll(INK_SEL).forEach(el=>{
-    const spec=inkSpec(el);if(!spec)return;
+    const spec=inkSpec(el);if(!spec||inkNum(el))return;
     const nx=el.nextElementSibling;
     if(!el.classList.contains('ink-host'))inkHostMark(el,spec);
     if(nx&&nx.classList.contains('ink')&&nx.dataset.k===spec)return;
@@ -3558,7 +3560,7 @@ function resumeBoot(){
 /* 키보드로 바로 쓰는 글 칸: 들어가면 기록, 정말 벗어나면 지운다 */
 document.addEventListener('focusin',e=>{
   const el=e.target;if(!(el&&el.matches&&el.matches(INK_SEL)))return;
-  const spec=inkSpec(el);if(!spec||inkUI.mode==='ink'||el.classList.contains('ink-has'))return;
+  const spec=inkSpec(el);if(!spec||(inkUI.mode==='ink'&&!inkNum(el))||el.classList.contains('ink-has'))return;
   if(spec.startsWith('new:'))return;
   resumeSet({kind:'field',spec,sel:el.selectionStart});
 },true);
@@ -3596,7 +3598,7 @@ function inputModeSet(m){
   try{localStorage.setItem(INPUT_MODE_KEY,inkUI.mode);}catch(e){}
   document.documentElement.classList.toggle('in-ink',inkUI.mode==='ink');
   const ae=document.activeElement;if(inkUI.mode==='ink'&&ae&&ae.matches&&ae.matches(INK_SEL))ae.blur();
-  document.querySelectorAll(INK_SEL).forEach(el=>{const sp=inkSpec(el);if(sp)inkHostMark(el,sp);});
+  document.querySelectorAll(INK_SEL).forEach(el=>{const sp=inkSpec(el);if(sp&&!inkNum(el))inkHostMark(el,sp);});
   document.querySelectorAll('.ink').forEach(box=>{box.innerHTML=inkInner(box.dataset.k);});
   inputModeUI();
 }
@@ -3604,7 +3606,7 @@ actions['input-mode']=()=>{inputModeSet(inkUI.mode==='ink'?'kb':'ink');toast(ink
 /* 칸을 누르면: 손글씨 모드 → 그 칸 손글씨 열기 / 키보드 모드 + 손글씨 있는 칸 → 보며 쓰기 창 */
 document.addEventListener('focusin',e=>{
   const el=e.target;if(!(el&&el.matches&&el.matches(INK_SEL)))return;
-  const spec=inkSpec(el);if(!spec)return;
+  const spec=inkSpec(el);if(!spec||inkNum(el))return;
   const box=el.nextElementSibling&&el.nextElementSibling.classList.contains('ink')?el.nextElementSibling:null;
   if(inkUI.mode==='ink'){
     el.blur();
@@ -5448,6 +5450,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-19-3',d:'2026-11-19',k:'web',t:'손글씨 모드 숫자 칸',items:['측정값 칸 깨짐 고침','숫자 칸은 키보드로 입력','측정값·관찰 시간·목표 값','글 칸은 그대로 손글씨']},
   {id:'2026-11-19-2',d:'2026-11-19',k:'web',t:'첫 화면에서 로그인',items:['첫 화면 \'계정\' 카드','로그인·회원가입 버튼','구글 로그인도 여기서','로그인하면 주소·로그아웃']},
   {id:'2026-11-19-1',d:'2026-11-19',k:'web',t:'이메일로 회원가입',items:['구글 말고 이메일로도','회원가입·로그인 가능','비밀번호 찾기(메일)','구글 계정과 따로임']},
   {id:'2026-11-18-5',d:'2026-11-18',k:'web',t:'＋1 창 대기 = 회기 시작',items:['컴퓨터·전자칠판에서','누르면 바로 회기 열림','＋1 버튼 바로 켜짐','휴대폰 회기 중이면 그 회기']},
