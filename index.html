@@ -676,6 +676,19 @@ html.in-ink .ink-host{caret-color:transparent}
 .trig-seg .seg-btn:first-child{border-left:0}
 /* 실시간 함께 세기: 다른 기기 회기 알림 막대 */
 .live-bar{position:fixed;z-index:205;left:50%;transform:translateX(-50%);top:calc(var(--tb,56px) + 8px);display:flex;align-items:center;gap:8px;padding:5px 6px 5px 14px;border-radius:999px;background:var(--surface);border:2px solid var(--accent);box-shadow:var(--shadow);max-width:calc(100vw - 32px)}
+.pres{position:fixed;z-index:17;left:max(8px,env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column-reverse;align-items:flex-start;gap:6px;max-width:calc(100vw - 16px)}
+.pres[hidden]{display:none}
+.pres-btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font:inherit;font-size:.82rem;font-weight:700;box-shadow:var(--shadow);cursor:pointer;opacity:.94}
+.pres-btn[aria-expanded="true"]{border-color:var(--accent)}
+.pres-dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.pres-pop{width:min(300px,calc(100vw - 16px));max-height:min(60vh,420px);overflow-y:auto;background:var(--surface);color:var(--ink);border:1px solid var(--line-strong);border-radius:12px;box-shadow:var(--shadow);padding:10px 12px;font-size:.86rem}
+.pres-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.pres-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.pres-list li{display:flex;flex-direction:column;gap:3px;padding:6px 8px;border-radius:8px;background:var(--surface-2)}
+.pres-list li.on{background:var(--ok-soft)}
+.pres-dev{display:flex;flex-direction:column;line-height:1.4}
+.pres-dev.away{opacity:.7}
+.pres-act{font-weight:600}
 .live-bar[hidden]{display:none}
 .live-bar span{font-weight:700;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important;scroll-behavior:auto!important} }
@@ -713,6 +726,7 @@ html.in-ink .ink-host{caret-color:transparent}
     <label class="cover-auto"><input type="checkbox" id="cover-auto">나갔다 오면 가리기</label>
   </div>
 </div>
+<div class="pres" id="pres" hidden></div>
 <div class="mini" id="mini" hidden>
   <button type="button" class="mini-mark" id="mini-mark" aria-label="1 더하기"><span class="mini-plus">＋1</span><small id="mini-n">0</small></button>
   <div class="mini-pad" id="mini-pad"><div class="mini-pad-bar" id="mini-pad-bar">≡ <span id="mini-pad-n">0회</span>&nbsp;· 그으면 ＋1</div><canvas id="mini-pad-cv" width="400" height="300" aria-label="그으면 1 더하기"></canvas></div>
@@ -3748,7 +3762,8 @@ const SYNC_ON=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.projec
 const SYNC_SKIP_TOP=new Set(['id','shared','lastBackupAt','example','owner','users']);/* 이 기기에만 두는 칸 */
 const SYNC_META=/(^|\/)updatedAt$|^procs\/[^/]+\/status$/;/* 내용이 아닌 칸: 이것만 바뀌었으면 보내지 않는다 */
 const NO_HIST=/(^|\/)(updatedAt|ink)(\/|\[|$)|^procs\/abc\/data\/session(\/|$)/;/* 수정 기록·충돌로 남기지 않는 칸 */
-const LIVE_HOST='~live/host',LIVE_TAP='~live/tap/',LIVE_RE=/^~live\//;/* 실시간 함께 세기 칸(프로젝트 자료로 합치지 않음) */
+const LIVE_HOST='~live/host',LIVE_TAP='~live/tap/',LIVE_RE=/^~(live|pres)\//;/* 실시간 함께 세기·협력자 접속 칸(프로젝트 자료로 합치지 않음) */
+const PRES='~pres/',PRES_RE=/^~pres\//;/* 협력자 접속 칸 '~pres/<기기>' */
 const live={host:null,beat:0,tapUn:null,watch:new Map(),docs:new Map(),rid:null,mine:null,mkey:null,mcount:null,note:null};
 const Sync={ad:null,loading:null,user:null,authKnown:false,online:navigator.onLine,cur:null,ft:null,lastInput:0,dlg:null,stats:{writes:0,flushes:0},inkGone:new Set(),deleting:new Set()};
 
@@ -4006,7 +4021,9 @@ async function makeFirestoreAdapter(){
       const conv=d=>Object.assign(d.data({serverTimestamps:'estimate'}),{_id:d.id});
       const ch=(snap)=>snap.docChanges().map(c=>({removed:c.type==='removed',d:conv(c.doc)}));
       const un=[
-        F.onSnapshot(sub(pid,'cells'),opt,s=>h.cells(ch(s).filter(x=>!LIVE_RE.test(x.d.path||'')).map(x=>(x.d.at=iso(x.d.at),x)),s.metadata.fromCache),h.error),
+        F.onSnapshot(sub(pid,'cells'),opt,s=>{const all=ch(s);
+          if(h.pres){const pr=all.filter(x=>PRES_RE.test(x.d.path||''));if(pr.length)h.pres(pr.map(x=>({path:x.d.path,v:syncParse(x.d.value),by:x.d.by||'',byName:x.d.byName||'',at:iso(x.d.at)})));}
+          h.cells(all.filter(x=>!LIVE_RE.test(x.d.path||'')).map(x=>(x.d.at=iso(x.d.at),x)),s.metadata.fromCache);},h.error),
         F.onSnapshot(sub(pid,'items'),opt,s=>h.items(ch(s),s.metadata.fromCache),h.error),
         F.onSnapshot(F.query(sub(pid,'conflicts'),F.where('resolved','==',false)),s=>h.conflicts(s.docs.map(d=>{const x=conv(d);return Object.assign(x,{id:d.id,at:iso(x.at),theirsAt:iso(x.theirsAt)});})),h.error),
         F.onSnapshot(pd(pid),s=>h.project(s.exists()?s.data():null),()=>{}),
@@ -4273,6 +4290,7 @@ function syncSubscribe(S){
     items:(chs,cache)=>{chs.forEach(c=>{const d=c.d;if(c.removed)S.items.delete(d.path);else S.items.set(d.path,{parent:d.parent,order:Number(d.order)||0,deleted:!!d.deleted});});
       S.gotItems=true;syncAbsorbSoon(S);},
     project:d=>{if(d&&d.deleted)syncGone(S.localId);},
+    pres:list=>presGot(S,list),
     conflicts:list=>{S.conflicts=list;syncDecorateSoon();syncRefreshCards();},
     members:(list,cache)=>{S.members=list;const me=syncMe();
       if(!cache&&me&&!list.some(m=>m.uid===me.uid))S.error='removed';
@@ -4633,7 +4651,92 @@ function syncRefreshCards(){
   if(ui.view==='home'){const a=$('#sync-acct');if(a)a.innerHTML=syncAcctInner();}
   if(ui.view==='home'){const j=$('#sync-join-login');if(j)j.innerHTML=Sync.user?`<p class="meta">로그인: ${esc(Sync.user.email||Sync.user.name)}</p>`:'';}
 }
-function syncAfterRender(){syncWatch();syncWatchDocs();syncDecorateSoon();syncStatusUI();}
+function syncAfterRender(){syncWatch();syncWatchDocs();syncDecorateSoon();syncStatusUI();presSoon();}
+
+/* ---- 협력자: 같은 공유 프로젝트를 지금 연 다른 사람과 하는 일 ----
+   기기마다 서버 칸 '~pres/<기기>' {on, where:어느 화면, doing:하는 일, away:다른 창, dk:기기 종류, t}를 덮어쓴다(cells 규칙 그대로라 규칙 변경 없음).
+   바뀌면 곧바로, 그대로면 45초마다 쓴다. 창 닫기·로그아웃·다른 프로젝트나 목록으로 가면 on:false, 2분 30초 소식이 없으면 안 보인다.
+   본인(이 기기, 같은 계정, 합친 계정)은 보이지 않는다. */
+const PRES_BEAT=45000,PRES_STALE=150000;
+const pres={pid:null,sent:'',beat:0,t:null,open:false,html:''};
+function presDk(){const u=navigator.userAgent||'';const k=/Android.*Mobile|iPhone|iPod/.test(u)?'휴대폰':(/Android|iPad/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1))?'태블릿':'PC';return NATIVE_APP?k+' 앱':k;}
+function presAct(p){
+  const phN=ph=>ph==='iv'?'중재':'기초선';
+  let doing='';
+  const f=nat.key&&!String(nat.key).startsWith('live|')?natFind(nat.key):null;
+  if(f&&f.p===p)doing=f.ph==='abc'?'ABC 발생 시각 세는 중':`${phN(f.ph)} 회기 측정 중`;
+  else if(mini.on&&mini.qpc)doing='간편 측정 중';
+  else if(mini.on&&mini.live&&liveActive())doing='함께 세기 중';
+  else if(mini.on&&mini.id&&miniSes())doing=`${phN(mini.ph)} 회기 측정 중`;
+  else if(rec.state==='recording'&&onAbcPage(p))doing='ABC 녹음 중';
+  let where='프로젝트 첫 화면';
+  if(ui.view==='proc'&&PROC[ui.proc])where=`${PROC[ui.proc].no}. ${PROC[ui.proc].title}`;
+  else if(ui.view==='project'&&ui.cat&&CAT[ui.cat])where=`'${CAT[ui.cat].title}' 목록`;
+  if(!doing){const a=document.activeElement;
+    const typing=(a&&main.contains(a)&&a.matches('textarea,select,[contenteditable="true"],input:not([type=button]):not([type=checkbox]):not([type=radio]):not([type=file])'))||!!inkUI.pad;
+    doing=typing?'쓰는 중':'보는 중';}
+  return {where,doing};
+}
+function presSend(pid,v){const me=syncMe();if(!me||!Sync.ad||!Sync.ad.liveSet)return Promise.resolve();
+  return Sync.ad.liveSet(pid,PRES+liveDev(),v,me).catch(e=>console.warn('협력자 표시',e));}
+/* 접속 끝: 로그아웃 전에 부른다(최대 1.5초 기다림) */
+function presLeave(){const pid=pres.pid;pres.pid=null;pres.sent='';if(!pid)return Promise.resolve();
+  return Promise.race([presSend(pid,{on:false,t:Date.now()}),new Promise(r=>setTimeout(r,1500))]);}
+function presTick(){
+  clearTimeout(pres.t);pres.t=null;
+  const S=Sync.cur,me=syncMe(),p=curProject();
+  const want=S&&S.unsub&&!S.error&&me&&Sync.ad&&Sync.ad.liveSet&&p&&p.id===S.localId&&ui.view!=='home'?S.pid:null;
+  if(pres.pid&&pres.pid!==want)presLeave();
+  if(want){
+    const a=presAct(p);const doc={on:true,where:a.where,doing:a.doing,away:!!document.hidden,dk:presDk()};
+    const sig=JSON.stringify(doc),now=Date.now();
+    if(pres.pid!==want||sig!==pres.sent||now-pres.beat>=PRES_BEAT){pres.pid=want;pres.sent=sig;pres.beat=now;doc.t=now;presSend(want,doc);}
+  }
+  presUI();
+}
+function presSoon(){clearTimeout(pres.t);pres.t=setTimeout(presTick,500);}
+/* 서버에서 받은 접속 칸: 내용(t)이 새로 바뀐 때를 받은 시각으로 둔다(기기 시계 차이 줄이기). 처음 본 칸은 서버 시각 */
+function presGot(S,list){
+  S.pres=S.pres||new Map();
+  list.forEach(x=>{const dev=String(x.path).slice(PRES.length);const v=isObj(x.v)?x.v:{};const old=S.pres.get(dev);
+    const seen=old?(old.t===v.t?old.seen:Date.now()):(Date.parse(x.at)||0);
+    S.pres.set(dev,{dev,uid:x.by,byName:x.byName,v,t:v.t,seen});});
+  presUI();
+}
+function presPeople(){
+  const S=Sync.cur;if(!S||!S.pres||!pres.pid||pres.pid!==S.pid)return [];
+  const mine=new Set(acctIds());const now=Date.now();const by=new Map();
+  S.pres.forEach(d=>{
+    if(d.dev===liveDev()||!d.uid||mine.has(d.uid)||!d.v.on||now-d.seen>PRES_STALE)return;
+    const m=S.members.find(x=>x.uid===d.uid);if(S.members.length&&!m)return;/* 내보낸 사람 */
+    let g=by.get(d.uid);if(!g){g={uid:d.uid,name:(m&&m.name)||d.byName||'이름 없음',devs:[]};by.set(d.uid,g);}
+    g.devs.push(d);});
+  const out=[...by.values()];
+  out.forEach(g=>g.devs.sort((a,b)=>b.seen-a.seen));
+  return out.sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+}
+function presAgo(t){const s=Math.max(0,Math.round((Date.now()-t)/1000));return s<60?'방금':Math.floor(s/60)+'분 전';}
+function presUI(){
+  const box=$('#pres');if(!box)return;
+  const ppl=presPeople();
+  if(!pres.pid||(!ppl.length&&!pres.open)){pres.open=false;if(!box.hidden){box.hidden=true;box.innerHTML='';pres.html='';}return;}
+  const busy=g=>g.devs.some(d=>!/보는 중|쓰는 중/.test(d.v.doing||''));
+  let h=`<button type="button" class="pres-btn" data-act="pres-toggle" aria-expanded="${pres.open}" title="지금 접속한 협력자"><span class="pres-dot"></span>협력자 <b>${ppl.length}</b></button>`;
+  if(pres.open){
+    h+=`<div class="pres-pop" role="dialog" aria-label="지금 접속한 협력자"><div class="pres-head"><b>지금 접속 ${ppl.length}명</b><button type="button" class="btn small ghost" data-act="pres-toggle">닫기</button></div>`;
+    h+=ppl.length?`<ul class="pres-list">${ppl.map(g=>`<li${busy(g)?' class="on"':''}><b>${esc(g.name)}</b>${g.devs.map(d=>`<span class="pres-dev${d.v.away?' away':''}"><span class="pres-act">${esc(d.v.where||'')} · ${esc(d.v.doing||'')}</span><span class="meta">${esc(d.v.dk||'')}${d.v.away?' · 다른 창 보는 중':''} · ${presAgo(d.seen)}</span></span>`).join('')}</li>`).join('')}</ul>`:'<p class="meta">지금 접속한 사람이 없습니다</p>';
+    h+='</div>';
+  }
+  if(h!==pres.html){box.innerHTML=h;pres.html=h;}
+  box.hidden=false;
+}
+Object.assign(actions,{'pres-toggle':()=>{pres.open=!pres.open;presUI();}});
+document.addEventListener('click',e=>{if(pres.open&&!e.composedPath().some(n=>n&&n.id==='pres')){pres.open=false;presUI();}});
+document.addEventListener('focusin',presSoon);document.addEventListener('focusout',presSoon);
+document.addEventListener('visibilitychange',presTick);
+addEventListener('pagehide',()=>{presLeave();});
+addEventListener('pageshow',e=>{if(e.persisted)presTick();});
+setInterval(presTick,15000);
 function syncErrMsg(e){
   const c=(e&&e.code)||'';
   if(c==='deleted')return '소유자가 삭제한 프로젝트입니다';
@@ -4653,7 +4756,7 @@ Object.assign(actions,{
   'acct-merge':async()=>{try{await syncAdapter();if(!Sync.user){toast('로그인한 뒤 하세요');return;}acctMergeDlg();}catch(e){toast(syncErrMsg(e));}},
   'acct-merge-google':()=>acctMerge('google'),
   'lg-google':async()=>{try{await syncGoogleLogin();if(Sync.dlg&&Sync.dlg.kind==='login')syncDlgClose();toast('로그인했습니다');syncRefreshCards();}catch(e){const m=$('#lg-msg');if(m)m.textContent=syncErrMsg(e);else toast(syncErrMsg(e));}},
-  'sync-logout':async()=>{try{await Sync.ad.signOut();syncRefreshCards();toast('로그아웃했습니다. 공유 프로젝트는 이 기기에 남고 동기화만 멈춥니다.');}catch(e){toast(syncErrMsg(e));}},
+  'sync-logout':async()=>{try{await presLeave();await Sync.ad.signOut();syncRefreshCards();toast('로그아웃했습니다. 공유 프로젝트는 이 기기에 남고 동기화만 멈춥니다.');}catch(e){toast(syncErrMsg(e));}},
   'sync-start':async el=>{
     const p=curProject();const inp=$('#sync-code-new');const code=(inp&&inp.value||'').trim();
     if(code.length<6){toast('공유 코드를 6자 이상으로 정하세요');if(inp)inp.focus();return;}
@@ -5666,6 +5769,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-19-12',d:'2026-11-19',k:'web',t:'협력자 접속 표시',items:['공유 프로젝트 왼쪽 아래','협력자 n: 지금 접속 인원','누르면 각자 하는 일','내 이름은 안 보임']},
   {id:'2026-11-19-11',d:'2026-11-19',k:'web',t:'공지 목록 정리',items:['항목 앞 동그라미 없앰','줄 간격 정돈']},
   {id:'2026-11-19-10',d:'2026-11-19',k:'web',t:'계정 합치기',items:['첫 화면 계정 → 계정 합치기','구글·이메일 어느 쪽이든','같은 프로젝트가 보임','새 서버 규칙 게시 필요']},
   {id:'2026-11-19-9',d:'2026-11-19',k:'web',t:'공유 프로젝트 자동 받기',items:['같은 계정으로 로그인하면','받은 공유 프로젝트가','다른 기기에도 내려옴','이 기기에서 지우면 빠짐']},
