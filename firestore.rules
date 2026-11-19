@@ -86,6 +86,11 @@ service cloud.firestore {
         allow delete: if false;
       }
     }
+    // 내가 받은(만든) 공유 프로젝트 목록: 다른 기기에서 로그인하면 자동으로 받으려고. 본인만 읽고 쓴다.
+    match /users/{uid}/projects/{pid} {
+      allow read, write: if signedIn() && uid == me();
+    }
+
     // 위에 없는 경로는 모두 거부 (기본값)
   }
 }

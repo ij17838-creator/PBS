@@ -2544,6 +2544,7 @@ async function deleteProject(p,fromServer){
   if(abcData(p).session)abcData(p).session.running=false;
   for(const id of blobIds(p))dropUrl(id);
   try{if(audioOK)await AudioDB.delByProject(p.id);}catch(e){}
+  if(p.shared&&!fromServer&&projVisible(p))syncMyDel(p.shared.projectId);/* 이 계정의 '받은 공유 프로젝트'에서도 빼야 다른 기기 로그인 때 다시 안 내려온다 */
   if(store.sync&&p.shared)delete store.sync[p.shared.projectId];
   store.projects=store.projects.filter(x=>x.id!==p.id);
   if(ui.projectId===p.id){ui.projectId=null;}
@@ -3924,6 +3925,18 @@ async function makeFirestoreAdapter(){
       flat.items.forEach((it,path)=>ops.push([sub(pid,'items',key(path)),itemDoc({path,parent:it.parent,order:it.order},me)]));
       await batched(ops);
     },
+    /* 내가 받은(만든) 공유 프로젝트 목록: users/{uid}/projects/{pid} = {role, code, at}. 본인만 읽고 쓴다(규칙). 다른 기기에서 로그인하면 이걸 보고 자동으로 받는다 */
+    async myList(me){const s=await F.getDocs(F.collection(db,'users',me.uid,'projects'));return s.docs.map(d=>Object.assign({pid:d.id},d.data()));},
+    async myAdd(me,pid,role,code){await F.setDoc(F.doc(db,'users',me.uid,'projects',pid),{role,code:code||'',at:ts()});count(1);},
+    async myDel(me,pid){await F.deleteDoc(F.doc(db,'users',me.uid,'projects',pid));count(1);},
+    /* 코드 없이 받기: 이미 멤버일 때만(삭제됨·내보내짐이면 오류) */
+    async fetchShared(pid,me){
+      const pr=await F.getDoc(pd(pid)).catch(e=>{if(/permission/.test(e.code||'')){const x=new Error('removed');x.code='removed';throw x;}throw e;});
+      if(!pr.exists()||pr.data().deleted){const e=new Error('deleted');e.code='deleted';throw e;}
+      const m=await F.getDoc(sub(pid,'members',me.uid));
+      if(!m.exists()){const e=new Error('removed');e.code='removed';throw e;}
+      return Object.assign({role:m.data().role||'member'},await getAll(pid));
+    },
     async join(pid,inviteKey,me){
       const inv=await F.getDoc(F.doc(db,'invites',inviteKey));
       if(!inv.exists()||inv.data().projectId!==pid){const e=new Error('badcode');e.code='badcode';throw e;}
@@ -4009,6 +4022,7 @@ function syncOnAuth(u){
   Sync.user=u;Sync.authKnown=true;
   acctOnAuth(u);
   if(!u&&mini.on)miniOff();
+  if(u)setTimeout(syncAutoPull,0);/* 다른 기기에서 받은 공유 프로젝트도 내려받기 */
   if(!u&&PCN)setTimeout(natDrain,0);/* 설치형 앱: 숨긴 프로젝트의 앱 밖 측정도 끈다(natLockHidden) *//* 로그아웃: 세기 대기 창(작은 창·화면 안 ＋1)도 닫는다 */
   if(acctUid()!==before)setTimeout(render,0);/* 계정이 바뀌면 보이는 프로젝트가 달라진다 */
   if(u&&Sync.loginWait){const w=Sync.loginWait;Sync.loginWait=null;w.res();if(Sync.dlg&&Sync.dlg.kind==='login')syncDlgClose();}
@@ -4017,6 +4031,39 @@ function syncOnAuth(u){
   if(u&&S&&!S.unsub)syncSubscribe(S);
   if(u)setTimeout(syncWatchDocs,0);else syncUnwatchDocs();
   syncRefreshCards();syncStatusUI();
+}
+/* ---- 내 공유 프로젝트 목록(서버) · 로그인하면 자동으로 받기 ---- */
+function syncMyAdd(pid,role,code){const me=syncMe();if(me&&Sync.ad&&Sync.ad.myAdd)Sync.ad.myAdd(me,pid,role,code).catch(e=>console.warn('myAdd',e&&e.code));}
+function syncMyDel(pid){const me=syncMe();if(me&&Sync.ad&&Sync.ad.myDel)Sync.ad.myDel(me,pid).catch(e=>console.warn('myDel',e&&e.code));}
+function syncBuildShared(id,r,role,code,me){
+  const tc=new Map(),ti=new Map(),revs={};
+  r.cells.forEach(c=>{if(!c.deleted){tc.set(c.path,syncParse(c.value));}revs[c.path]=Number(c.rev)||0;});
+  r.items.forEach(it=>{if(!it.deleted)ti.set(it.path,{parent:it.parent,order:Number(it.order)||0});});
+  const p=ensureProject(syncUnflat(tc,ti));
+  p.id=id;p.lastBackupAt=null;p.example=false;p.owner=me.uid;p.shared={projectId:id,role,since:nowISO(),code:code||''};
+  const st=syncState(id);st.base=syncBaseOf(p);st.revs=revs;
+  store.projects.push(p);return p;
+}
+async function syncAutoPull(){
+  const ad=Sync.ad||await syncAdapter().catch(()=>null);const me=syncMe();if(!ad||!ad.myList||!me||Sync.pulling)return;
+  Sync.pulling=true;
+  try{
+    let list;try{list=await ad.myList(me);}catch(e){console.warn('공유 목록을 못 읽음(Firestore 규칙 확인)',e&&e.code);return;}
+    if((syncMe()||{}).uid!==me.uid)return;
+    const on=new Set(list.map(x=>x.pid));
+    /* 예전에 받은 것(이 기능 전)은 목록에 올려 둔다 */
+    store.projects.forEach(p=>{if(p.shared&&projVisible(p)&&!on.has(p.shared.projectId))syncMyAdd(p.shared.projectId,p.shared.role,p.shared.code);});
+    let got=0,seen=0;
+    for(const it of list){
+      const have=projById(it.pid);
+      if(have&&have.shared&&projVisible(have))continue;
+      if(have&&!have.shared)continue;
+      if(have&&have.shared){have.users=Array.from(new Set([...(have.users||[]),me.uid]));seen++;continue;}
+      try{const r=await ad.fetchShared(it.pid,me);if((syncMe()||{}).uid!==me.uid)return;if(projById(it.pid))continue;syncBuildShared(it.pid,r,r.role||it.role||'member',it.code,me);got++;}
+      catch(e){if(e&&(e.code==='deleted'||e.code==='removed'||/permission/.test(e.code||'')))syncMyDel(it.pid);else console.warn(e);}
+    }
+    if(got||seen){saveNow();if(ui.view==='home')render();toast(`공유 프로젝트 ${got+seen}개를 받았습니다`);}
+  }finally{Sync.pulling=false;}
 }
 async function syncGoogleLogin(){
   const ad=await syncAdapter();
@@ -4498,7 +4545,7 @@ Object.assign(actions,{
       const key=await syncInviteKey(p.id,code);const flat=syncFlat(p);
       toast('서버에 올리는 중…');
       await ad.createProject(p.id,{code:p.code},me,key,flat);
-      p.shared={projectId:p.id,role:'owner',since:nowISO(),code};
+      p.shared={projectId:p.id,role:'owner',since:nowISO(),code};syncMyAdd(p.id,'owner',code);
       const st=syncState(p.id);st.base=syncBaseOf(p);st.revs={};flat.cells.forEach((v,pa)=>{st.revs[pa]=1;});
       saveNow();render();toast('공유를 시작했습니다. 공유 ID와 공유 코드를 함께 쓸 사람에게 알려 주세요.');
     }catch(e){console.error(e);toast(syncErrMsg(e));el.disabled=false;}
@@ -4529,16 +4576,12 @@ Object.assign(actions,{
       const key=await syncInviteKey(id,code);
       const r=await ad.join(id,key,me);
       if(have&&have.shared){/* 이 기기에 다른 계정으로 받아 둔(숨겨진) 같은 공유 프로젝트: 이 계정에서도 보이게 */
+        syncMyAdd(id,'member',code);
         have.users=Array.from(new Set([...(have.users||[]),me.uid]));saveNow();
         go('project',{projectId:id,proc:null,cat:null});toast('공유 프로젝트를 받았습니다');return;
       }
-      const tc=new Map(),ti=new Map(),revs={};
-      r.cells.forEach(c=>{if(!c.deleted){tc.set(c.path,syncParse(c.value));}revs[c.path]=Number(c.rev)||0;});
-      r.items.forEach(it=>{if(!it.deleted)ti.set(it.path,{parent:it.parent,order:Number(it.order)||0});});
-      const p=ensureProject(syncUnflat(tc,ti));
-      p.id=id;p.lastBackupAt=null;p.example=false;p.owner=me.uid;p.shared={projectId:id,role:'member',since:nowISO(),code};
-      const st=syncState(id);st.base=syncBaseOf(p);st.revs=revs;
-      store.projects.push(p);saveNow();go('project',{projectId:id,proc:null,cat:null});
+      syncMyAdd(id,'member',code);
+      syncBuildShared(id,r,'member',code,me);saveNow();go('project',{projectId:id,proc:null,cat:null});
       toast('공유 프로젝트를 받았습니다. 이제 함께 고친 내용이 실시간으로 반영됩니다.');
     }catch(e){if(e&&e.code!=='badcode'&&e.code!=='deleted')console.error(e);toast(syncErrMsg(e));}
     finally{el.disabled=false;}
@@ -4558,7 +4601,7 @@ Object.assign(actions,{
     if(!S||!p.shared){toast('연결된 뒤에 다시 시도하세요');return;}
     if(code.length<6){toast('공유 코드를 6자 이상으로 정하세요');return;}
     el.disabled=true;
-    try{await Sync.ad.changeCode(S.pid,await syncInviteKey(S.pid,code),syncMe());p.shared.code=code;saveNow();syncRefreshCards();toast('공유 코드를 바꿨습니다. 예전 코드로는 더 받을 수 없습니다.');}
+    try{await Sync.ad.changeCode(S.pid,await syncInviteKey(S.pid,code),syncMe());p.shared.code=code;syncMyAdd(S.pid,p.shared.role,code);saveNow();syncRefreshCards();toast('공유 코드를 바꿨습니다. 예전 코드로는 더 받을 수 없습니다.');}
     catch(e){toast(syncErrMsg(e));el.disabled=false;}
   },
   'sync-hist':el=>syncHistView(el.dataset.path),
@@ -5505,6 +5548,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-19-9',d:'2026-11-19',k:'web',t:'공유 프로젝트 자동 받기',items:['같은 계정으로 로그인하면','받은 공유 프로젝트가','다른 기기에도 내려옴','이 기기에서 지우면 빠짐']},
   {id:'2026-11-19-8',d:'2026-11-19',k:'web',t:'공유 받기 고침',items:['다른 계정이 받아 둔 기기','이제 내 계정도 받아짐','공유 ID·코드로 받기']},
   {id:'2026-11-19-7',d:'2026-11-19',k:'web',t:'앱: 로그아웃하면 앱 밖 측정 끔',items:['위젯·알림창 대상 꺼짐','음량·떠 있는 ＋1도 멈춤','로그아웃 전 누른 건 저장','다시 로그인 뒤 다시 켜기']},
   {id:'2026-11-19-6',d:'2026-11-19',k:'web',t:'로그아웃하면 대기 창 닫힘',items:['＋1 대기 창도 함께 닫힘','화면 안 ＋1 버튼도 닫힘','로그아웃 중엔 단축키 쉼','다시 로그인하면 그대로']},
