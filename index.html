@@ -74,6 +74,12 @@ main{display:flex;flex-direction:column;gap:18px;padding-block:22px 28px}
 .crumbs button:hover{background:var(--accent-soft)}
 .crumbs .sep{color:var(--line-strong)}
 .crumbs .here{padding:6px;font-weight:700;overflow-wrap:anywhere}
+/* 프로젝트명(학생 코드)에 '-' 등이 있어도 줄바꿈하지 않고 한 줄로, 넘치면 말줄임 */
+.crumbs{flex-wrap:nowrap;flex:1 1 auto;overflow:hidden}
+.crumbs>*{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
+.crumbs>.sep{flex-shrink:0;overflow:visible}
+.crumbs>[data-act="go-home"]{flex-shrink:3;min-width:3em}
+@media (max-width:560px){.topbar-in{flex-wrap:wrap;row-gap:0}.top-right{order:-1;margin-left:auto}.crumbs{flex-basis:100%}}
 .top-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .save-state{font-size:.78rem;color:var(--muted);white-space:nowrap}
 .rec-mini{display:flex;align-items:center;gap:8px;background:var(--rec-soft);color:var(--rec);border-radius:999px;padding:4px 4px 4px 12px;font-weight:700}
@@ -147,7 +153,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
 .proj-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .proj-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.proj-top h3{font-size:1.2rem;font-weight:600;overflow-wrap:anywhere}
+.proj-top h3{font-size:1.2rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
+.proj-top .pill{flex-shrink:0}
 .proj-target{font-weight:600}
 .proj-memo{color:var(--muted);font-size:.88rem}
 .dots{display:flex;gap:5px}
@@ -1162,9 +1169,9 @@ function renderCrumbs(){
   if(ui.view==='home'){c.innerHTML='<span class="here">행동 관찰 기록장</span>';return;}
   let h='<button type="button" data-act="go-home">프로젝트 목록</button><span class="sep">›</span>';
   const code=esc(p.code||'(코드 없음)');const cat=ui.cat&&CAT[ui.cat];
-  if(ui.view==='project'&&!cat)h+=`<span class="here mono">${code}</span>`;
-  else if(ui.view==='project')h+=`<button type="button" data-act="go-project" class="mono">${code}</button><span class="sep">›</span><span class="here">${esc(cat.title)}</span>`;
-  else h+=`<button type="button" data-act="go-project" class="mono">${code}</button><span class="sep">›</span><button type="button" data-act="open-cat" data-key="${cat.key}">${esc(cat.title)}</button><span class="sep">›</span><span class="here">${esc(PROC[ui.proc].title)}</span>`;
+  if(ui.view==='project'&&!cat)h+=`<span class="here mono" title="${code}">${code}</span>`;
+  else if(ui.view==='project')h+=`<button type="button" data-act="go-project" class="mono" title="${code}">${code}</button><span class="sep">›</span><span class="here">${esc(cat.title)}</span>`;
+  else h+=`<button type="button" data-act="go-project" class="mono" title="${code}">${code}</button><span class="sep">›</span><button type="button" data-act="open-cat" data-key="${cat.key}">${esc(cat.title)}</button><span class="sep">›</span><span class="here">${esc(PROC[ui.proc].title)}</span>`;
   c.innerHTML=h;
 }
 function confirmBox(msg,act,id,extra){
@@ -1216,7 +1223,7 @@ function projCard(p){
   const done=PROCS.filter(x=>p.procs[x.key].status==='done').length;
   const name=p.procs.define.data.name;
   return `<article class="proj-card">
-    <header class="proj-top"><h3 class="mono">${esc(p.code||'(코드 없음)')}</h3>${p.example?'<span class="pill muted">예시</span>':''}${p.shared?'<span class="pill">공유</span>':''}</header>
+    <header class="proj-top"><h3 class="mono" title="${esc(p.code||'')}">${esc(p.code||'(코드 없음)')}</h3>${p.example?'<span class="pill muted">예시</span>':''}${p.shared?'<span class="pill">공유</span>':''}</header>
     <p class="proj-target">${name?'표적행동 · '+esc(name):'<span class="muted">표적행동 미정</span>'}</p>
     ${p.memo?`<p class="proj-memo">${esc(p.memo)}</p>`:''}
     <div class="dots" role="img" aria-label="${PROCS.length}개 절차 중 ${done}개 완료">${PROCS.map(x=>`<span class="dot s-${p.procs[x.key].status}" title="${esc(x.title)}: ${statusInfo(p.procs[x.key]).label}"></span>`).join('')}</div>
@@ -5450,6 +5457,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-19-4',d:'2026-11-19',k:'web',t:'긴 프로젝트명 한 줄로',items:['휴대폰 위쪽 길 표시','기호 있어도 줄바꿈 없음','넘치면 … 로 줄임','홈 카드 이름도 한 줄']},
   {id:'2026-11-19-3',d:'2026-11-19',k:'web',t:'손글씨 모드 숫자 칸',items:['측정값 칸 깨짐 고침','숫자 칸은 키보드로 입력','측정값·관찰 시간·목표 값','글 칸은 그대로 손글씨']},
   {id:'2026-11-19-2',d:'2026-11-19',k:'web',t:'첫 화면에서 로그인',items:['첫 화면 \'계정\' 카드','로그인·회원가입 버튼','구글 로그인도 여기서','로그인하면 주소·로그아웃']},
   {id:'2026-11-19-1',d:'2026-11-19',k:'web',t:'이메일로 회원가입',items:['구글 말고 이메일로도','회원가입·로그인 가능','비밀번호 찾기(메일)','구글 계정과 따로임']},
