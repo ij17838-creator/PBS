@@ -1063,9 +1063,15 @@ function acctUid(){
   if(Sync.authKnown)return Sync.user?Sync.user.uid:null;
   try{return localStorage.getItem(AUTH_UID_KEY)||null;}catch(e){return null;}
 }
+/* 합친 계정(서로 연결 표시한 uid)도 같은 사람으로 본다 */
+const ACCT_LINKS_KEY='pbs-acct-links';
+function acctLinksAll(){try{return JSON.parse(localStorage.getItem(ACCT_LINKS_KEY)||'{}')||{};}catch(e){return {};}}
+function acctLinks(u){const l=acctLinksAll()[u];return Array.isArray(l)?l:[];}
+function acctLinksSet(u,list){const o=acctLinksAll();const v=Array.from(new Set(list.filter(x=>x&&x!==u))).sort();const ch=JSON.stringify(o[u]||[])!==JSON.stringify(v);o[u]=v;try{localStorage.setItem(ACCT_LINKS_KEY,JSON.stringify(o));}catch(e){}return ch;}
+function acctIds(){const u=acctUid();return u?[u,...acctLinks(u)]:[];}
 function projVisible(p){
   if(!acctGate()||p.example)return true;
-  const u=acctUid();return !!u&&(p.owner===u||(Array.isArray(p.users)&&p.users.includes(u)));/* users: 이 기기에서 같은 공유 프로젝트를 받은 다른 계정 */
+  const ids=acctIds();return ids.length>0&&(ids.includes(p.owner)||(Array.isArray(p.users)&&p.users.some(x=>ids.includes(x))));/* users: 이 기기에서 같은 공유 프로젝트를 받은 다른 계정 */
 }
 function visibleProjects(){return store.projects.filter(projVisible);}
 /* 로그인했을 때: 주인 없는 예전 프로젝트는 이 계정 것으로 */
@@ -3914,6 +3920,53 @@ async function makeFirestoreAdapter(){
       if(name){try{await U.updateProfile(c.user,{displayName:name});if(this._onAuth)this._onAuth();}catch(e){}}
     },
     async emailReset(email){await U.sendPasswordResetEmail(auth,email);},
+    /* ---- 계정 합치기 ----
+       1) 다른 로그인 방법(구글·이메일)을 지금 계정에 붙인다(linkWithCredential) → 어느 방법으로 들어와도 같은 계정.
+       2) 그 방법이 이미 따로 만든 계정이면, 두 번째 앱(auth2)으로 그 계정에 들어가 공유 목록을 읽고 서로 연결 표시(users/{uid}/links)를 남긴다. 지금 로그인은 그대로. */
+    async linkOther(kind,email,pw){
+      const cur=auth.currentUser;if(!cur){const x=new Error('no-user');x.code='no-user';throw x;}
+      let cred=null;
+      try{
+        if(kind==='email'){cred=U.EmailAuthProvider.credential(email,pw);await U.linkWithCredential(cur,cred);}
+        else if(PAUTH&&GOOGLE_WEB_CLIENT_ID){
+          let r;try{r=await PAUTH.googleSignIn({clientId:GOOGLE_WEB_CLIENT_ID});}catch(e){const x=new Error('cancelled');x.code=e&&e.code==='cancelled'?'login-cancelled':'google-failed';throw x;}
+          cred=U.GoogleAuthProvider.credential(r.idToken);await U.linkWithCredential(cur,cred);
+        }
+        else await U.linkWithPopup(cur,new U.GoogleAuthProvider());
+        try{await cur.reload();}catch(e){}
+        if(this._onAuth)this._onAuth();
+        return {linked:true};
+      }catch(e){
+        const c=(e&&e.code)||'';
+        if(!/credential-already-in-use|email-already-in-use|account-exists-with-different-credential/.test(c))throw e;
+        if(!cred&&kind==='google')cred=U.GoogleAuthProvider.credentialFromError(e);
+        if(!cred&&kind!=='email')throw e;
+        const app2=A.initializeApp(FIREBASE_CONFIG,'merge'+Date.now());
+        const auth2=U.getAuth(app2);const db2=F.getFirestore(app2);
+        if(emu){F.connectFirestoreEmulator(db2,emu.host,emu.fs);U.connectAuthEmulator(auth2,`http://${emu.host}:${emu.auth}`,{disableWarnings:true});}
+        const drop=async()=>{try{await U.signOut(auth2);}catch(_){}try{await A.deleteApp(app2);}catch(_){}};
+        try{
+          const r2=kind==='email'?await U.signInWithEmailAndPassword(auth2,email,pw):await U.signInWithCredential(auth2,cred);
+          const u2=r2.user;
+          if(u2.uid===cur.uid){await drop();return {linked:true,same:true};}
+          const me2={uid:u2.uid,name:u2.displayName||(u2.email||'').split('@')[0]||'',email:u2.email||''};
+          const list=(await F.getDocs(F.collection(db2,'users',u2.uid,'projects'))).docs.map(d=>Object.assign({pid:d.id},d.data()));
+          const ts2=F.serverTimestamp;
+          return {other:me2,list,
+            async join(pid,inviteKey){
+              const inv=await F.getDoc(F.doc(db2,'invites',inviteKey));
+              if(!inv.exists()||inv.data().projectId!==pid){const x=new Error('badcode');x.code='badcode';throw x;}
+              const mref=F.doc(db2,'projects',pid,'members',u2.uid);
+              if(!(await F.getDoc(mref)).exists())await F.setDoc(mref,{name:me2.name,role:'member',joinedAt:ts2(),inviteKey});
+            },
+            async myAdd(pid,role,code){await F.setDoc(F.doc(db2,'users',u2.uid,'projects',pid),{role,code:code||'',at:ts2()});},
+            async addLink(uid){await F.setDoc(F.doc(db2,'users',u2.uid,'links',uid),{at:ts2()});},
+            done:drop};
+        }catch(err){await drop();throw err;}
+      }
+    },
+    async myLinks(me){const s=await F.getDocs(F.collection(db,'users',me.uid,'links'));return s.docs.map(d=>d.id);},
+    async addLink(me,uid){await F.setDoc(F.doc(db,'users',me.uid,'links',uid),{at:ts()});count(1);},
     signOut(){if(PAUTH)PAUTH.googleSignOut().catch(()=>{});return U.signOut(auth);},
     async createProject(pid,meta,me,inviteKey,flat){
       await F.setDoc(pd(pid),{code:meta.code||'',owner:me.uid,createdAt:ts(),updatedAt:ts()});
@@ -4048,11 +4101,21 @@ async function syncAutoPull(){
   const ad=Sync.ad||await syncAdapter().catch(()=>null);const me=syncMe();if(!ad||!ad.myList||!me||Sync.pulling)return;
   Sync.pulling=true;
   try{
+    if(ad.myLinks){try{const l=await ad.myLinks(me);if(acctLinksSet(me.uid,l)&&(syncMe()||{}).uid===me.uid)render();}catch(e){}}
     let list;try{list=await ad.myList(me);}catch(e){console.warn('공유 목록을 못 읽음(Firestore 규칙 확인)',e&&e.code);return;}
     if((syncMe()||{}).uid!==me.uid)return;
     const on=new Set(list.map(x=>x.pid));
     /* 예전에 받은 것(이 기능 전)은 목록에 올려 둔다 */
-    store.projects.forEach(p=>{if(p.shared&&projVisible(p)&&!on.has(p.shared.projectId))syncMyAdd(p.shared.projectId,p.shared.role,p.shared.code);});
+    let linked=0;
+    for(const p of store.projects){
+      if(!p.shared||!projVisible(p)||on.has(p.shared.projectId))continue;
+      const mine=p.owner===me.uid||(Array.isArray(p.users)&&p.users.includes(me.uid));
+      if(mine){syncMyAdd(p.shared.projectId,p.shared.role,p.shared.code);continue;}
+      /* 합친 다른 계정으로만 보이는 공유 프로젝트: 이 계정도 멤버가 되게(기기에 남은 공유 코드로) */
+      try{await ad.join(p.shared.projectId,await syncInviteKey(p.shared.projectId,p.shared.code||''),me);await ad.myAdd(me,p.shared.projectId,'member',p.shared.code);
+        p.users=Array.from(new Set([...(p.users||[]),me.uid]));linked++;}catch(e){console.warn('linked join',e&&e.code);}
+    }
+    if(linked)saveNow();
     let got=0,seen=0;
     for(const it of list){
       const have=projById(it.pid);
@@ -4064,6 +4127,54 @@ async function syncAutoPull(){
     }
     if(got||seen){saveNow();if(ui.view==='home')render();toast(`공유 프로젝트 ${got+seen}개를 받았습니다`);}
   }finally{Sync.pulling=false;}
+}
+/* ---- 계정 합치기 화면 ---- */
+function acctMergeDlg(msg){
+  Sync.dlg={kind:'merge'};
+  syncDlgShow(`<h2 class="h3" id="sync-dlg-h">계정 합치기</h2>
+    <p class="hint">지금: ${esc((Sync.user&&(Sync.user.email||Sync.user.name))||'')}</p>
+    <p class="hint">다른 로그인도 이 계정으로</p>
+    <div class="row"><button type="button" class="btn" data-act="acct-merge-google">구글 계정 합치기</button></div>
+    <form class="lg-form" data-merge="1" novalidate>
+      <label class="field"><span>이메일</span><input id="mg-email" type="email" inputmode="email" autocomplete="email" maxlength="120"></label>
+      <label class="field"><span>비밀번호 <small>새로 쓰려면 6자 이상</small></span><input id="mg-pw" type="password" autocomplete="current-password" maxlength="128"></label>
+      <div class="row"><button type="submit" class="btn">이메일 계정 합치기</button></div>
+    </form>
+    <p class="lg-msg" id="mg-msg" role="alert">${msg?esc(msg):''}</p>
+    <div class="row end"><button type="button" class="btn small ghost" data-act="sync-close">닫기</button></div>`);
+}
+async function acctMerge(kind,email,pw){
+  const say=t=>{const m=$('#mg-msg');if(m)m.textContent=t;else toast(t);};
+  const setBusy=b=>document.querySelectorAll('#sync-dlg button').forEach(x=>{x.disabled=b;});
+  setBusy(true);say('합치는 중…');
+  try{
+    const ad=await syncAdapter();const me=syncMe();if(!me||!ad.linkOther){say('로그인한 뒤 하세요');return;}
+    const r=await ad.linkOther(kind,email,pw);
+    if(r.linked){say(r.same?'이미 이 계정과 같은 계정입니다':'합쳤습니다. 이제 '+(kind==='email'?'이 이메일·비밀번호로':'이 구글 계정으로')+' 로그인해도 지금 계정으로 들어옵니다.');syncRefreshCards();return;}
+    const o=r.other;let moved=0;const fail=[];const ownedThere=r.list.filter(x=>x.role==='owner').length;
+    try{
+      let listA=[];try{listA=await ad.myList(me);}catch(e){}
+      const inA=new Set(listA.map(x=>x.pid)),inB=new Set(r.list.map(x=>x.pid));
+      for(const it of r.list){if(inA.has(it.pid))continue;
+        try{await ad.join(it.pid,await syncInviteKey(it.pid,it.code||''),me);await ad.myAdd(me,it.pid,'member',it.code);moved++;}catch(e){fail.push(it.pid);}}
+      for(const it of listA){if(inB.has(it.pid))continue;
+        try{await r.join(it.pid,await syncInviteKey(it.pid,it.code||''));await r.myAdd(it.pid,'member',it.code);}catch(e){}}
+      await ad.addLink(me,o.uid);await r.addLink(me.uid);
+    }finally{await r.done();}
+    acctLinksSet(me.uid,[...acctLinks(me.uid),o.uid]);
+    Sync.pulling=false;await syncAutoPull();render();
+    let t=`두 계정을 합쳤습니다(${o.email||o.name}). 이제 어느 쪽으로 로그인해도 같은 프로젝트가 보입니다.`;
+    if(moved)t+=` 공유 프로젝트 ${moved}개를 옮겼습니다.`;
+    if(fail.length)t+=` ${fail.length}개는 공유 코드가 바뀌어 못 옮겼습니다. 공유 ID·코드로 받으세요.`;
+    if(ownedThere)t+=' 그 계정이 만든 공유 프로젝트의 삭제·코드 바꾸기는 그 계정으로 로그인해서 하세요.';
+    acctMergeDlg(t);
+  }catch(e){
+    const c=(e&&e.code)||'';
+    say(/provider-already-linked/.test(c)?'이미 '+(kind==='email'?'이메일':'구글')+' 로그인이 연결된 계정입니다'
+      :/requires-recent-login/.test(c)?'로그아웃 후 다시 로그인한 뒤 해 주세요'
+      :/permission/.test(c)?'서버 규칙이 아직 예전 것입니다. Firebase 콘솔에 새 규칙을 게시하세요'
+      :syncLoginErr(e));
+  }finally{setBusy(false);}
 }
 async function syncGoogleLogin(){
   const ad=await syncAdapter();
@@ -4136,7 +4247,12 @@ async function syncLoginSubmit(form){
     toast(mode==='up'?'가입하고 로그인했습니다':'로그인했습니다');syncRefreshCards();
   }catch(e){say(syncLoginErr(e));if(btn)btn.disabled=false;}
 }
-document.addEventListener('submit',e=>{const f=e.target.closest&&e.target.closest('form.lg-form');if(!f)return;e.preventDefault();syncLoginSubmit(f);});
+document.addEventListener('submit',e=>{const f=e.target.closest&&e.target.closest('form.lg-form');if(!f)return;e.preventDefault();
+  if(f.dataset.merge){const em=($('#mg-email').value||'').trim(),pw=$('#mg-pw').value||'';
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){$('#mg-msg').textContent='이메일 주소를 확인하세요';return;}
+    if(pw.length<6){$('#mg-msg').textContent='비밀번호는 6자 이상입니다';return;}
+    acctMerge('email',em,pw);return;}
+  syncLoginSubmit(f);});
 
 /* ---- 지금 열어 둔 공유 프로젝트만 구독 ---- */
 function syncWatch(){
@@ -4493,7 +4609,7 @@ function syncAcctCard(){
   return `<section class="card acct-card" id="sync-acct">${syncAcctInner()}</section>`;
 }
 function syncAcctInner(){
-  if(Sync.user)return `<div class="acct-row"><h2 class="h3">계정</h2><span class="meta">로그인: ${esc(Sync.user.email||Sync.user.name)}</span><button type="button" class="btn small ghost" data-act="sync-logout">로그아웃</button></div>`;
+  if(Sync.user)return `<div class="acct-row"><h2 class="h3">계정</h2><span class="meta">로그인: ${esc(Sync.user.email||Sync.user.name)}</span><button type="button" class="btn small" data-act="acct-merge">계정 합치기</button><button type="button" class="btn small ghost" data-act="sync-logout">로그아웃</button></div>`;
   return `<div class="acct-row"><h2 class="h3">계정</h2><span class="hint">공유하려면 로그인</span></div>
     <div class="row acct-btns"><button type="button" class="btn small primary" data-act="sync-email" data-m="in">로그인</button><button type="button" class="btn small" data-act="sync-email" data-m="up">회원가입</button><button type="button" class="btn small" data-act="sync-login">구글로 로그인</button></div>`;
 }
@@ -4534,6 +4650,8 @@ Object.assign(actions,{
   'sync-login':async()=>{try{await syncGoogleLogin();toast('로그인했습니다');syncRefreshCards();}catch(e){toast(syncErrMsg(e));}},
   'sync-email':async el=>{try{await syncAdapter();syncLoginDlg(el&&el.dataset.m==='up'?'up':'in');}catch(e){toast(syncErrMsg(e));}},
   'lg-mode':el=>syncLoginDlg(el.dataset.m),
+  'acct-merge':async()=>{try{await syncAdapter();if(!Sync.user){toast('로그인한 뒤 하세요');return;}acctMergeDlg();}catch(e){toast(syncErrMsg(e));}},
+  'acct-merge-google':()=>acctMerge('google'),
   'lg-google':async()=>{try{await syncGoogleLogin();if(Sync.dlg&&Sync.dlg.kind==='login')syncDlgClose();toast('로그인했습니다');syncRefreshCards();}catch(e){const m=$('#lg-msg');if(m)m.textContent=syncErrMsg(e);else toast(syncErrMsg(e));}},
   'sync-logout':async()=>{try{await Sync.ad.signOut();syncRefreshCards();toast('로그아웃했습니다. 공유 프로젝트는 이 기기에 남고 동기화만 멈춥니다.');}catch(e){toast(syncErrMsg(e));}},
   'sync-start':async el=>{
@@ -5548,6 +5666,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-19-10',d:'2026-11-19',k:'web',t:'계정 합치기',items:['첫 화면 계정 → 계정 합치기','구글·이메일 어느 쪽이든','같은 프로젝트가 보임','새 서버 규칙 게시 필요']},
   {id:'2026-11-19-9',d:'2026-11-19',k:'web',t:'공유 프로젝트 자동 받기',items:['같은 계정으로 로그인하면','받은 공유 프로젝트가','다른 기기에도 내려옴','이 기기에서 지우면 빠짐']},
   {id:'2026-11-19-8',d:'2026-11-19',k:'web',t:'공유 받기 고침',items:['다른 계정이 받아 둔 기기','이제 내 계정도 받아짐','공유 ID·코드로 받기']},
   {id:'2026-11-19-7',d:'2026-11-19',k:'web',t:'앱: 로그아웃하면 앱 밖 측정 끔',items:['위젯·알림창 대상 꺼짐','음량·떠 있는 ＋1도 멈춤','로그아웃 전 누른 건 저장','다시 로그인 뒤 다시 켜기']},
