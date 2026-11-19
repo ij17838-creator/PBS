@@ -1053,14 +1053,37 @@ function dropUrl(id){const u=urlCache.get(id);if(u){URL.revokeObjectURL(u);urlCa
 
 /* ---------- ui state ---------- */
 const ui=Object.assign({view:'home',projectId:null,proc:null,cat:null},store.ui||{},{confirm:null,optsEdit:null,abcFilter:'all',qItemsOpen:false,micHelp:'',openSheets:new Set(),hyOther:new Set(),hyMemoOpen:false});
-function curProject(){return store.projects.find(p=>p.id===ui.projectId)||null;}
+function curProject(){const p=store.projects.find(p=>p.id===ui.projectId)||null;return p&&projVisible(p)?p:null;}
+/* ---- 계정별 프로젝트: 로그아웃하면 예시 프로젝트만 보인다 ----
+   p.owner = 만든(또는 처음 로그인해 가져간) 계정 uid. 서버로 보내지 않는다(SYNC_SKIP_TOP). */
+const AUTH_UID_KEY='pbs-auth-uid';/* 마지막 로그인 uid: 공유 기능을 불러오기 전·오프라인에도 같은 목록을 보이려고 */
+function acctGate(){return SYNC_ON||!!window.__pbsSyncAdapter;}
+function acctUid(){
+  if(!acctGate())return null;
+  if(Sync.authKnown)return Sync.user?Sync.user.uid:null;
+  try{return localStorage.getItem(AUTH_UID_KEY)||null;}catch(e){return null;}
+}
+function projVisible(p){
+  if(!acctGate()||p.example)return true;
+  const u=acctUid();return !!u&&p.owner===u;
+}
+function visibleProjects(){return store.projects.filter(projVisible);}
+/* 로그인했을 때: 주인 없는 예전 프로젝트는 이 계정 것으로 */
+function acctOnAuth(u){
+  try{if(u)localStorage.setItem(AUTH_UID_KEY,u.uid);else localStorage.removeItem(AUTH_UID_KEY);}catch(e){}
+  if(!u)return;
+  let n=0;store.projects.forEach(p=>{if(!p.example&&!p.owner){p.owner=u.uid;n++;}});
+  if(n)saveNow();
+}
 function projById(id){return store.projects.find(p=>p.id===id)||null;}
 
 /* ---------- model ops ---------- */
 function newProject(code,memo){
   const t=nowISO();const procs={};
   PROCS.forEach(x=>procs[x.key]={status:'none',updatedAt:null,completedAt:null,data:defaultData(x.key)});
-  return {id:uid('p'),code,memo:memo||'',createdAt:t,updatedAt:t,lastBackupAt:null,example:false,procs};
+  const o={id:uid('p'),code,memo:memo||'',createdAt:t,updatedAt:t,lastBackupAt:null,example:false,procs};
+  const u=acctUid();if(u)o.owner=u;
+  return o;
 }
 function touch(p,key){
   const s=p.procs[key];const t=nowISO();
@@ -1181,7 +1204,7 @@ function chip(g,v,on,color){return `<button type="button" class="chip c-${color}
 
 /* home */
 function viewHome(){
-  const ps=store.projects.slice().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));
+  const ps=visibleProjects().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));
   return `
   <section>
     <p class="eyebrow">긍정적 행동지원 · 기능적 행동평가</p>
@@ -1202,6 +1225,7 @@ function viewHome(){
   ${syncJoinCard()}
   <section>
     <div class="sec-head"><h2 class="h3">프로젝트 ${ps.length}개</h2></div>
+    ${acctGate()&&!acctUid()?`<p class="hint">로그인하면 내 프로젝트</p>`:''}
     ${ps.length?`<div class="proj-grid" style="margin-top:10px">${ps.map(projCard).join('')}</div>`:`<div class="empty" style="margin-top:10px">아직 프로젝트가 없습니다. 위에서 학생 코드를 입력해 첫 프로젝트를 만드세요.</div>`}
   </section>
   <section class="card tools">
@@ -2489,7 +2513,7 @@ async function importBackup(file){
   const audioById=new Map((data.audio||[]).map(x=>[x.id,x]));
   let added=0,copies=0,audioIn=0;
   for(const src of data.projects){
-    const p=ensureProject(clone(src));delete p.shared;if(p.procs.abc.data.session)p.procs.abc.data.session.running=false;
+    const p=ensureProject(clone(src));delete p.shared;delete p.owner;if(!p.example&&acctUid())p.owner=acctUid();if(p.procs.abc.data.session)p.procs.abc.data.session.running=false;
     const clash=store.projects.some(x=>x.id===p.id);
     const map={};const srcIds=blobIds(p);
     if(clash){p.id=uid('p');p.code=p.code+' (불러옴)';copies++;srcIds.forEach(k=>map[k]=uid('a'));remapAudio(p,map);}
@@ -2835,7 +2859,7 @@ const actions={
   'ask':el=>{ui.confirm=el.dataset.key;rerenderForConfirm();},
   'ask-cancel':()=>{ui.confirm=null;rerenderForConfirm();},
   'del-proj':el=>{const p=projById(el.dataset.id);if(p)deleteProject(p);},
-  'export-all':()=>{if(!store.projects.length){toast('내보낼 프로젝트가 없습니다');return;}exportProjects(store.projects,$('#all-audio').checked,`PBS관찰_전체백업_${stamp()}.json`);},
+  'export-all':()=>{const vs=visibleProjects();if(!vs.length){toast('내보낼 프로젝트가 없습니다');return;}exportProjects(vs,$('#all-audio').checked,`PBS관찰_전체백업_${stamp()}.json`);},
   'export-proj':()=>{const p=curProject();exportProjects([p],$('#proj-audio').checked,`PBS관찰_${safeName(p.code)}_${stamp()}.json`);},
   'done':()=>setDone(curProject(),ui.proc,true),
   'undone':()=>setDone(curProject(),ui.proc,false),
@@ -3076,6 +3100,7 @@ document.addEventListener('submit',e=>{
   e.preventDefault();
   const code=$('#new-code').value.trim();const memo=$('#new-memo').value.trim();
   if(!code){toast('학생 코드를 입력하세요');$('#new-code').focus();return;}
+  if(acctGate()&&!acctUid()){toast('로그인한 뒤 만들 수 있습니다');syncEnsureUser().catch(()=>{});return;}
   const p=newProject(code,memo);store.projects.push(p);saveNow();go('project',{projectId:p.id,proc:null,cat:null});toast('프로젝트를 만들었습니다');
 });
 function onField(el){
@@ -3713,7 +3738,7 @@ const APP_DL_URL='https://github.com/ij17838-creator/PBS/releases/tag/apk-latest
 const GOOGLE_WEB_CLIENT_ID='837954569078-45r5mt6mjd43lo8nsqb8tl39rrtt0kcq.apps.googleusercontent.com';/* 설치형 앱 구글 로그인용. Firebase 콘솔 → Authentication → 로그인 방법 → Google → 웹 SDK 구성의 '웹 클라이언트 ID'. 비어 있으면 앱에서는 로그인을 막는다 */
 const FIREBASE_VER='12.19.0';
 const SYNC_ON=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.projectId);
-const SYNC_SKIP_TOP=new Set(['id','shared','lastBackupAt','example']);/* 이 기기에만 두는 칸 */
+const SYNC_SKIP_TOP=new Set(['id','shared','lastBackupAt','example','owner']);/* 이 기기에만 두는 칸 */
 const SYNC_META=/(^|\/)updatedAt$|^procs\/[^/]+\/status$/;/* 내용이 아닌 칸: 이것만 바뀌었으면 보내지 않는다 */
 const NO_HIST=/(^|\/)(updatedAt|ink)(\/|\[|$)|^procs\/abc\/data\/session(\/|$)/;/* 수정 기록·충돌로 남기지 않는 칸 */
 const LIVE_HOST='~live/host',LIVE_TAP='~live/tap/',LIVE_RE=/^~live\//;/* 실시간 함께 세기 칸(프로젝트 자료로 합치지 않음) */
@@ -3980,7 +4005,10 @@ async function makeFirestoreAdapter(){
 
 /* ---- 로그인 ---- */
 function syncOnAuth(u){
+  const before=acctUid();
   Sync.user=u;Sync.authKnown=true;
+  acctOnAuth(u);
+  if(acctUid()!==before)setTimeout(render,0);/* 계정이 바뀌면 보이는 프로젝트가 달라진다 */
   if(u&&Sync.loginWait){const w=Sync.loginWait;Sync.loginWait=null;w.res();if(Sync.dlg&&Sync.dlg.kind==='login')syncDlgClose();}
   const S=Sync.cur;
   if(!u&&S&&S.unsub){S.unsub();S.unsub=null;S.gotCells=S.gotItems=false;}
@@ -4502,7 +4530,7 @@ Object.assign(actions,{
       r.cells.forEach(c=>{if(!c.deleted){tc.set(c.path,syncParse(c.value));}revs[c.path]=Number(c.rev)||0;});
       r.items.forEach(it=>{if(!it.deleted)ti.set(it.path,{parent:it.parent,order:Number(it.order)||0});});
       const p=ensureProject(syncUnflat(tc,ti));
-      p.id=id;p.lastBackupAt=null;p.example=false;p.shared={projectId:id,role:'member',since:nowISO(),code};
+      p.id=id;p.lastBackupAt=null;p.example=false;p.owner=me.uid;p.shared={projectId:id,role:'member',since:nowISO(),code};
       const st=syncState(id);st.base=syncBaseOf(p);st.revs=revs;
       store.projects.push(p);saveNow();go('project',{projectId:id,proc:null,cat:null});
       toast('공유 프로젝트를 받았습니다. 이제 함께 고친 내용이 실시간으로 반영됩니다.');
@@ -5457,7 +5485,8 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
-  {id:'2026-11-19-4',d:'2026-11-19',k:'web',t:'긴 프로젝트명 한 줄로',items:['휴대폰 위쪽 길 표시','기호 있어도 줄바꿈 없음','넘치면 … 로 줄임','홈 카드 이름도 한 줄']},
+  {id:'2026-11-19-5',d:'2026-11-19',k:'web',t:'긴 프로젝트명 한 줄로',items:['휴대폰 위쪽 길 표시','기호 있어도 줄바꿈 없음','넘치면 … 로 줄임','홈 카드 이름도 한 줄']},
+  {id:'2026-11-19-4',d:'2026-11-19',k:'web',t:'로그아웃하면 목록 숨김',items:['로그아웃: 예시만 보임','로그인: 내 프로젝트 다시','만들기는 로그인 뒤','예전 것은 첫 로그인 계정에']},
   {id:'2026-11-19-3',d:'2026-11-19',k:'web',t:'손글씨 모드 숫자 칸',items:['측정값 칸 깨짐 고침','숫자 칸은 키보드로 입력','측정값·관찰 시간·목표 값','글 칸은 그대로 손글씨']},
   {id:'2026-11-19-2',d:'2026-11-19',k:'web',t:'첫 화면에서 로그인',items:['첫 화면 \'계정\' 카드','로그인·회원가입 버튼','구글 로그인도 여기서','로그인하면 주소·로그아웃']},
   {id:'2026-11-19-1',d:'2026-11-19',k:'web',t:'이메일로 회원가입',items:['구글 말고 이메일로도','회원가입·로그인 가능','비밀번호 찾기(메일)','구글 계정과 따로임']},
