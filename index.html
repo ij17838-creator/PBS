@@ -616,6 +616,11 @@ html.in-ink .ink-host{caret-color:transparent}
 .sync-hist li{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
 .sync-hist .sync-text{border-left:3px solid var(--line);padding-left:8px;width:100%}
 .sync-pick{gap:8px}
+.sync-box .lg-form{display:flex;flex-direction:column;gap:10px;max-width:420px}
+.lg-form input[type=email],.lg-form input[type=password]{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface-2);color:var(--ink);font:inherit;font-size:16px;line-height:1.5}
+.lg-msg{margin:0;min-height:1.2em;font-size:.9rem;color:var(--warn)}
+.lg-msg:empty{display:none}
+.lg-other{border-top:1px solid var(--line);padding-top:10px;gap:8px;flex-wrap:wrap;align-items:center}
 .sync-flash{outline:3px solid var(--warn)!important;outline-offset:2px}
 @media (max-width:560px){.sync-state{white-space:normal;text-align:right;max-width:46vw}}
 /* 전자칠판·큰 화면: 아래쪽 버튼 모음, 화면 가리기 */
@@ -3846,7 +3851,10 @@ async function makeFirestoreAdapter(){
   return {
     name:'firestore',
     async init(onAuth){
-      U.onAuthStateChanged(auth,u=>onAuth(u?{uid:u.uid,name:u.displayName||(u.email||'').split('@')[0]||'',email:u.email||''}:null));
+      const me=u=>u?{uid:u.uid,name:u.displayName||(u.email||'').split('@')[0]||'',email:u.email||''}:null;
+      this._onAuth=()=>onAuth(me(auth.currentUser));
+      auth.languageCode='ko';/* 비밀번호 재설정 메일을 한국어로 */
+      U.onAuthStateChanged(auth,u=>onAuth(me(u)));
       try{await U.getRedirectResult(auth);}catch(e){}
     },
     async signIn(){
@@ -3860,6 +3868,13 @@ async function makeFirestoreAdapter(){
       try{await U.signInWithPopup(auth,pr);}
       catch(e){if(e&&/popup-blocked|operation-not-supported|popup-closed-by-user/.test(e.code||'')&&e.code!=='auth/popup-closed-by-user'){await U.signInWithRedirect(auth,pr);return;}throw e;}
     },
+    /* 이메일·비밀번호 계정(구글 계정과 따로인 계정) */
+    async emailSignIn(email,pw){await U.signInWithEmailAndPassword(auth,email,pw);},
+    async emailSignUp(email,pw,name){
+      const c=await U.createUserWithEmailAndPassword(auth,email,pw);
+      if(name){try{await U.updateProfile(c.user,{displayName:name});if(this._onAuth)this._onAuth();}catch(e){}}
+    },
+    async emailReset(email){await U.sendPasswordResetEmail(auth,email);},
     signOut(){if(PAUTH)PAUTH.googleSignOut().catch(()=>{});return U.signOut(auth);},
     async createProject(pid,meta,me,inviteKey,flat){
       await F.setDoc(pd(pid),{code:meta.code||'',owner:me.uid,createdAt:ts(),updatedAt:ts()});
@@ -3953,19 +3968,85 @@ async function makeFirestoreAdapter(){
 /* ---- 로그인 ---- */
 function syncOnAuth(u){
   Sync.user=u;Sync.authKnown=true;
+  if(u&&Sync.loginWait){const w=Sync.loginWait;Sync.loginWait=null;w.res();if(Sync.dlg&&Sync.dlg.kind==='login')syncDlgClose();}
   const S=Sync.cur;
   if(!u&&S&&S.unsub){S.unsub();S.unsub=null;S.gotCells=S.gotItems=false;}
   if(u&&S&&!S.unsub)syncSubscribe(S);
   if(u)setTimeout(syncWatchDocs,0);else syncUnwatchDocs();
   syncRefreshCards();syncStatusUI();
 }
-async function syncEnsureUser(){
+async function syncGoogleLogin(){
   const ad=await syncAdapter();
-  if(NATIVE_APP&&!Sync.user&&!window.__pbsSyncAdapter&&!(PAUTH&&GOOGLE_WEB_CLIENT_ID))throw new Error('설치형 앱에서는 아직 구글 로그인이 안 됩니다. 공유는 브라우저에서 해 주세요');
+  if(NATIVE_APP&&!Sync.user&&!window.__pbsSyncAdapter&&!(PAUTH&&GOOGLE_WEB_CLIENT_ID))throw new Error('설치형 앱에서는 아직 구글 로그인이 안 됩니다. 이메일로 로그인해 주세요');
   if(!Sync.user){await ad.signIn();for(let i=0;i<50&&!Sync.user;i++)await new Promise(r=>setTimeout(r,100));}
   if(!Sync.user)throw new Error('로그인하지 못했습니다');
   return ad;
 }
+/* 로그인이 필요한 일(공유 시작·참여 등): 로그인 안 했으면 구글/이메일 고르는 창을 띄우고 기다린다 */
+async function syncEnsureUser(){
+  const ad=await syncAdapter();
+  if(Sync.user)return ad;
+  if(!ad.emailSignIn)return syncGoogleLogin();
+  await new Promise((res,rej)=>{Sync.loginWait={res,rej};syncLoginDlg('in');});
+  if(!Sync.user)throw new Error('로그인하지 못했습니다');
+  return ad;
+}
+/* ---- 이메일 로그인 창: mode in(로그인)·up(회원가입)·reset(비밀번호 재설정) ---- */
+function syncLoginDlg(mode,msg){
+  const em=($('#lg-email')||{}).value||'';
+  Sync.dlg={kind:'login',mode};
+  const T={in:'이메일로 로그인',up:'이메일로 회원가입',reset:'비밀번호 재설정'}[mode];
+  const pw=mode==='reset'?'':`<label class="field"><span>비밀번호${mode==='up'?' <small>6자 이상</small>':''}</span><input id="lg-pw" type="password" autocomplete="${mode==='up'?'new-password':'current-password'}" maxlength="128"></label>`;
+  const pw2=mode==='up'?`<label class="field"><span>비밀번호 확인</span><input id="lg-pw2" type="password" autocomplete="new-password" maxlength="128"></label><label class="field"><span>표시 이름 <small>선택</small></span><input id="lg-name" autocomplete="nickname" maxlength="30"></label>`:'';
+  const go={in:'로그인',up:'가입하기',reset:'재설정 메일 보내기'}[mode];
+  const links=mode==='in'?`<button type="button" class="btn small ghost" data-act="lg-mode" data-m="up">회원가입</button><button type="button" class="btn small ghost" data-act="lg-mode" data-m="reset">비밀번호 찾기</button>`
+    :`<button type="button" class="btn small ghost" data-act="lg-mode" data-m="in">로그인으로</button>`;
+  syncDlgShow(`<h2 class="h3" id="sync-dlg-h">${T}</h2>
+    <form class="lg-form" data-lg="${mode}" novalidate>
+      <label class="field"><span>이메일</span><input id="lg-email" type="email" inputmode="email" autocomplete="email" maxlength="120" value="${esc(em)}"></label>
+      ${pw}${pw2}
+      ${mode==='reset'?'<p class="hint">메일의 링크로 새로 정함</p>':''}
+      <p class="lg-msg" id="lg-msg" role="alert">${msg?esc(msg):''}</p>
+      <div class="row"><button type="submit" class="btn primary">${go}</button>${links}</div>
+    </form>
+    <div class="row lg-other"><span class="hint">구글 계정과 따로임</span><button type="button" class="btn small" data-act="lg-google">구글로 로그인</button><button type="button" class="btn small ghost" data-act="sync-close">닫기</button></div>`);
+  const f=$('#lg-email');if(f&&!em)f.focus();else{const q=$('#lg-pw');if(q)q.focus();}
+}
+function syncLoginErr(e){
+  const c=(e&&e.code)||'';
+  if(/invalid-email/.test(c))return '이메일 주소 형식이 맞지 않습니다';
+  if(/invalid-credential|wrong-password|user-not-found|invalid-login/.test(c))return '이메일 또는 비밀번호가 맞지 않습니다. 구글로 가입했다면 구글로 로그인하세요';
+  if(/email-already-in-use/.test(c))return '이미 가입된 이메일입니다. 로그인하거나 비밀번호 찾기를 쓰세요(구글로 가입했다면 구글로 로그인)';
+  if(/weak-password/.test(c))return '비밀번호는 6자 이상으로 정하세요';
+  if(/too-many-requests/.test(c))return '시도가 너무 많습니다. 잠시 뒤 다시 하세요';
+  if(/operation-not-allowed|admin-restricted/.test(c))return '이메일 로그인이 아직 켜져 있지 않습니다(관리자: Firebase 콘솔에서 켜기)';
+  if(/user-disabled/.test(c))return '사용이 막힌 계정입니다';
+  if(/network/.test(c))return '서버에 연결하지 못했습니다. 인터넷 연결을 확인하세요';
+  return '문제가 생겼습니다: '+((e&&e.message)||e);
+}
+async function syncLoginSubmit(form){
+  const mode=form.dataset.lg;const msg=$('#lg-msg');const say=t=>{if(msg)msg.textContent=t;};
+  const email=($('#lg-email').value||'').trim();const pw=mode==='reset'?'':$('#lg-pw').value||'';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){say('이메일 주소를 확인하세요');return;}
+  if(mode!=='reset'&&!pw){say('비밀번호를 넣으세요');return;}
+  if(mode==='up'){
+    if(pw.length<6){say('비밀번호는 6자 이상으로 정하세요');return;}
+    if(pw!==$('#lg-pw2').value){say('비밀번호 확인이 다릅니다');return;}
+  }
+  const btn=form.querySelector('[type=submit]');if(btn)btn.disabled=true;say(mode==='reset'?'보내는 중…':'잠시만요…');
+  try{
+    const ad=await syncAdapter();
+    if(mode==='in')await ad.emailSignIn(email,pw);
+    else if(mode==='up'){
+      const nm=($('#lg-name').value||'').trim();
+      await ad.emailSignUp(email,pw,nm);
+    }else{await ad.emailReset(email);syncLoginDlg('in','재설정 메일을 보냈습니다(가입된 주소일 때). 메일의 링크로 새 비밀번호를 정한 뒤 로그인하세요. 안 보이면 스팸함도 확인하세요.');return;}
+    for(let i=0;i<50&&!Sync.user;i++)await new Promise(r=>setTimeout(r,100));
+    if(Sync.dlg&&Sync.dlg.kind==='login')syncDlgClose();
+    toast(mode==='up'?'가입하고 로그인했습니다':'로그인했습니다');syncRefreshCards();
+  }catch(e){say(syncLoginErr(e));if(btn)btn.disabled=false;}
+}
+document.addEventListener('submit',e=>{const f=e.target.closest&&e.target.closest('form.lg-form');if(!f)return;e.preventDefault();syncLoginSubmit(f);});
 
 /* ---- 지금 열어 둔 공유 프로젝트만 구독 ---- */
 function syncWatch(){
@@ -4206,7 +4287,8 @@ function syncDlgShow(html){
   d.innerHTML=`<div class="sync-box" role="dialog" aria-modal="true" aria-labelledby="sync-dlg-h">${html}</div>`;d.hidden=false;
   const f=d.querySelector('h2');if(f){f.tabIndex=-1;f.focus();}
 }
-function syncDlgClose(){const d=$('#sync-dlg');if(d){d.hidden=true;d.innerHTML='';}Sync.dlg=null;}
+function syncDlgClose(){const d=$('#sync-dlg');if(d){d.hidden=true;d.innerHTML='';}Sync.dlg=null;
+  if(Sync.loginWait){const w=Sync.loginWait;Sync.loginWait=null;const e=new Error('cancelled');e.code='login-cancelled';w.rej(e);}}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&Sync.dlg)syncDlgClose();});
 function syncLabel(p,path){
   const segs=path.split('/');const key=segs[0]==='procs'?segs[1]:null;
@@ -4275,7 +4357,7 @@ async function syncHistView(path){
 
 /* ---- 화면: 프로젝트·홈 카드 ---- */
 function syncLoginLine(){
-  if(!Sync.user)return `<div class="row"><button type="button" class="btn small" data-act="sync-login">구글로 로그인</button><span class="hint">공유하려면 로그인</span></div>`;
+  if(!Sync.user)return `<div class="row"><button type="button" class="btn small" data-act="sync-login">구글로 로그인</button><button type="button" class="btn small" data-act="sync-email">이메일로 로그인</button><span class="hint">공유하려면 로그인</span></div>`;
   return `<div class="sync-login"><span class="meta">로그인: ${esc(Sync.user.email||Sync.user.name)}</span>
     <label class="field sync-name"><span>표시 이름 <small>다른 사람에게 보이는 이름</small></span><input id="sync-name" autocomplete="off" maxlength="30" value="${esc(syncMe().name)}"></label>
     <button type="button" class="btn small ghost" data-act="sync-logout">로그아웃</button></div>`;
@@ -4341,12 +4423,16 @@ function syncErrMsg(e){
   if(/permission/.test(c))return '권한이 없습니다. 공유 ID·코드를 확인하세요';
   if(/unavailable|network/.test(c))return '서버에 연결하지 못했습니다. 인터넷 연결을 확인하세요';
   if(/popup-closed|cancelled-popup/.test(c))return '로그인 창이 닫혔습니다';
+  if(c==='login-cancelled')return '로그인하지 않아 멈췄습니다';
   return '문제가 생겼습니다: '+((e&&e.message)||e);
 }
 
 /* ---- 버튼 ---- */
 Object.assign(actions,{
-  'sync-login':async()=>{try{await syncEnsureUser();toast('로그인했습니다');syncRefreshCards();}catch(e){toast(syncErrMsg(e));}},
+  'sync-login':async()=>{try{await syncGoogleLogin();toast('로그인했습니다');syncRefreshCards();}catch(e){toast(syncErrMsg(e));}},
+  'sync-email':async()=>{try{await syncAdapter();syncLoginDlg('in');}catch(e){toast(syncErrMsg(e));}},
+  'lg-mode':el=>syncLoginDlg(el.dataset.m),
+  'lg-google':async()=>{try{await syncGoogleLogin();if(Sync.dlg&&Sync.dlg.kind==='login')syncDlgClose();toast('로그인했습니다');syncRefreshCards();}catch(e){const m=$('#lg-msg');if(m)m.textContent=syncErrMsg(e);else toast(syncErrMsg(e));}},
   'sync-logout':async()=>{try{await Sync.ad.signOut();toast('로그아웃했습니다. 공유 프로젝트는 이 기기에 남고 동기화만 멈춥니다.');}catch(e){toast(syncErrMsg(e));}},
   'sync-start':async el=>{
     const p=curProject();const inp=$('#sync-code-new');const code=(inp&&inp.value||'').trim();
@@ -5346,6 +5432,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-19-1',d:'2026-11-19',k:'web',t:'이메일로 회원가입',items:['구글 말고 이메일로도','회원가입·로그인 가능','비밀번호 찾기(메일)','구글 계정과 따로임']},
   {id:'2026-11-18-5',d:'2026-11-18',k:'web',t:'＋1 창 대기 = 회기 시작',items:['컴퓨터·전자칠판에서','누르면 바로 회기 열림','＋1 버튼 바로 켜짐','휴대폰 회기 중이면 그 회기']},
   {id:'2026-11-18-4',d:'2026-11-18',k:'web',t:'간편 측정 단축키(PC)',items:['\'빠른 측정\' → \'간편 측정\'','기본: 0을 세 번 연타','누르면 대기 창 + 바로 1회','위·아래 화살표로 ±1']},
   {id:'2026-11-18-3',d:'2026-11-18',k:'apk',need:11,t:'강도·간격 기록도 트리거로',items:['음량: 이어 누른 수=강도','음량: 신호 때 누르면 있음','떠 있는 판에 1·2·3, 있음·없음','간편 측정 5가지 모두 ABC 함께']},
