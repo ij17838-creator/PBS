@@ -620,6 +620,9 @@ html.in-ink .ink-host{caret-color:transparent}
 .lg-form input[type=email],.lg-form input[type=password]{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface-2);color:var(--ink);font:inherit;font-size:16px;line-height:1.5}
 .lg-msg{margin:0;min-height:1.2em;font-size:.9rem;color:var(--warn)}
 .lg-msg:empty{display:none}
+.acct-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.acct-row .h3{margin:0}
+.acct-btns{margin-top:10px;gap:8px;flex-wrap:wrap}
 .lg-other{border-top:1px solid var(--line);padding-top:10px;gap:8px;flex-wrap:wrap;align-items:center}
 .sync-flash{outline:3px solid var(--warn)!important;outline-offset:2px}
 @media (max-width:560px){.sync-state{white-space:normal;text-align:right;max-width:46vw}}
@@ -1179,6 +1182,7 @@ function viewHome(){
     <p class="lede">학생별 프로젝트로 기록</p>
   </section>
   ${noticeHome()}
+  ${syncAcctCard()}
   <section class="card">
     <h2 class="h3">새 프로젝트</h2>
     <form id="new-form" class="new-form" novalidate>
@@ -4396,6 +4400,17 @@ function syncConflictCard(p){
     <ul class="sync-clist">${list.map(c=>{const lb=syncLabel(p,c.path);const o=syncOther(c,syncCurJson(p,c.path));
       return `<li><button type="button" class="sync-citem" data-act="sync-goto" data-path="${esc(c.path)}"><b>${esc(lb.proc)} · ${esc(lb.name)}</b><span class="meta">${esc(o.by)} · ${o.at?fmtShort(o.at):''}</span></button></li>`;}).join('')}</ul></section>`;
 }
+/* 로비(첫 화면) 계정 카드: 로그인·회원가입 */
+function syncAcctCard(){
+  if(!SYNC_ON&&!window.__pbsSyncAdapter)return '';
+  if(!Sync.loading)syncAdapter().then(syncRefreshCards).catch(()=>{});/* 전에 로그인했으면 알아보려고 */
+  return `<section class="card acct-card" id="sync-acct">${syncAcctInner()}</section>`;
+}
+function syncAcctInner(){
+  if(Sync.user)return `<div class="acct-row"><h2 class="h3">계정</h2><span class="meta">로그인: ${esc(Sync.user.email||Sync.user.name)}</span><button type="button" class="btn small ghost" data-act="sync-logout">로그아웃</button></div>`;
+  return `<div class="acct-row"><h2 class="h3">계정</h2><span class="hint">공유하려면 로그인</span></div>
+    <div class="row acct-btns"><button type="button" class="btn small primary" data-act="sync-email" data-m="in">로그인</button><button type="button" class="btn small" data-act="sync-email" data-m="up">회원가입</button><button type="button" class="btn small" data-act="sync-login">구글로 로그인</button></div>`;
+}
 function syncJoinCard(){
   if(!SYNC_ON&&!window.__pbsSyncAdapter)return '';
   return `<section class="card" id="sync-join"><h2 class="h3">공유 코드로 프로젝트 받기</h2>
@@ -4413,6 +4428,7 @@ function syncRefreshCards(){
     const c=$('#sync-card');if(c&&!(document.activeElement&&c.contains(document.activeElement)&&document.activeElement.matches('input')))c.innerHTML=syncProjectCardInner(p);
     const k=$('#sync-conflicts');if(k)k.outerHTML=syncConflictCard(p);
   }
+  if(ui.view==='home'){const a=$('#sync-acct');if(a)a.innerHTML=syncAcctInner();}
   if(ui.view==='home'){const j=$('#sync-join-login');if(j)j.innerHTML=Sync.user?`<p class="meta">로그인: ${esc(Sync.user.email||Sync.user.name)}</p>`:'';}
 }
 function syncAfterRender(){syncWatch();syncWatchDocs();syncDecorateSoon();syncStatusUI();}
@@ -4430,10 +4446,10 @@ function syncErrMsg(e){
 /* ---- 버튼 ---- */
 Object.assign(actions,{
   'sync-login':async()=>{try{await syncGoogleLogin();toast('로그인했습니다');syncRefreshCards();}catch(e){toast(syncErrMsg(e));}},
-  'sync-email':async()=>{try{await syncAdapter();syncLoginDlg('in');}catch(e){toast(syncErrMsg(e));}},
+  'sync-email':async el=>{try{await syncAdapter();syncLoginDlg(el&&el.dataset.m==='up'?'up':'in');}catch(e){toast(syncErrMsg(e));}},
   'lg-mode':el=>syncLoginDlg(el.dataset.m),
   'lg-google':async()=>{try{await syncGoogleLogin();if(Sync.dlg&&Sync.dlg.kind==='login')syncDlgClose();toast('로그인했습니다');syncRefreshCards();}catch(e){const m=$('#lg-msg');if(m)m.textContent=syncErrMsg(e);else toast(syncErrMsg(e));}},
-  'sync-logout':async()=>{try{await Sync.ad.signOut();toast('로그아웃했습니다. 공유 프로젝트는 이 기기에 남고 동기화만 멈춥니다.');}catch(e){toast(syncErrMsg(e));}},
+  'sync-logout':async()=>{try{await Sync.ad.signOut();syncRefreshCards();toast('로그아웃했습니다. 공유 프로젝트는 이 기기에 남고 동기화만 멈춥니다.');}catch(e){toast(syncErrMsg(e));}},
   'sync-start':async el=>{
     const p=curProject();const inp=$('#sync-code-new');const code=(inp&&inp.value||'').trim();
     if(code.length<6){toast('공유 코드를 6자 이상으로 정하세요');if(inp)inp.focus();return;}
@@ -5432,6 +5448,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-19-2',d:'2026-11-19',k:'web',t:'첫 화면에서 로그인',items:['첫 화면 \'계정\' 카드','로그인·회원가입 버튼','구글 로그인도 여기서','로그인하면 주소·로그아웃']},
   {id:'2026-11-19-1',d:'2026-11-19',k:'web',t:'이메일로 회원가입',items:['구글 말고 이메일로도','회원가입·로그인 가능','비밀번호 찾기(메일)','구글 계정과 따로임']},
   {id:'2026-11-18-5',d:'2026-11-18',k:'web',t:'＋1 창 대기 = 회기 시작',items:['컴퓨터·전자칠판에서','누르면 바로 회기 열림','＋1 버튼 바로 켜짐','휴대폰 회기 중이면 그 회기']},
   {id:'2026-11-18-4',d:'2026-11-18',k:'web',t:'간편 측정 단축키(PC)',items:['\'빠른 측정\' → \'간편 측정\'','기본: 0을 세 번 연타','누르면 대기 창 + 바로 1회','위·아래 화살표로 ±1']},
