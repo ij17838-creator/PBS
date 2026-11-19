@@ -1065,7 +1065,7 @@ function acctUid(){
 }
 function projVisible(p){
   if(!acctGate()||p.example)return true;
-  const u=acctUid();return !!u&&p.owner===u;
+  const u=acctUid();return !!u&&(p.owner===u||(Array.isArray(p.users)&&p.users.includes(u)));/* users: 이 기기에서 같은 공유 프로젝트를 받은 다른 계정 */
 }
 function visibleProjects(){return store.projects.filter(projVisible);}
 /* 로그인했을 때: 주인 없는 예전 프로젝트는 이 계정 것으로 */
@@ -3738,7 +3738,7 @@ const APP_DL_URL='https://github.com/ij17838-creator/PBS/releases/tag/apk-latest
 const GOOGLE_WEB_CLIENT_ID='837954569078-45r5mt6mjd43lo8nsqb8tl39rrtt0kcq.apps.googleusercontent.com';/* 설치형 앱 구글 로그인용. Firebase 콘솔 → Authentication → 로그인 방법 → Google → 웹 SDK 구성의 '웹 클라이언트 ID'. 비어 있으면 앱에서는 로그인을 막는다 */
 const FIREBASE_VER='12.19.0';
 const SYNC_ON=!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.projectId);
-const SYNC_SKIP_TOP=new Set(['id','shared','lastBackupAt','example','owner']);/* 이 기기에만 두는 칸 */
+const SYNC_SKIP_TOP=new Set(['id','shared','lastBackupAt','example','owner','users']);/* 이 기기에만 두는 칸 */
 const SYNC_META=/(^|\/)updatedAt$|^procs\/[^/]+\/status$/;/* 내용이 아닌 칸: 이것만 바뀌었으면 보내지 않는다 */
 const NO_HIST=/(^|\/)(updatedAt|ink)(\/|\[|$)|^procs\/abc\/data\/session(\/|$)/;/* 수정 기록·충돌로 남기지 않는 칸 */
 const LIVE_HOST='~live/host',LIVE_TAP='~live/tap/',LIVE_RE=/^~live\//;/* 실시간 함께 세기 칸(프로젝트 자료로 합치지 않음) */
@@ -4521,13 +4521,17 @@ Object.assign(actions,{
     const id=($('#sync-join-id').value||'').trim();const code=($('#sync-join-code').value||'').trim();
     if(!id||!code){toast('공유 ID와 공유 코드를 모두 입력하세요');return;}
     const have=projById(id);
-    if(have&&have.shared){go('project',{projectId:id,proc:null,cat:null});toast('이미 이 기기에 있는 공유 프로젝트입니다');return;}
-    if(have){toast('같은 ID의 프로젝트가 이 기기에 이미 있습니다 (공유를 시작한 기기입니다)');return;}
+    if(have&&have.shared&&projVisible(have)){go('project',{projectId:id,proc:null,cat:null});toast('이미 이 기기에 있는 공유 프로젝트입니다');return;}
+    if(have&&!have.shared){toast('같은 ID의 프로젝트가 이 기기에 이미 있습니다 (공유를 시작한 기기입니다)');return;}
     el.disabled=true;
     try{
       const ad=await syncEnsureUser();const me=syncMe();
       const key=await syncInviteKey(id,code);
       const r=await ad.join(id,key,me);
+      if(have&&have.shared){/* 이 기기에 다른 계정으로 받아 둔(숨겨진) 같은 공유 프로젝트: 이 계정에서도 보이게 */
+        have.users=Array.from(new Set([...(have.users||[]),me.uid]));saveNow();
+        go('project',{projectId:id,proc:null,cat:null});toast('공유 프로젝트를 받았습니다');return;
+      }
       const tc=new Map(),ti=new Map(),revs={};
       r.cells.forEach(c=>{if(!c.deleted){tc.set(c.path,syncParse(c.value));}revs[c.path]=Number(c.rev)||0;});
       r.items.forEach(it=>{if(!it.deleted)ti.set(it.path,{parent:it.parent,order:Number(it.order)||0});});
@@ -5501,6 +5505,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-19-8',d:'2026-11-19',k:'web',t:'공유 받기 고침',items:['다른 계정이 받아 둔 기기','이제 내 계정도 받아짐','공유 ID·코드로 받기']},
   {id:'2026-11-19-7',d:'2026-11-19',k:'web',t:'앱: 로그아웃하면 앱 밖 측정 끔',items:['위젯·알림창 대상 꺼짐','음량·떠 있는 ＋1도 멈춤','로그아웃 전 누른 건 저장','다시 로그인 뒤 다시 켜기']},
   {id:'2026-11-19-6',d:'2026-11-19',k:'web',t:'로그아웃하면 대기 창 닫힘',items:['＋1 대기 창도 함께 닫힘','화면 안 ＋1 버튼도 닫힘','로그아웃 중엔 단축키 쉼','다시 로그인하면 그대로']},
   {id:'2026-11-19-5',d:'2026-11-19',k:'web',t:'긴 프로젝트명 한 줄로',items:['휴대폰 위쪽 길 표시','기호 있어도 줄바꿈 없음','넘치면 … 로 줄임','홈 카드 이름도 한 줄']},
