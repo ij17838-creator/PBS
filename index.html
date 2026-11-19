@@ -530,7 +530,7 @@ td.top{color:var(--accent);font-weight:700}
 .notice-list{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
 .notice-item{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
 .notice-item.new{border-color:var(--accent)}
-.notice-item ul{margin:0;padding-left:1.1em;font-size:.92rem}
+.notice-item ul{margin:0;padding:0;list-style:none;font-size:.92rem;display:flex;flex-direction:column;gap:2px;line-height:1.45}
 .notice-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .notice-head b{font-size:.95rem}
 .notice-head .meta{font-size:.78rem;color:var(--muted)}
@@ -5666,6 +5666,7 @@ function webInit(){
    need: 그 기능이 든 apk의 단계(PbsCounterPlugin의 ver). android를 바꾸면 ver를 올리고 그 값을 need에 적는다.
    5.1은 ver 5이면서 음량 누를 횟수(btn.count)가 있는 apk(ver를 올리지 않고 나간 것). */
 const NOTICES=[
+  {id:'2026-11-19-11',d:'2026-11-19',k:'web',t:'공지 목록 정리',items:['항목 앞 동그라미 없앰','줄 간격 정돈']},
   {id:'2026-11-19-10',d:'2026-11-19',k:'web',t:'계정 합치기',items:['첫 화면 계정 → 계정 합치기','구글·이메일 어느 쪽이든','같은 프로젝트가 보임','새 서버 규칙 게시 필요']},
   {id:'2026-11-19-9',d:'2026-11-19',k:'web',t:'공유 프로젝트 자동 받기',items:['같은 계정으로 로그인하면','받은 공유 프로젝트가','다른 기기에도 내려옴','이 기기에서 지우면 빠짐']},
   {id:'2026-11-19-8',d:'2026-11-19',k:'web',t:'공유 받기 고침',items:['다른 계정이 받아 둔 기기','이제 내 계정도 받아짐','공유 ID·코드로 받기']},
