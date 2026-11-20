@@ -6049,7 +6049,7 @@ const AI_CFG_KEY='pbs-ai',AI_OUT_KEY='pbs-ai-out',AI_MODEL_DEF='gemini-4-neon';
 /* App Check 사이트 키(reCAPTCHA Enterprise). Firebase 콘솔 → App Check → 웹 앱 등록 때 만든 키를 넣는다. 비어 있으면 App Check 없이 부른다(강제 중이면 거절됨) */
 const APPCHECK_SITE_KEY='6LfIIikuAAAAAP_Ne2drq1rA6aGdCNR1EdbdwDlr';
 /* AI Logic 제공자: 'google' = Gemini Developer API, 'vertex' = Vertex AI(Google Cloud 크레딧이 적용되는 쪽). 콘솔 AI Logic에서 고른 것과 같게 */
-const AI_BACKEND='google';
+const AI_BACKEND='vertex';
 const AI_LEVELS=[['HIGH','높음'],['MEDIUM','보통']];/* Gemini 4 Neon은 높음만 받는다(보통이면 모델 기본값으로 다시 부름). xhigh는 쓰지 않는다 */
 const AI_SYS='너는 특수교육과 긍정적 행동지원(PBS)을 돕는 조력자다. 교사가 입력한 자료만 근거로 삼고, 자료에 없는 사실을 지어내지 않는다. 학생을 진단하거나 낙인찍는 말을 쓰지 않는다. 한국어로, 교사가 바로 쓸 수 있는 쉬운 문장으로 쓴다.';
 const ai={busy:'',err:{},sdk:null};
