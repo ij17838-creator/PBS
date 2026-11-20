@@ -419,7 +419,12 @@ td.top{color:var(--accent);font-weight:700}
 @media (max-width:560px){#kw-dlg{padding:72px 14px 14px;align-items:flex-start}#kw-dlg .kw-box{height:auto;max-height:calc(100dvh - 90px);border-radius:14px}}.kw-add{display:flex;gap:8px}.kw-add input{flex:1;min-width:0}.kw-h{font-size:.85rem;margin:0 0 6px;color:var(--muted)}.kw-box .chips{gap:6px}.tally .tex{display:block;color:var(--muted);font-size:.78rem;line-height:1.35}
 .tally .ttrack{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden}
 .tally .tfill{height:100%}
-.tally.ta .tfill{background:var(--a)} .tally.tc .tfill{background:var(--c)}
+.tally.ta .tfill{background:var(--a)} .tally.tb .tfill{background:var(--accent)} .tally.tc .tfill{background:var(--c)}
+.tally3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}.tally3 .tally li{grid-template-columns:minmax(0,1fr) 64px 50px}
+@media (max-width:900px){.tally3{grid-template-columns:1fr}}
+.tally .tlink{border:0;background:none;padding:2px 0;font:inherit;color:inherit;text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:3px}.tally .tlink:hover{color:var(--accent)}
+.kw-ex{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:6px;overflow:auto;font-size:.92rem}#kw-ex .kw-box{max-height:calc(100dvh - 120px)}
+@media (max-width:560px){#kw-ex{padding:72px 14px 14px;align-items:flex-start}#kw-ex .kw-box{height:auto;border-radius:14px}}
 .tally .tval{font-family:var(--font-mono);text-align:right;font-size:.82rem;color:var(--muted)}
 .list-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
 .day{font-size:.85rem;font-weight:700;color:var(--muted);margin:14px 0 8px;letter-spacing:.02em}
@@ -804,6 +809,7 @@ body.find-open{overflow:hidden}
 <div class="find" id="find" hidden></div>
 <div class="find" id="ai-dlg" hidden></div>
 <div class="find" id="kw-dlg" hidden></div>
+<div class="find" id="kw-ex" hidden></div>
 <div class="report" id="report" hidden></div>
 <div class="mini" id="mini" hidden>
   <button type="button" class="mini-mark" id="mini-mark" aria-label="1 더하기"><span class="mini-plus">＋1</span><small id="mini-n">0</small></button>
@@ -1244,30 +1250,31 @@ function qAnswered(f){return Object.keys(f.ratings).filter(k=>f.ratings[k]!==''&
    한 기록 행에서 같은 낱말은 한 번만. 늘 함께 나온 낱말(같은 행들)은 한 줄로 묶는다. 결과 [이름, 행 수, 예시 문장들] */
 const KW_END=['하였었다','하였다','했었다','했다','하다','하였음','했음','하자마자','하자','하면서','하며','해서','하여','하고','하기','하는데','하는','하던','한다','합니다','했는데','했고','하니','함','되었다','됐다','되다','되자','되어','됨','되는','된','시켰다','시킴','받았다','받음','받자'];
 const KW_JOSA=['에서는','에게서','으로는','이라고','에서','에게','한테','께서','으로','부터','까지','처럼','보다','이랑','라고','하고','랑','을','를','이','가','은','는','에','의','와','과','도','만','로','께'];
-const KW_STOP=new Set(['학생','아이','대상','그리고','그래서','다시','계속','바로','조금','많이','같이','함께','해당','경우','정도','이후','직후','동안','상황','행동','모습','그때','이때','시간','해도','하고']);
+const KW_STOP=new Set(['학생','아이','대상','그리고','그래서','다시','계속','바로','조금','많이','같이','함께','해당','경우','정도','이후','직후','동안','상황','행동','모습','그때','이때','시간','해도','하고','있는','없는','있음','없음','있던','같은','위해','대신','통해','하는','되는','계속해서','일을','일이','일은','것을','것이','것은','때에','때는','곳에','후에','전에','중에','그런','이런']);
 function kwNorm(w){
   w=String(w||'').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');
   for(const e of KW_END)if(w.length>=e.length+2&&w.endsWith(e)){w=w.slice(0,-e.length);break;}
   for(const j of KW_JOSA)if(w.length>j.length+1&&w.endsWith(j)){w=w.slice(0,-j.length);break;}
+  const m=/^([a-z]+)(에게서|에게|한테|에서|으로|의|가|이|은|는|을|를|와|과|도|로|께)$/.exec(w);if(m)w=m[1];/* m에게 → m(사람 기호, 2글자 미만이라 세지 않음) */
   return w;
 }
-function kwOf(ph){return [...new Set(String(ph).split(/[\s·/()\[\]~.!?'"“”‘’-]+/).map(kwNorm).filter(w=>w.length>=2&&!KW_STOP.has(w)&&!/^\d+$/.test(w)))];}
+function kwOf(ph){return [...new Set(String(ph).split(/[\s·/()\[\]~.!?'"“”‘’-]+/).map(kwNorm).filter(w=>w.length>=2&&!KW_STOP.has(w)&&!/^\d+$/.test(w)&&!/^[a-z]{1,2}\d+[a-z]?$/.test(w)))];}/* s1·c2 같은 번호 기호 제외 */
 function kwStops(p){const a=p&&p.procs&&p.procs.abc&&p.procs.abc.data.kwStop;return Array.isArray(a)?a:[];}
 function tally(rows,f,p){
   const kw=new Map();const stop=new Set(kwStops(p).map(kwNorm));
   rows.forEach((r,ri)=>{
     String(r[f]||'').split(/[,，;\n]+/).map(x=>x.trim()).filter(Boolean).forEach(ph=>{
       const all=kwOf(ph),ks=all.filter(w=>!stop.has(w));if(!all.length&&!stop.has(kwNorm(ph)))ks.push(ph);
-      ks.forEach(k=>{let o=kw.get(k);if(!o)kw.set(k,o={rows:new Set(),ex:new Map()});o.rows.add(ri);o.ex.set(ph,(o.ex.get(ph)||0)+1);});
+      ks.forEach(k=>{let o=kw.get(k);if(!o)kw.set(k,o={rows:new Set(),ex:new Map(),occ:[]});o.rows.add(ri);o.ex.set(ph,(o.ex.get(ph)||0)+1);o.occ.push([ri,ph]);});
     });
   });
   const groups=new Map();
   for(const [k,o] of kw){
     const sig=[...o.rows].sort((a,b)=>a-b).join(',');const g=groups.get(sig);
-    if(g){g.keys.push(k);o.ex.forEach((n,ph)=>{if(!g.ex.has(ph))g.ex.set(ph,n);});}
-    else groups.set(sig,{keys:[k],n:o.rows.size,ex:new Map(o.ex)});
+    if(g){g.keys.push(k);o.ex.forEach((n,ph)=>{if(!g.ex.has(ph))g.ex.set(ph,n);});o.occ.forEach(x=>{if(!g.occ.some(y=>y[0]===x[0]&&y[1]===x[1]))g.occ.push(x);});}
+    else groups.set(sig,{keys:[k],n:o.rows.size,ex:new Map(o.ex),occ:o.occ.slice()});
   }
-  return [...groups.values()].map(g=>[g.keys.slice(0,2).join(' · '),g.n,[...g.ex.entries()].sort((a,b)=>b[1]-a[1]).map(e=>e[0])]).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ko'));
+  return [...groups.values()].map(g=>[g.keys.slice(0,2).join(' · '),g.n,[...g.ex.entries()].sort((a,b)=>b[1]-a[1]).map(e=>e[0]),g.occ]).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ko'));
 }
 
 /* ---------- rendering ---------- */
@@ -2162,19 +2169,33 @@ function summaryView(p){
   <div class="stats">
     <div><b>${sheets.length}</b><span>관찰지</span></div><div><b>${rows.length}</b><span>기록 행</span></div><div><b>${mins}</b><span>관찰 시간(분)</span></div><div><b>${nAud}</b><span>녹음</span></div><div><b>${days}</b><span>관찰한 날</span></div>
   </div>
-  ${rows.length?`<div class="two">${tallyView('자주 적힌 선행사건 (A)',tally(rows,'a',p),rows.length,'ta')}${tallyView('자주 적힌 후속결과 (C)',tally(rows,'c',p),rows.length,'tc')}</div><div class="row kw-row"><p class="hint">핵심 낱말로 묶어 셈</p><button type="button" class="btn small" data-act="kw-open">제외 낱말${kwStops(p).length?` <b>${kwStops(p).length}</b>`:''}</button></div>`:''}`;
+  ${rows.length?`<div class="tally3">${tallyView('자주 적힌 선행사건 (A)',tally(rows,'a',p),rows.length,'ta','a')}${tallyView('자주 적힌 행동 (B)',tally(rows,'b',p),rows.length,'tb','b')}${tallyView('자주 적힌 후속결과 (C)',tally(rows,'c',p),rows.length,'tc','c')}</div><div class="row kw-row"><p class="hint">핵심 낱말로 묶어 셈</p><button type="button" class="btn small" data-act="kw-open">제외 낱말${kwStops(p).length?` <b>${kwStops(p).length}</b>`:''}</button></div>`:''}`;
 }
-function tallyView(title,rows,n,cls){
+function tallyView(title,rows,n,cls,col){
   if(!rows.length)return `<div class="tally ${cls}"><h3>${title}</h3><p class="muted">적은 내용이 없습니다.</p></div>`;
-  return `<div class="tally ${cls}"><h3>${title}</h3><ol>${rows.slice(0,5).map(([k,v,ex])=>`<li><span class="tname">${esc(k)}${ex&&ex.length&&!(ex.length===1&&ex[0].replace(/\s+/g,'')===k.replace(/ · /g,''))?`<small class="tex">${esc(ex.slice(0,2).join(' / '))}${ex.length>2?` 외 ${ex.length-2}`:''}</small>`:''}</span><span class="ttrack"><span class="tfill" style="display:block;width:${(v/n*100).toFixed(1)}%"></span></span><span class="tval">${v}/${n}행</span></li>`).join('')}</ol></div>`;
+  return `<div class="tally ${cls}"><h3>${title}</h3><ol>${rows.slice(0,5).map(([k,v])=>`<li><button type="button" class="tname tlink" data-act="kw-ex" data-col="${col}" data-k="${esc(k)}" title="적힌 문장 보기">${esc(k)}</button><span class="ttrack"><span class="tfill" style="display:block;width:${(v/n*100).toFixed(1)}%"></span></span><span class="tval">${v}/${n}행</span></li>`).join('')}</ol></div>`;
 }
+/* 낱말을 누르면: 그 낱말이 들어 있던 문장(구절)을 창으로 */
+const KW_COL={a:'선행사건 (A)',b:'행동 (B)',c:'후속결과 (C)'};
+function kwExOpen(col,k){
+  const p=curProject();const d=$('#kw-ex');if(!p||!d)return;
+  const rows=allRows(p);const g=tally(rows,col,p).find(x=>x[0]===k);if(!g)return;
+  const occ=g[3].slice().sort((x,y)=>x[0]-y[0]);
+  d.innerHTML=`<div class="find-box ai-box kw-box" role="dialog" aria-modal="true" aria-label="${esc(k)} 적힌 문장">
+    <div><h2 class="h3">「${esc(k)}」 <small class="muted">${KW_COL[col]||''} · ${g[1]}행</small></h2></div>
+    <ol class="kw-ex">${occ.map(([ri,ph])=>{const r=rows[ri]||{};return `<li>${esc(ph)}${r.time?` <small class="muted">${esc(String(r.time).slice(11,16)||r.time)}</small>`:''}</li>`;}).join('')}</ol>
+    <div class="row"><button type="button" class="btn" data-act="kw-ex-close">닫기</button></div>
+  </div>`;
+  d.hidden=false;d.onclick=e=>{if(e.target===d)kwExClose();};
+}
+function kwExClose(){const d=$('#kw-ex');if(!d)return;d.hidden=true;d.innerHTML='';}
 /* 제외 낱말 창: 어두운 배경 위에 입력·추가, 지금 목록, 요약에 나온 낱말 고르기, 닫기 */
 function kwDlgOpen(){const d=$('#kw-dlg');if(!d)return;d.hidden=false;d.onclick=e=>{if(e.target===d)kwDlgClose();};kwDlgPaint();const i=$('#kw-new');if(i){try{i.focus({preventScroll:true});}catch(e){}}}
 function kwDlgClose(){const d=$('#kw-dlg');if(!d)return;d.hidden=true;d.innerHTML='';}
 function kwDlgPaint(){
   const d=$('#kw-dlg');const p=curProject();if(!d||d.hidden||!p)return;
   const st=kwStops(p);const rows=allRows(p);
-  const pick=[];[...tally(rows,'a',p),...tally(rows,'c',p)].sort((x,y)=>y[1]-x[1]).forEach(([k])=>k.split(' · ').forEach(w=>{if(pick.length<10&&!pick.includes(w)&&kwOf(w).length)pick.push(w);}));
+  const pick=[];[...tally(rows,'a',p),...tally(rows,'b',p),...tally(rows,'c',p)].sort((x,y)=>y[1]-x[1]).forEach(([k])=>k.split(' · ').forEach(w=>{if(pick.length<10&&!pick.includes(w)&&kwOf(w).length)pick.push(w);}));
   d.innerHTML=`<div class="find-box ai-box kw-box" role="dialog" aria-modal="true" aria-label="제외 낱말">
     <div><h2 class="h3">제외 낱말</h2><p class="hint">요약에서 세지 않을 말</p></div>
     <div class="kw-add"><input id="kw-new" autocomplete="off" placeholder="예: 교사" aria-label="제외할 낱말"><button type="button" class="btn primary" data-act="kw-add">추가</button></div>
@@ -2184,7 +2205,7 @@ function kwDlgPaint(){
   </div>`;
   const i=$('#kw-new');if(i)i.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();ACTIONS_KW_ADD();}});
 }
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){const d=$('#kw-dlg');if(d&&!d.hidden){e.preventDefault();kwDlgClose();}}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const x=$('#kw-ex');if(x&&!x.hidden){e.preventDefault();kwExClose();return;}const d=$('#kw-dlg');if(d&&!d.hidden){e.preventDefault();kwDlgClose();}}});
 function ACTIONS_KW_ADD(){const p=curProject();const i=$('#kw-new');const ws=String(i&&i.value||'').split(/[,\s]+/).filter(Boolean);if(!ws.length){if(i)i.focus();return;}kwStopSet(p,ws,true);const j=$('#kw-new');if(j){try{j.focus({preventScroll:true});}catch(e){}}}
 function kwStopSet(p,words,on){
   const d=p.procs.abc.data;const cur=kwStops(p).slice();
@@ -3265,7 +3286,7 @@ const actions={
     const p=curProject();const d=p.procs.hypo.data;d.more=(d.more||[]).filter(x=>x.id!==el.dataset.id);
     ui.confirm=null;touch(p,'hypo');saveNow();rerenderForConfirm();toast('가설을 삭제했습니다');
   },
-  'kw-open':()=>kwDlgOpen(),'kw-close':()=>kwDlgClose(),
+  'kw-open':()=>kwDlgOpen(),'kw-ex':el=>kwExOpen(el.dataset.col,el.dataset.k),'kw-ex-close':()=>kwExClose(),'kw-close':()=>kwDlgClose(),
   'kw-stop':el=>{const p=curProject();const ws=String(el.dataset.k||'').split(' · ');kwStopSet(p,ws,true);},
   'kw-unstop':el=>{const p=curProject();kwStopSet(p,[el.dataset.w],false);},
   'kw-add':()=>ACTIONS_KW_ADD(),
@@ -6354,7 +6375,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
-  {id:'2026-11-20-4',d:'2026-11-20',k:'web',t:'ABC 요약 개선',items:['핵심 낱말로 묶어 세기','예시 문장 함께 보기','제외 낱말 정하기']},
+  {id:'2026-11-20-4',d:'2026-11-20',k:'web',t:'ABC 요약 개선',items:['핵심 낱말로 묶어 세기','낱말 누르면 적힌 문장','행동(B)도 집계','제외 낱말 정하기']},
   {id:'2026-11-20-3',d:'2026-11-20',k:'web',t:'절차 화면 정리',items:['정의: 근거부터 쓰는 순서','기초선: 확정 뒤 목표','측정 방법은 한 줄로','작은 장은 한 장으로','가설: 앞에 쓴 상황 넣기','평가: 결정 고르기']},
   {id:'2026-11-20-2',d:'2026-11-20',k:'web',t:'AI 도우미·보고서',items:['중재 계획: AI 제안 고르기','실행 기록 자동 작성','평가 변화 문장 자동','최종 보고서 인쇄·저장','Firebase 콘솔 설정 필요']},
   {id:'2026-11-20-1',d:'2026-11-20',k:'web',t:'절차 화면 나눠 보기',items:['한 화면에 묶음 하나씩','위 띠로 묶음 바로 가기','아래 이전·다음 버튼','QABF는 5문항씩','전체 보기로 한 화면','맨 위 찾기(단축키 /)']},
