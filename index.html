@@ -412,9 +412,11 @@ td.top{color:var(--accent);font-weight:700}
 .stats span{font-size:.8rem;color:var(--muted)}
 .tally h3{font-size:.9rem;margin-bottom:8px}
 .tally ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.tally li{display:grid;grid-template-columns:minmax(0,1fr) 90px 52px 24px;gap:10px;align-items:center;font-size:.88rem}
+.tally li{display:grid;grid-template-columns:minmax(0,1fr) 90px 52px;gap:10px;align-items:center;font-size:.88rem}
 .tally .tname{overflow-wrap:anywhere}.tally .tx{border:0;background:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:2px;border-radius:6px}.tally .tx:hover{color:var(--rec);background:var(--sunk)}
-.kw-stop{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}.kw-stop .chip{font-size:.8rem}.kw-add{display:inline-flex;gap:6px}.kw-add input{width:8em;padding:4px 8px}.tally .tex{display:block;color:var(--muted);font-size:.78rem;line-height:1.35}
+.kw-row{align-items:center;gap:8px;justify-content:space-between}.kw-row .hint{margin:0}
+.kw-box{width:min(460px,100%)}
+@media (max-width:560px){#kw-dlg{padding:72px 14px 14px;align-items:flex-start}#kw-dlg .kw-box{height:auto;max-height:calc(100dvh - 90px);border-radius:14px}}.kw-add{display:flex;gap:8px}.kw-add input{flex:1;min-width:0}.kw-h{font-size:.85rem;margin:0 0 6px;color:var(--muted)}.kw-box .chips{gap:6px}.tally .tex{display:block;color:var(--muted);font-size:.78rem;line-height:1.35}
 .tally .ttrack{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden}
 .tally .tfill{height:100%}
 .tally.ta .tfill{background:var(--a)} .tally.tc .tfill{background:var(--c)}
@@ -545,7 +547,7 @@ td.top{color:var(--accent);font-weight:700}
   .q-item{grid-template-columns:auto 1fr;}
   .q-item .seg{grid-column:1/-1;justify-self:stretch;display:grid;grid-template-columns:repeat(5,1fr)}
   .bar-row{grid-template-columns:96px 1fr 50px}
-  .tally li{grid-template-columns:minmax(0,1fr) 60px 46px 22px;gap:8px}
+  .tally li{grid-template-columns:minmax(0,1fr) 60px 46px}
   .rec-btn{flex:1 1 100%;justify-content:center}
   .save-state{display:none}
 }
@@ -801,6 +803,7 @@ body.find-open{overflow:hidden}
 <div class="pres" id="pres" hidden></div>
 <div class="find" id="find" hidden></div>
 <div class="find" id="ai-dlg" hidden></div>
+<div class="find" id="kw-dlg" hidden></div>
 <div class="report" id="report" hidden></div>
 <div class="mini" id="mini" hidden>
   <button type="button" class="mini-mark" id="mini-mark" aria-label="1 더하기"><span class="mini-plus">＋1</span><small id="mini-n">0</small></button>
@@ -2159,20 +2162,34 @@ function summaryView(p){
   <div class="stats">
     <div><b>${sheets.length}</b><span>관찰지</span></div><div><b>${rows.length}</b><span>기록 행</span></div><div><b>${mins}</b><span>관찰 시간(분)</span></div><div><b>${nAud}</b><span>녹음</span></div><div><b>${days}</b><span>관찰한 날</span></div>
   </div>
-  ${rows.length?`<div class="two">${tallyView('자주 적힌 선행사건 (A)',tally(rows,'a',p),rows.length,'ta')}${tallyView('자주 적힌 후속결과 (C)',tally(rows,'c',p),rows.length,'tc')}</div><p class="hint">핵심 낱말로 묶어 셈</p>${kwStopView(p)}`:''}`;
+  ${rows.length?`<div class="two">${tallyView('자주 적힌 선행사건 (A)',tally(rows,'a',p),rows.length,'ta')}${tallyView('자주 적힌 후속결과 (C)',tally(rows,'c',p),rows.length,'tc')}</div><div class="row kw-row"><p class="hint">핵심 낱말로 묶어 셈</p><button type="button" class="btn small" data-act="kw-open">제외 낱말${kwStops(p).length?` <b>${kwStops(p).length}</b>`:''}</button></div>`:''}`;
 }
 function tallyView(title,rows,n,cls){
   if(!rows.length)return `<div class="tally ${cls}"><h3>${title}</h3><p class="muted">적은 내용이 없습니다.</p></div>`;
-  return `<div class="tally ${cls}"><h3>${title}</h3><ol>${rows.slice(0,5).map(([k,v,ex])=>`<li><span class="tname">${esc(k)}${ex&&ex.length&&!(ex.length===1&&ex[0].replace(/\s+/g,'')===k.replace(/ · /g,''))?`<small class="tex">${esc(ex.slice(0,2).join(' / '))}${ex.length>2?` 외 ${ex.length-2}`:''}</small>`:''}</span><span class="ttrack"><span class="tfill" style="display:block;width:${(v/n*100).toFixed(1)}%"></span></span><span class="tval">${v}/${n}행</span><button type="button" class="tx" data-act="kw-stop" data-k="${esc(k)}" title="이 낱말 세지 않기" aria-label="${esc(k)} 세지 않기">✕</button></li>`).join('')}</ol></div>`;
+  return `<div class="tally ${cls}"><h3>${title}</h3><ol>${rows.slice(0,5).map(([k,v,ex])=>`<li><span class="tname">${esc(k)}${ex&&ex.length&&!(ex.length===1&&ex[0].replace(/\s+/g,'')===k.replace(/ · /g,''))?`<small class="tex">${esc(ex.slice(0,2).join(' / '))}${ex.length>2?` 외 ${ex.length-2}`:''}</small>`:''}</span><span class="ttrack"><span class="tfill" style="display:block;width:${(v/n*100).toFixed(1)}%"></span></span><span class="tval">${v}/${n}행</span></li>`).join('')}</ol></div>`;
 }
-function kwStopView(p){
-  const st=kwStops(p);
-  return `<div class="kw-stop"><span class="meta">세지 않는 낱말</span>${st.map(w=>`<button type="button" class="chip c-b on" data-act="kw-unstop" data-w="${esc(w)}" title="다시 세기">${esc(w)} <span aria-hidden="true">✕</span></button>`).join('')}<span class="kw-add"><input id="kw-new" autocomplete="off" placeholder="예: 교사" aria-label="세지 않을 낱말"><button type="button" class="btn small" data-act="kw-add">추가</button></span></div>`;
+/* 제외 낱말 창: 어두운 배경 위에 입력·추가, 지금 목록, 요약에 나온 낱말 고르기, 닫기 */
+function kwDlgOpen(){const d=$('#kw-dlg');if(!d)return;d.hidden=false;d.onclick=e=>{if(e.target===d)kwDlgClose();};kwDlgPaint();const i=$('#kw-new');if(i){try{i.focus({preventScroll:true});}catch(e){}}}
+function kwDlgClose(){const d=$('#kw-dlg');if(!d)return;d.hidden=true;d.innerHTML='';}
+function kwDlgPaint(){
+  const d=$('#kw-dlg');const p=curProject();if(!d||d.hidden||!p)return;
+  const st=kwStops(p);const rows=allRows(p);
+  const pick=[];[...tally(rows,'a',p),...tally(rows,'c',p)].sort((x,y)=>y[1]-x[1]).forEach(([k])=>k.split(' · ').forEach(w=>{if(pick.length<10&&!pick.includes(w)&&kwOf(w).length)pick.push(w);}));
+  d.innerHTML=`<div class="find-box ai-box kw-box" role="dialog" aria-modal="true" aria-label="제외 낱말">
+    <div><h2 class="h3">제외 낱말</h2><p class="hint">요약에서 세지 않을 말</p></div>
+    <div class="kw-add"><input id="kw-new" autocomplete="off" placeholder="예: 교사" aria-label="제외할 낱말"><button type="button" class="btn primary" data-act="kw-add">추가</button></div>
+    <div><h3 class="kw-h">목록</h3>${st.length?`<div class="chips">${st.map(w=>`<button type="button" class="chip c-b on" data-act="kw-unstop" data-w="${esc(w)}" title="다시 세기">${esc(w)} <span aria-hidden="true">✕</span></button>`).join('')}</div><p class="hint">누르면 다시 셈</p>`:'<p class="muted">아직 없음</p>'}</div>
+    ${pick.length?`<div><h3 class="kw-h">요약에 나온 낱말</h3><div class="chips">${pick.map(w=>`<button type="button" class="chip c-b" data-act="kw-stop" data-k="${esc(w)}">${esc(w)}</button>`).join('')}</div></div>`:''}
+    <div class="row"><button type="button" class="btn" data-act="kw-close">닫기</button></div>
+  </div>`;
+  const i=$('#kw-new');if(i)i.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();ACTIONS_KW_ADD();}});
 }
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const d=$('#kw-dlg');if(d&&!d.hidden){e.preventDefault();kwDlgClose();}}});
+function ACTIONS_KW_ADD(){const p=curProject();const i=$('#kw-new');const ws=String(i&&i.value||'').split(/[,\s]+/).filter(Boolean);if(!ws.length){if(i)i.focus();return;}kwStopSet(p,ws,true);const j=$('#kw-new');if(j){try{j.focus({preventScroll:true});}catch(e){}}}
 function kwStopSet(p,words,on){
   const d=p.procs.abc.data;const cur=kwStops(p).slice();
   words.forEach(w=>{w=String(w||'').trim();if(!w)return;const i=cur.findIndex(x=>kwNorm(x)===kwNorm(w));if(on&&i<0)cur.push(kwNorm(w).length>=2?kwNorm(w):w);if(!on&&i>=0)cur.splice(i,1);});
-  d.kwStop=cur;touch(p,'abc');saveNow();refreshSummary(p);
+  d.kwStop=cur;touch(p,'abc');saveNow();refreshSummary(p);kwDlgPaint();
 }
 function refreshSummary(p){const el=$('#abc-summary');if(el&&onAbcPage(p))el.innerHTML=summaryView(p);}
 function pastView(p){
@@ -3248,9 +3265,10 @@ const actions={
     const p=curProject();const d=p.procs.hypo.data;d.more=(d.more||[]).filter(x=>x.id!==el.dataset.id);
     ui.confirm=null;touch(p,'hypo');saveNow();rerenderForConfirm();toast('가설을 삭제했습니다');
   },
-  'kw-stop':el=>{const p=curProject();const ws=String(el.dataset.k||'').split(' · ');kwStopSet(p,ws,true);toast(`'${ws.join(', ')}' 은(는) 세지 않습니다`);},
+  'kw-open':()=>kwDlgOpen(),'kw-close':()=>kwDlgClose(),
+  'kw-stop':el=>{const p=curProject();const ws=String(el.dataset.k||'').split(' · ');kwStopSet(p,ws,true);},
   'kw-unstop':el=>{const p=curProject();kwStopSet(p,[el.dataset.w],false);},
-  'kw-add':()=>{const p=curProject();const i=$('#kw-new');const ws=String(i&&i.value||'').split(/[,\s]+/).filter(Boolean);if(!ws.length){if(i)i.focus();return;}kwStopSet(p,ws,true);const j=$('#kw-new');if(j)j.focus();},
+  'kw-add':()=>ACTIONS_KW_ADD(),
   'hy-ctx':el=>{
     const p=curProject();const h=hyData(p,el.dataset.id);if(!h)return;const t=hyCtx(p);if(!t)return;
     if(String(h.when||'').trim()){toast('이미 채워져 있습니다');return;}
@@ -6336,7 +6354,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
-  {id:'2026-11-20-4',d:'2026-11-20',k:'web',t:'ABC 요약 개선',items:['핵심 낱말로 묶어 세기','예시 문장 함께 보기','세지 않는 낱말 정하기']},
+  {id:'2026-11-20-4',d:'2026-11-20',k:'web',t:'ABC 요약 개선',items:['핵심 낱말로 묶어 세기','예시 문장 함께 보기','제외 낱말 정하기']},
   {id:'2026-11-20-3',d:'2026-11-20',k:'web',t:'절차 화면 정리',items:['정의: 근거부터 쓰는 순서','기초선: 확정 뒤 목표','측정 방법은 한 줄로','작은 장은 한 장으로','가설: 앞에 쓴 상황 넣기','평가: 결정 고르기']},
   {id:'2026-11-20-2',d:'2026-11-20',k:'web',t:'AI 도우미·보고서',items:['중재 계획: AI 제안 고르기','실행 기록 자동 작성','평가 변화 문장 자동','최종 보고서 인쇄·저장','Firebase 콘솔 설정 필요']},
   {id:'2026-11-20-1',d:'2026-11-20',k:'web',t:'절차 화면 나눠 보기',items:['한 화면에 묶음 하나씩','위 띠로 묶음 바로 가기','아래 이전·다음 버튼','QABF는 5문항씩','전체 보기로 한 화면','맨 위 찾기(단축키 /)']},
