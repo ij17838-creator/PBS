@@ -4,6 +4,34 @@ HANDOFF.md에서 옮긴 오래된 항목입니다.
 
 ---
 
+## 2026-11-20 · AI 도우미(제미나이) · 실행 기록 자동 · 평가 문장 · 최종 보고서
+### 한 일
+- 멘토 'API KEY 사용 요소' 반영. 앱에 키를 넣지 않고 Firebase AI Logic(Blaze 요금제, 사용자가 선택)으로 제미나이를 부름. 기본 모델 gemini-4-neon, 사고 수준 높음/보통(xhigh 안 씀, Neon이 보통을 거절하면 사고 칸 빼고 다시 부름). 로그인한 사람만 사용.
+- 중재 계획: 'AI 제안 받기' → 선행·대체·후속·위기 제안 카드, 고른 것만 '칸에 넣기'. 가설·기초선/목표 줄을 위에 보여 줌.
+- 중재 실행: 회기 기록으로 '자동 실행 기록' 목록. 수기 칸 이름은 '프로그램 밖 기록 (수기)'(묶음 띠 이름은 '실행 기록').
+- 평가: 수치 근거 변화 문장(평균·범위·%·PND 판정·추세·목표) 규칙으로 자동, AI 보고서 문단은 선택. 둘 다 '아래 칸에 넣기' 후 고쳐 저장.
+- 프로젝트 화면 '최종 보고서' 카드: AI 설정, 보고서 보기(1~8절 + 종합 의견 AI·직접 수정) → 인쇄(앱은 HTML 저장). 공지 '2026-11-20-2' k:'web'(앱 재시작만).
+- AI 연결 제공자 한 줄 전환: index.html `AI_BACKEND`('google'=Gemini Developer API, 'vertex'=Vertex AI, Google Cloud 크레딧 쪽). 콘솔 AI Logic에서 고른 제공자와 같게.
+### 데이터
+- 저장 자료: plan 칸·evaluate change·intervene log에 고른 글만 들어감. AI 결과는 기기에만 localStorage 'pbs-ai-out', 설정 'pbs-ai'.
+- 보내는 내용: 학생 특성(장애·약·건강·가족 제외)·표적행동·기능평가·가설·기초선/중재 수치. 학생 코드·이름은 안 보냄(화면 '보낼 내용 보기'로 확인 가능).
+### 확인한 것
+- Playwright 1280·390, SDK 12.19.0 실제 모듈 + 가짜 응답: 요청 주소 firebasevertexai.googleapis.com/.../gemini-4-neon, thinkingLevel HIGH·JSON·system 지시 들어감, 학생 코드 안 나감, 칸 넣기·자동 기록·PND 문장·보고서·인쇄 PDF 통과. 화면 /mnt/project-files/screens/AI-도우미/.
+- 시험 못 한 것: 실제 Gemini 호출, App Check(reCAPTCHA Enterprise) 토큰, 안드로이드 webview(https://localhost)에서의 App Check, 크레딧이 Gemini Developer API에 적용되는지, Vertex 쪽 실제 호출.
+### 한계
+- APPCHECK_SITE_KEY 넣음(reCAPTCHA Enterprise 6LfI…). 키 없이 부르면 'Firebase App Check token is invalid'(401)로 거절됨을 실제 호출로 확인 = AI Logic 켜짐·App Check 강제 중. 이 작업 환경은 gstatic·google.com(reCAPTCHA)이 막혀 키를 넣은 실제 호출은 못 해 봄 → 기기에서 AI 설정 '연결 시험'으로 확인.
+- 모델 이름이 바뀌면 AI 설정에서 고치기.
+- 기기 첫 연결 시험(2026-11-20): '권한·요금제 문제'(403류). 원인 확인용으로 그 문구 뒤에 오류 원문(주소 뺀 220자)을 붙여 보이게 함.
+- 원인: Gemini API(AI Studio) 결제는 선불 크레딧 방식, 잔액 -₩376·GCP 크레딧 ₩0. 사용자의 무료 크레딧(체험판)은 여기 안 먹음 → AI_BACKEND='vertex'로 바꿈(Vertex는 Cloud 결제라 크레딧 적용). 사용자가 콘솔 AI Logic에서 'Agent Platform Gemini API'(= Vertex AI 새 이름) 켬 → 2026-11-20 10:53 KST 브라우저(github.io)에서 연결 시험 성공(사용자 확인). 설치형 앱은 새 화면을 받은 뒤 다음 실행에 반영(재시작 두 번).
+### 다음
+- 사용자: 결제 계정 바꾸기 → AI Logic 시작(제공자 선택) → App Check 웹 앱 등록, 사이트 키 전달(도메인 ij17838-creator.github.io, localhost).
+- 키 받으면 APPCHECK_SITE_KEY 넣기, Vertex 고르면 AI_BACKEND='vertex'.
+- 정리 목록(Claude Doc https://claude.ai/artifact/CtCwcqPXkF7qDZhoEquv58)을 멘토 피드백 우선으로 고쳐 씀(2026-11-20): 실행 기록 칸은 '빼기' 대신 수기 칸으로 남김, 평가 변화 칸은 자동 문장 넣기로. 남은 체크 6개(기초선 확정→목표 순서가 1순위)는 아직 앱에 안 넣음.
+
+---
+
+---
+
 ## 2026-11-20 · 절차 화면 한 장씩 나눠 보기 + 찾기
 ### 한 일
 - 멘토 피드백(정보 줄이기·잘게 나누기) 반영. 절차 화면에서 카드(묶음) 1개씩만 보임. 제목 아래 묶음 띠(쓴 묶음은 초록 점, 눌러 바로 이동), 아래 고정 막대 '‹ 앞 묶음 | n/전체 · 전체 보기 | 다음 묶음 ›'. 마지막 장에 '이 절차 완료' 칸과 '다음 절차' 버튼.

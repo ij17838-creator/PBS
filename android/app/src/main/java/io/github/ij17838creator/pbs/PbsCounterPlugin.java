@@ -80,7 +80,7 @@ public class PbsCounterPlugin extends Plugin {
         // 4 = 음량 버튼 기록(회기 중 화면 꺼짐) / 5 = 측정 시간·자동 갱신
         // 6 = 떠 있는 ＋1(다른 앱 위 버튼) / 7 = 떠 있는 ＋1은 회기 중에만·작고 반투명 / 8 = 트리거 누르기·긋기(작은 판) / 9 = 에어 커맨드처럼 작은 아이콘+펼치는 판
         // 10 = 칠판·PC와 함께 세기를 앱(LiveSync)이 직접(앱 화면이 꺼져 있어도)
-        o.put("ver", 11);
+        o.put("ver", 12);
         o.put("live", LiveSync.status(c));
         JSObject bub = new JSObject();
         bub.put("on", FloatBubble.on(c));

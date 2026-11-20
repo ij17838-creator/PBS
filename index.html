@@ -1297,7 +1297,7 @@ function render(){
   if(ui.view==='proc'&&!PROC[ui.proc])ui.view='project';
   if(ui.view==='proc')ui.cat=PROC[ui.proc].cat;
   if(ui.cat&&!CAT[ui.cat])ui.cat=null;
-  stopDictation();kwExKeep();
+  stopDictation();kwExKeep();navPush();
   const p=curProject();
   if(ui.view==='home')main.innerHTML=viewHome();
   else if(ui.view==='project')main.innerHTML=viewProject(p);
@@ -1331,6 +1331,44 @@ function go(view,opts){
   ui.confirm=null;ui.optsEdit=null;ui.qItemsOpen=false;ui.micHelp='';
   render();window.scrollTo(0,0);
 }
+/* ---------- 뒤로 가기(앱의 뒤로 버튼 → MainActivity → pbsBack) ----------
+   열린 창을 위에서부터 하나 닫고, 창이 없으면 지나온 화면(목록·프로젝트·분류·절차)으로 한 단계 돌아간다.
+   처음 화면에서는 한 번 더 누르면 앱을 뒤로 보낸다(false를 돌려줌). */
+const nav={stack:[],back:false,exitAt:0};
+function navKey(){return [ui.view,ui.view==='home'?'':ui.projectId,ui.view==='proc'?ui.proc:'',ui.view==='project'?(ui.cat||''):''].join('|');}
+function navPush(){
+  const k=navKey();const top=nav.stack[nav.stack.length-1];
+  if(nav.back||(top&&top.k===k))return;
+  if(ui.view==='home')nav.stack=[];
+  nav.stack.push({k,s:{view:ui.view,projectId:ui.projectId,proc:ui.proc,cat:ui.cat},y:0});
+  if(nav.stack.length>40)nav.stack.shift();
+}
+function vis(id){const d=$('#'+id);return !!(d&&!d.hidden);}
+function pbsBack(){
+  try{
+    if(cover.on){if(mini.on)miniOff();else coverSet(false);return true;}
+    if(Sync.dlg){syncDlgClose();return true;}
+    if(vis('notice-dlg')){noticeClose();return true;}
+    if(vis('ai-dlg')){aiDlgClose();return true;}
+    if(vis('kw-dlg')){kwDlgClose();return true;}
+    if(find.on){findClose();return true;}
+    const ws=kwWins();if(ws.length){kwExClose(ws.filter(w=>!w.dataset.pin).pop()||ws.sort((a,b)=>(+a.style.zIndex||0)-(+b.style.zIndex||0)).pop());return true;}
+    if(inkUI.kb){kbApply();return true;}/* 보며 쓰기 창: 쓴 내용은 넣고 닫기 */
+    if(inkUI.pad){inkSave(inkUI.pad);inkClose();return true;}
+    if(rep.on){repClose();return true;}
+    if(pres.open){pres.open=false;presUI();return true;}
+    const ae=document.activeElement;if(ae&&ae!==document.body&&ae.matches&&ae.matches('input,textarea,select')){ae.blur();}
+    nav.stack.pop();/* 지금 화면 */
+    while(nav.stack.length){const t=nav.stack.pop();
+      if(t.s.view!=='home'&&!store.projects.some(p=>p.id===t.s.projectId&&projVisible(p)))continue;
+      nav.back=true;try{Object.assign(ui,t.s);ui.confirm=null;ui.optsEdit=null;ui.qItemsOpen=false;render();}finally{nav.back=false;}
+      nav.stack.push(t);window.scrollTo(0,0);return true;}
+    if(ui.view!=='home'){go('home');return true;}
+    const now=Date.now();if(now-nav.exitAt<2200){nav.exitAt=0;return false;}
+    nav.exitAt=now;toast('한 번 더 누르면 닫힘');return true;
+  }catch(e){console.warn('back',e);return false;}
+}
+window.pbsBack=pbsBack;
 /* ---------- 절차 화면 나누기: 한 화면에 묶음(카드) 1개 + 위 묶음 띠 + 아래 이전·다음. 화면 내용·저장 자료는 그대로 두고 보이기만 나눈다 ----------
    묶음 = 절차 화면의 맨 위 카드 하나. 입력 칸이 없고 높이 PG_SMALL 미만인 작은 카드(안내·측정 방법 표시 등)는 앞 묶음에(맨 앞이면 다음 묶음에) 붙인다.
    QABF 문항 카드는 QABF_PER 문항씩 여러 장. '전체 보기'(기기마다 기억)면 예전처럼 한 화면. */
@@ -6470,6 +6508,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-20-7',d:'2026-11-20',k:'apk',need:12,t:'뒤로 가기로 앞 단계로',items:['열린 창부터 닫힘','앞 화면으로 돌아감','처음 화면은 두 번 눌러 닫기']},
   {id:'2026-11-20-6',d:'2026-11-20',k:'web',t:'ABC 낱말 창 더하기',items:['📌 창 고정','⠿ 끌어 글 칸에 넣기','옮긴 자리·크기 기억']},
   {id:'2026-11-20-5',d:'2026-11-20',k:'web',t:'ABC 낱말 창',items:['누른 낱말 옆에 뜸','제목 줄 끌어 옮기기','모서리로 크기 조절']},
   {id:'2026-11-20-4',d:'2026-11-20',k:'web',t:'ABC 요약 개선',items:['핵심 낱말로 묶어 세기','낱말 누르면 적힌 문장','행동(B)도 집계','제외 낱말 정하기']},
