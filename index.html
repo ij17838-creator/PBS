@@ -952,7 +952,7 @@ function defaultData(key){
     case 'profile':return {grade:'',age:'',gender:'',classType:'',classNote:'',homeroom:'',specialTeacher:'',referDate:'',referBy:'',referReason:'',disability:'',diagDate:'',meds:'',sensory:'',health:'',comm:[],commNote:'',academic:'',attention:'',social:'',daily:'',motor:'',strengths:'',likes:'',prefs:[],teach:'',hard:'',dislikes:'',triggers:'',history:[],supports:'',family:'',homeBeh:'',contact:'',homeWish:'',goalStudent:'',goalFamily:'',goalTeacher:''};
     case 'define':return {name:'',definition:'',start:'',end:'',examples:'',nonExamples:'',measures:[],setting:'',checks:[],stage:'초안',sources:[],sourceNote:'',priority:[],priorityNote:'',boundary:'',episode:'',questions:'',planWhen:'',planLength:'',planPeriod:'',planObserver:'',planDate:'',planTools:'',planIoa:'',measure:'',unit:'',measureWhy:'',measureFixed:false,ioaDone:false,ioaNote:'',revLog:'',latCue:'',latResp:'',latMax:'60',latPlan:'3',lvl1:'',lvl2:'',lvl3:'',lvlAgg:'평균',ivType:'순간 표집',ivSec:'120',ivAlign:true,ivAlert:'vib'};
     case 'qabf':return {forms:[],activeForm:null};
-    case 'abc':return {sheets:[],session:null,interval:15,audio:{},plan:{start:'',end:'',fired:''}};
+    case 'abc':return {sheets:[],session:null,interval:15,audio:{},plan:{start:'',end:'',fired:'',auto:false}};
     case 'hypo':return {when:'',behavior:'',funcs:[],funcOther:'',evidence:'',confidence:'',memo:'',setting:'',cons:'',verify:[],verifyNote:'',more:[]};
     /* scale·when·scores·memo는 예전 '기본 메모' 칸. when·scores는 예전에 적은 내용으로 보여 주고, memo는 주의점 칸으로 옮긴다 */
     case 'rating':return {scale:'',when:'',scores:'',memo:'',type:'',purpose:'',raters:[],rows:[],target:'',funcs:[],funcNote:'',diff:'',cautions:'',retestDate:'',retestNote:'',files:[]};
@@ -983,7 +983,7 @@ function ensureProject(p){
   const a=p.procs.abc.data;
   a.audio=a.audio||{};a.sheets=Array.isArray(a.sheets)?a.sheets:[];
   if(!(Number(a.interval)>=1))a.interval=15;
-  a.plan=Object.assign({start:'',end:'',fired:''},a.plan||{});
+  a.plan=Object.assign({start:'',end:'',fired:'',auto:false},a.plan||{});a.plan.auto=a.plan.auto===true;/* 예전 자료: 저절로 시작 꺼짐 */
   migrateAbc(p);
   a.sheets.forEach(ensureSheet);
   if(a.session&&!a.sheets.some(x=>x.sessionId===a.session.id))a.session=null;
@@ -2135,9 +2135,10 @@ function obsView(p){
       <div class="field plan-time"><span>관찰 시작 시간</span>${t24('id="obs-plan-start" data-plan="start"',a.plan.start,false,'관찰 시작 시간')}</div>
       <div class="field plan-time"><span>최종 종료 시간</span>${t24('id="obs-plan-end" data-plan="end"',a.plan.end,false,'최종 종료 시간')}</div>
     </div>
+    <label class="check plan-auto"><input type="checkbox" data-plan-auto${a.plan.auto?' checked':''}> <span>시작 시간에 저절로 시작</span></label>
     <div class="obs-btns"><button type="button" class="btn" data-act="sheet-manual">+ 관찰지 직접 추가</button><span id="obs-ctrl-btn">${obsCtrlBtn(p)}</span></div>
   </div>
-  <p class="hint">시작·종료 시각 자동 처리</p>
+  <p class="hint">${a.plan.auto?'시작·종료 시각 자동 처리':'시작은 버튼으로만'}</p>
   <div class="sheets" id="sheets-current">${cur.length?cur.map(sh=>sheetView(p,sh)).join(''):`<div class="empty">아직 관찰지가 없습니다. '관찰 시작', '지금 시각 찍기', '녹음 시작' 중 하나를 누르면 첫 관찰지가 만들어지고 시간이 흐르기 시작합니다.</div>`}</div>`;
 }
 function obsCtrlBtn(p){
@@ -2148,7 +2149,7 @@ function obsStateText(p){
   const sh=activeSheet(p);
   if(sh){const e=abcData(p).session.endAt;return `관찰 중 · 관찰지 ${sheetNo(p,sh)} · ${fmtDur(msLeft(sh)/1000)} 남음`+(e?` · ${fmtTime(e)} 종료`:'');}
   const ps=planStartToday(p);
-  if(ps&&Date.now()<Date.parse(ps))return `${fmtTime(ps)}에 관찰 시작 예정`;
+  if(ps&&abcData(p).plan.auto&&Date.now()<Date.parse(ps))return `${fmtTime(ps)}에 관찰 시작 예정`;
   return abcData(p).session?'관찰 종료됨':'관찰 전';
 }
 function sheetHead(p,sh){
@@ -3270,9 +3271,9 @@ function keepView(fn){
   if(ae&&ae!==document.body&&document.contains(ae)&&document.activeElement!==ae){try{ae.focus({preventScroll:true});if(ss!=null&&ae.setSelectionRange)ae.setSelectionRange(ss,se);}catch(e){}}
   if(window.scrollX!==x||window.scrollY!==y)window.scrollTo(x,y);
 }
-/* 관찰 시작 시간이 되면 저절로 관찰을 시작한다 (하루에 한 번) */
+/* 관찰 시작 시간이 되면 저절로 관찰을 시작한다 (하루에 한 번). '시작 시간에 저절로 시작'(plan.auto)을 켠 때만 */
 function planAutoStart(p){
-  const a=abcData(p);const ps=a.plan.start;if(!ps)return;
+  const a=abcData(p);const ps=a.plan.start;if(!ps||a.plan.auto!==true)return;
   const now=Date.now();const st=atClock(now,ps);if(now<st)return;
   const key=dayKey(new Date(st).toISOString())+' '+ps;if(a.plan.fired===key)return;
   if(a.session&&a.session.running){a.plan.fired=key;scheduleSave();return;}
@@ -3714,10 +3715,21 @@ function onField(el){
       refreshRatingCompare(p);break;}
   }
 }
+/* 시작 시간을 정하거나 저절로 시작을 켤 때: 오늘 그 시각이 이미 지났으면 오늘은 시작하지 않는다(다음 날부터) */
+function planArm(a){
+  const ps=a.plan.start;a.plan.fired='';if(!ps)return;
+  const now=Date.now(),st=atClock(now,ps);if(now>=st)a.plan.fired=dayKey(new Date(st).toISOString())+' '+ps;
+}
+function setPlanAuto(el){
+  const p=curProject();if(!p)return;const a=abcData(p);
+  a.plan.auto=!!el.checked;planArm(a);
+  touch(p,'abc');saveNow();renderAbcAll();
+  toast(a.plan.auto?(a.plan.start?`${a.plan.start}에 저절로 시작합니다`:'관찰 시작 시간을 정하세요'):'관찰은 버튼으로만 시작합니다');
+}
 function setPlanTime(el){
   const p=curProject();if(!p)return;const a=abcData(p);const k=el.dataset.plan;
   const v=/^\d{2}:\d{2}/.test(el.value)?el.value.slice(0,5):'';
-  a.plan[k]=v;if(k==='start')a.plan.fired='';
+  a.plan[k]=v;if(k==='start')planArm(a);
   const s=a.session;
   if(k==='end'&&s&&s.running){
     const first=sessionSheets(p,s.id)[0];
@@ -3762,6 +3774,7 @@ document.addEventListener('change',async e=>{
   }
   if(el.matches('[data-f]')&&(el.type==='checkbox'||el.tagName==='SELECT'||el.type==='date'||el.type==='datetime-local'||el.type==='number')){onField(el);return;}
   if(el.matches('[data-plan]')){setPlanTime(el);return;}
+  if(el.matches('[data-plan-auto]')){setPlanAuto(el);return;}
   if(el.matches('[data-shdt]')){setSheetTime(el);return;}
   if(el.id==='import-file'&&el.files&&el.files[0]){const f=el.files[0];el.value='';await importBackup(f);return;}
   if(el.matches('[data-rfile]')&&el.files&&el.files[0]){
@@ -6044,7 +6057,9 @@ async function qmStart(){
   const m=natMode(p,tgt.k);if(!m){toast(natNeedsApp(p,tgt.k)?'새 앱을 설치해야 합니다':'이 측정 방법은 앱 밖 측정 미지원');return;}
   await natDrain();
   if(qmRun())await qmFinish(true,true);
-  const main=qmMain(p,items);const prev=nat.timer?{min:Number(nat.timer.min)||0,renew:!!nat.timer.renew,reset:nat.timer.reset!==false}:null;
+  const main=qmMain(p,items);
+  /* 켜기 전 측정 시간 설정(끝나면 자동 갱신 등)을 기억했다가 끌 때 그대로 되돌린다. 앱이 값을 안 알려 줘도 '없음·갱신 끔'으로 되돌린다 */
+  const t0=nat.timer||{};const prev=nat.ver>=5?{min:Number(t0.min)||0,renew:t0.renew===true,reset:t0.reset!==false}:null;
   try{const r=await PCN.setTarget(natTargetArgs(p,tgt.k,m));nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;natFollowSet(null);}
   catch(e){toast((e&&e.message)||'간편 측정을 켜지 못했습니다');return;}
   if(nat.ver>=5){
@@ -6069,7 +6084,7 @@ async function qmFinish(quiet,keepTarget){
   }
   if(PCN){
     if(!keepTarget){try{const r=await PCN.clearTarget();nat.key=r.active?r.key:null;nat.target=null;}catch(e){}}
-    if(run.prev&&nat.ver>=5){try{const r=await PCN.setTimer(run.prev);nat.timer=r.timer||nat.timer;}catch(e){}}
+    if(run.prev){try{const r=await PCN.setTimer(run.prev);nat.timer=r.timer||nat.timer;}catch(e){}}
   }
   if(!quiet)toast('간편 측정을 껐습니다');
 }
@@ -6534,7 +6549,8 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
-  {id:'2026-11-20-9',d:'2026-11-20',k:'web',t:'AI 중재 제안',items:['다시 받아도 지난 제안 1개 남김','지난 제안에서도 넣기']},
+  {id:'2026-11-20-10',d:'2026-11-20',k:'web',t:'AI 중재 제안',items:['다시 받아도 지난 제안 1개 남김','지난 제안에서도 넣기']},
+  {id:'2026-11-20-9',d:'2026-11-20',k:'web',t:'ABC 관찰 시작',items:['시간만 정하면 시작 안 함','저절로 시작은 체크로 켬','간편 측정 뒤 설정 되돌림']},
   {id:'2026-11-20-8',d:'2026-11-20',k:'web',t:'낱말 창 비교',items:['고정 없이 3개까지 띄움','같은 기록 행은 같은 색','창을 더 작게']},
   {id:'2026-11-20-7',d:'2026-11-20',k:'apk',need:12,t:'뒤로 가기로 앞 단계로',items:['열린 창부터 닫힘','앞 화면으로 돌아감','처음 화면은 두 번 눌러 닫기']},
   {id:'2026-11-20-6',d:'2026-11-20',k:'web',t:'ABC 낱말 창 더하기',items:['📌 창 고정','⠿ 끌어 글 칸에 넣기','옮긴 자리·크기 기억']},
