@@ -722,6 +722,7 @@ html.in-ink .ink-host{caret-color:transparent}
 .ai-err{margin:0;color:var(--rec);font-size:.88rem;font-weight:600}
 .ai-send summary{cursor:pointer;font-size:.82rem;color:var(--muted)}
 .ai-send pre{white-space:pre-wrap;font-family:var(--font-body);font-size:.8rem;max-height:220px;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px;margin:6px 0 0}
+.ai-prev{margin:-6px 0 12px}.ai-prev>summary{cursor:pointer;font-size:.85rem;color:var(--muted);padding:4px 0}.ai-prev[open]>summary{margin-bottom:6px}.ai-prev .ai-opts{margin:0;opacity:.92}
 .ai-opts{display:grid;gap:6px;margin:-4px 0 12px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
 .ai-opt{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:8px 10px;background:var(--surface)}
 .ai-opt.used{opacity:.6;border-left-color:var(--line-strong)}
@@ -6384,11 +6385,15 @@ async function aiPlanRun(p){
   const j=aiJson(await aiCall(prompt,true));
   const items={};AI_PLAN_KEYS.forEach(([k])=>{items[k]=(Array.isArray(j[k])?j[k]:[]).filter(x=>x&&aiT(x.text)).slice(0,4).map(x=>({title:aiT(x.title).slice(0,30),text:aiT(x.text),why:aiT(x.why),used:false}));});
   if(!AI_PLAN_KEYS.some(([k])=>items[k].length))throw new Error('제안을 읽지 못했습니다. 다시 시도하세요');
+  const old=aiOut(p,'plan');if(old)aiOutSet(p,'planPrev',old);/* 바로 앞 제안 하나는 '지난 제안'으로 남김 */
   aiOutSet(p,'plan',{at:nowISO(),items});
 }
+function aiPlanList(list,k,prev){return list.map((x,i)=>`<div class="ai-opt${x.used?' used':''}"><div class="ai-opt-t"><b>${esc(x.title||'제안 '+(i+1))}</b><button type="button" class="btn small${x.used?' ghost':''}" data-act="ai-put" data-k="${k}" data-i="${i}"${prev?' data-prev="1"':''}>${x.used?'넣음':'넣기'}</button></div><p>${esc(x.text)}</p>${x.why?`<p class="ai-why">근거 · ${esc(x.why)}</p>`:''}</div>`).join('');}
 function aiPlanOpts(p,k){
-  const o=aiOut(p,'plan');const list=o&&o.items&&o.items[k];if(!list||!list.length)return '';
-  return `<div class="ai-opts" aria-label="AI 제안">${list.map((x,i)=>`<div class="ai-opt${x.used?' used':''}"><div class="ai-opt-t"><b>${esc(x.title||'제안 '+(i+1))}</b><button type="button" class="btn small${x.used?' ghost':''}" data-act="ai-put" data-k="${k}" data-i="${i}">${x.used?'넣음':'넣기'}</button></div><p>${esc(x.text)}</p>${x.why?`<p class="ai-why">근거 · ${esc(x.why)}</p>`:''}</div>`).join('')}</div>`;
+  const o=aiOut(p,'plan');const list=o&&o.items&&o.items[k];
+  const q=aiOut(p,'planPrev');const pl=q&&q.items&&q.items[k];
+  if((!list||!list.length)&&(!pl||!pl.length))return '';
+  return `${list&&list.length?`<div class="ai-opts" aria-label="AI 제안">${aiPlanList(list,k)}</div>`:''}${pl&&pl.length?`<details class="ai-prev"><summary>지난 제안 <small class="muted">${fmtShort(q.at)}</small></summary><div class="ai-opts" aria-label="지난 AI 제안">${aiPlanList(pl,k,true)}</div></details>`:''}`;
 }
 function aiPlanBar(p){
   const o=aiOut(p,'plan');
@@ -6529,6 +6534,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-20-9',d:'2026-11-20',k:'web',t:'AI 중재 제안',items:['다시 받아도 지난 제안 1개 남김','지난 제안에서도 넣기']},
   {id:'2026-11-20-8',d:'2026-11-20',k:'web',t:'낱말 창 비교',items:['고정 없이 3개까지 띄움','같은 기록 행은 같은 색','창을 더 작게']},
   {id:'2026-11-20-7',d:'2026-11-20',k:'apk',need:12,t:'뒤로 가기로 앞 단계로',items:['열린 창부터 닫힘','앞 화면으로 돌아감','처음 화면은 두 번 눌러 닫기']},
   {id:'2026-11-20-6',d:'2026-11-20',k:'web',t:'ABC 낱말 창 더하기',items:['📌 창 고정','⠿ 끌어 글 칸에 넣기','옮긴 자리·크기 기억']},
@@ -6628,9 +6634,9 @@ Object.assign(actions,{
     catch(e){const x=$('#ai-test');if(x)x.textContent=e.message;}},
   'ai-plan':()=>{const p=curProject();aiRun('ai-plan',()=>aiPlanRun(p));},
   'ai-put':el=>{
-    const p=curProject();const k=el.dataset.k;const o=aiOut(p,'plan');const x=o&&o.items&&o.items[k]&&o.items[k][Number(el.dataset.i)];if(!x)return;
+    const p=curProject();const k=el.dataset.k;const ok=el.dataset.prev?'planPrev':'plan';const o=aiOut(p,ok);const x=o&&o.items&&o.items[k]&&o.items[k][Number(el.dataset.i)];if(!x)return;
     const d=p.procs.plan.data;const cur=String(d[k]||'');if(cur.includes(x.text)){toast('이미 들어 있습니다');return;}
-    const t=(x.title?x.title+': ':'')+x.text;d[k]=cur.trim()?cur.replace(/\s+$/,'')+'\n'+t:t;x.used=true;aiOutSet(p,'plan',o);
+    const t=(x.title?x.title+': ':'')+x.text;d[k]=cur.trim()?cur.replace(/\s+$/,'')+'\n'+t:t;x.used=true;aiOutSet(p,ok,o);
     touch(p,'plan');saveNow();const y=window.scrollY;render();window.scrollTo(0,y);toast('칸에 넣었습니다. 고쳐 쓰세요');
   },
   'ai-ev':()=>{const p=curProject();aiRun('ai-ev',()=>aiEvRun(p));},
