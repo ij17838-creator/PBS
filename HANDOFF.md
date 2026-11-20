@@ -26,7 +26,7 @@
 ### 다음
 - 사용자: 결제 계정 바꾸기 → AI Logic 시작(제공자 선택) → App Check 웹 앱 등록, 사이트 키 전달(도메인 ij17838-creator.github.io, localhost).
 - 키 받으면 APPCHECK_SITE_KEY 넣기, Vertex 고르면 AI_BACKEND='vertex'.
-- 정리 목록(Claude Doc) 중 AI 외 항목(순서 바꾸기·작은 묶음 합치기)은 아직.
+- 정리 목록(Claude Doc https://claude.ai/artifact/CtCwcqPXkF7qDZhoEquv58)을 멘토 피드백 우선으로 고쳐 씀(2026-11-20): 실행 기록 칸은 '빼기' 대신 수기 칸으로 남김, 평가 변화 칸은 자동 문장 넣기로. 남은 체크 6개(기초선 확정→목표 순서가 1순위)는 아직 앱에 안 넣음.
 
 ---
 
