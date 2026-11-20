@@ -720,6 +720,9 @@ html.in-ink .ink-host{caret-color:transparent}
 body.rep-open{overflow:hidden}
 @media (max-width:560px){.rep-body{padding:16px;margin:8px;border-radius:10px}.rep-kv th{width:34%}}
 @media print{body.rep-open>*:not(#report){display:none!important}body.rep-open{overflow:visible}#report{position:static;overflow:visible;background:#fff}.no-print,.rep-bar{display:none!important}.rep-body{box-shadow:none;max-width:none;margin:0;padding:0}.rep-opinion{border:0;padding:0}.rep-sec{break-inside:avoid-page}}
+/* 묶음 정리 */
+.q-who{margin:0 0 6px;font-size:.88rem;color:var(--muted)}
+.q-foot{align-items:center;gap:10px;margin-top:4px}.q-foot .hint{margin:0;flex:1}
 /* 절차 화면 나누기(묶음 띠·이전/다음)와 찾기 */
 #main.pg-on>.pg-x{display:none!important}
 .pg-strip{display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;margin-bottom:-6px;scrollbar-width:none;scroll-behavior:smooth}
@@ -860,7 +863,7 @@ const MEMO_FIELDS={
   rating:[['scale','척도 이름','사용한 행동평정척도 이름'],['when','실시일 · 응답자','예: 11/3, 담임교사'],['scores','점수 · 결과','하위영역별 점수와 해석을 적으세요'],['memo','메모','']],
   plan:[['antecedent','선행사건 중재 (환경 조정)','예: 과제를 작은 단위로 나누어 제시'],['replacement','대체행동 교수','문제행동과 같은 기능을 하는 적절한 행동. 예: "쉬어도 돼요?" 카드 사용'],['consequence','후속결과 중재','적절한 행동은 강화하고, 문제행동에는 일관되게 대응'],['crisis','위기 대응 · 역할 분담','']],
   intervene:[['log','프로그램 밖 기록 (수기)','회기 기록에 없는 것만. 예: 11/12 행사로 관찰 못 함, 보조인력이 대신 지도'],['fidelity','실행 충실도 메모','계획대로 실행했는지, 바뀐 점']],
-  evaluate:[['change','기초선 대비 변화','위 "아래 칸에 넣기"로 자동 문장을 넣고 고치세요'],['decision','결정 (유지 · 수정 · 중단)',''],['generalize','일반화 · 유지 계획','']]
+  evaluate:[['change','기초선 대비 변화','위 "아래 칸에 넣기"로 자동 문장을 넣고 고치세요'],['decision','결정 이유 · 메모','예: 3회기 연속 목표 충족 → 유지, 2주 뒤 다시 보기'],['generalize','일반화 · 유지 계획','']]
 };
 const QABF_SCALES=[
   {key:'att',name:'관심',en:'Attention'},
@@ -890,7 +893,7 @@ const MEASURE_GUIDE={
 const MIND_WORDS=['화가','화나','짜증','일부러','고의','관심을 끌','관심 끌','하기 싫','싫어서','불안','심심','기분','원해서','하고 싶어서','속상'];
 const DEF_CHECKS=['눈으로 보거나 귀로 들을 수 있는 행동인가','횟수를 세거나 시간을 잴 수 있는가','다른 관찰자도 같은 기준으로 판단할 수 있는가','시작과 끝이 분명한가','\'화가 나서\'처럼 마음 상태를 추측하는 말이 들어 있지 않은가'];
 const RATING_TYPES=['행동 문제 선별','기능 평가 (MAS·QABF 등)','적응행동','기타'];
-const RATING_TYPE_TIP={'행동 문제 선별':'심한 정도·영역 확인','기능 평가 (MAS·QABF 등)':'기능 단서, 아래에 적기','적응행동':'대체행동 고를 때 참고','기타':'목적을 메모에 적기'};
+const RATING_TYPE_TIP={'행동 문제 선별':'심한 정도·영역 확인','기능 평가 (MAS·QABF 등)':'QABF는 4번 절차에서','적응행동':'대체행동 고를 때 참고','기타':'목적을 메모에 적기'};
 const RATING_ROLES=['','담임교사','교과교사','특수교사','보호자','보조인력','본인','기타'];
 const RATING_LEVELS=['','정상','경계 · 위험','임상','해당 없음'];
 const FUNCS=['관심 얻기','과제·요구 피하기','물건·활동 얻기','감각 자극 얻기','신체적 불편 줄이기'];
@@ -1298,6 +1301,7 @@ function pgSmall(el){
   return !el.querySelector('[data-f],.q-list,[data-act]:not([data-act=open-proc]):not([data-act=chip])')&&!el.classList.contains('obs-card')&&el.offsetHeight<PG_SMALL;
 }
 function pgTitle(el,key){
+  if(el.dataset&&el.dataset.pgName)return el.dataset.pgName;/* 여러 카드를 한 장으로 묶을 때 장 이름 */
   const h=el.querySelector('h2');if(h)return pgTxt(h).replace(/^\d+\.\s*/,'');
   key=key||ui.proc;if(PG_MEMO[key]&&el.querySelector('[data-f]'))return PG_MEMO[key];
   if(el.matches('details')){const s=el.querySelector('summary');if(s)return pgTxt(s);}
@@ -1315,6 +1319,7 @@ function pgBuild(){
   const kids=pgKids(m);pg.kids=kids;
   const pages=[];let lead=[];
   kids.forEach((el,i)=>{
+    if(el.dataset.pgJoin!=null&&pages.length){pages[pages.length-1].idx.push(i);return;}/* 앞 장에 붙는 카드 */
     const t=pgTitle(el);
     if(t&&!pgSmall(el)){
       if(el.querySelector('.q-list')){for(let a=1;a<=25;a+=QABF_PER)pages.push({t:`문항 ${a}–${Math.min(25,a+QABF_PER-1)}`,idx:[...lead,i],q:[a,Math.min(25,a+QABF_PER-1)]});}
@@ -1732,7 +1737,7 @@ function viewProfile(p){
     <div class="two">${pfF(d,'academic','학업 수준','읽기·쓰기·수학. 예: 받침 없는 글자 읽기, 한 자리 덧셈',{area:1})}${pfF(d,'attention','주의 집중 시간','예: 혼자 하는 과제 5분 정도',{area:1})}</div>
     <div class="three">${pfF(d,'social','사회성','예: 좋아하는 친구 1명과 놀이',{area:1})}${pfF(d,'daily','일상생활 기술','예: 화장실 혼자 사용',{area:1})}${pfF(d,'motor','운동 능력','예: 가위질 서툼',{area:1})}</div>
   </section>
-  <section class="card">
+  <section class="card" data-pg-name="강점 · 어려움">
     <h2 class="h3">4. 강점</h2>
     <div class="two">${pfF(d,'strengths','잘하는 것','예: 퍼즐, 기억력이 좋음',{area:1})}${pfF(d,'likes','좋아하는 활동 · 과목','예: 체육, 그림 그리기',{area:1})}</div>
     <fieldset class="field"><legend>선호하는 것 <small>강화제 후보</small></legend>
@@ -1741,10 +1746,10 @@ function viewProfile(p){
     </fieldset>
     ${pfF(d,'teach','잘 맞는 교수 방법','예: 그림 일과표, 짧은 지시, 먼저 시범 보이기',{area:1})}
   </section>
-  <section class="card">
+  <section class="card" data-pg-join>
     <h2 class="h3">5. 어려움</h2>
     ${pfF(d,'hard','어려워하는 과제 · 상황','예: 쓰기 과제, 기다리기',{area:1})}
-    <div class="two">${pfF(d,'dislikes','싫어하는 것','예: 큰 소리, 갑작스러운 일정 변화',{area:1})}${pfF(d,'triggers','이미 알려진 촉발 요인','예: 학습지를 받을 때, 쉬는 시간이 끝날 때',{area:1})}</div>
+    <div class="two">${pfF(d,'dislikes','싫어하는 것','예: 갑작스러운 일정 변화, 지는 것',{area:1})}${pfF(d,'triggers','이미 알려진 촉발 요인','예: 학습지를 받을 때, 쉬는 시간이 끝날 때',{area:1})}</div>
   </section>
   <section class="card">
     <h2 class="h3">6. 지원 이력</h2>
@@ -1752,12 +1757,12 @@ function viewProfile(p){
     <button type="button" class="btn small" data-act="pf-add" data-k="history">+ 지원 이력 추가</button>
     ${pfF(d,'supports','지금 받고 있는 지원','치료, 보조인력, 방과후 등. 예: 주 1회 언어치료',{area:1})}
   </section>
-  <section class="card">
+  <section class="card" data-pg-name="가정 · 목표">
     <h2 class="h3">7. 가정 · 주변 환경</h2>
     <div class="two">${pfF(d,'family','가족 구성 · 주 양육자','예: 부모, 동생 1명 · 주 양육자 어머니',{area:1})}${pfF(d,'homeBeh','가정에서의 행동','예: 숙제할 때 비슷한 행동',{area:1})}</div>
     <div class="two">${pfF(d,'contact','보호자 연락 · 협력 정도','예: 알림장 매일 확인, 주 1회 통화',{area:1})}${pfF(d,'homeWish','가정의 바람 · 우선순위','예: 수업 시간에 자리에 앉아 있기',{area:1})}</div>
   </section>
-  <section class="card">
+  <section class="card" data-pg-join>
     <h2 class="h3">8. 학생과 가족의 목표</h2>
     ${pfF(d,'goalStudent','학생 본인이 원하는 것','예: 친구와 축구하기',{area:1})}
     <div class="two">${pfF(d,'goalFamily','보호자가 바라는 모습','',{area:1})}${pfF(d,'goalTeacher','교사가 바라는 모습','',{area:1})}</div>
@@ -1776,7 +1781,7 @@ function pfRef(p,kind){
   if(prefs.length)items.push(`<p><b>선호(강화제 후보)</b> ${prefs.map(r=>esc(pfPrefText(r))).join(', ')}</p>`);
   if(kind!=='hypo'&&hist.length)items.push(`<p><b>써 본 지원</b> ${hist.map(r=>esc(r.what)+(r.effect?` <span class="muted">(${esc(r.effect)})</span>`:'')).join(', ')}</p>`);
   const body=items.length?items.join(''):'<p class="muted">학생 기본 정보가 아직 비어 있습니다.</p>';
-  return `<details class="card pf-ref"${items.length?' open':''}><summary>학생 기본 정보에서 <small>${kind==='hypo'?'촉발·어려움·감각·건강':'강점·선호·써 본 지원'}</small></summary>
+  return `<details class="card pf-ref"${items.length&&kind!=='hypo'?' open':''}><summary>학생 기본 정보에서 <small>${kind==='hypo'?'촉발·어려움·감각·건강':'강점·선호·써 본 지원'}</small></summary>
     <div class="sum-box">${body}</div>
     <div class="row">${kind==='plan'&&prefs.length?'<button type="button" class="btn small" data-act="pf-fill">선호를 후속결과 칸에 넣기</button>':''}<button type="button" class="btn small ghost" data-act="open-proc" data-key="profile">학생 기본 정보 열기</button></div></details>`;
 }
@@ -1810,9 +1815,11 @@ function viewDefine(p){
   const d=p.procs.define.data;const w=defWarnings(d);const g=MEASURE_GUIDE[d.measure];const nw=Object.keys(w).length;
   return `
   <section class="card">
-    <div class="sec-head"><h2 class="h3">정의 상태</h2><span class="meta">관찰·면담하며 고치기</span></div>
-    <div class="chips">${DEF_STAGES.map(x=>chip('defstage',x,d.stage===x,'b')).join('')}</div>
-    <p class="hint" id="stage-tip">${esc(DEF_STAGE_TIP[d.stage]||'')}</p>
+    <h2 class="h3">정의의 근거</h2>
+    <fieldset class="field"><legend>정의의 출처 <small>지금 정의는 무엇을 보고 썼나요</small></legend><div class="chips">${DEF_SOURCES.map(x=>chip('defsrc',x,d.sources.includes(x),'b')).join('')}</div></fieldset>
+    <label class="field"><span>출처 메모</span><textarea rows="1" class="one" id="def-srcnote" data-f="define:sourceNote" placeholder="예: 11/3 담임교사와 짧은 대화, 의뢰서 내용">${esc(d.sourceNote)}</textarea></label>
+    <fieldset class="field"><legend>이 행동을 표적으로 고른 이유</legend><div class="chips">${DEF_PRIORITY.map(x=>chip('defpri',x,d.priority.includes(x),'b')).join('')}</div></fieldset>
+    <label class="field"><span>이유 메모</span><textarea rows="1" class="one" id="def-prinote" data-f="define:priorityNote" placeholder="예: 수업마다 여러 번 나타나 본인 학습 시간이 줄어듦">${esc(d.priorityNote)}</textarea></label>
   </section>
   <section class="card">
     <h2 class="h3">행동 정의</h2>
@@ -1831,14 +1838,11 @@ function viewDefine(p){
     </div>
   </section>
   <section class="card">
-    <h2 class="h3">정의의 근거</h2>
-    <fieldset class="field"><legend>정의의 출처 <small>지금 정의는 무엇을 보고 썼나요</small></legend><div class="chips">${DEF_SOURCES.map(x=>chip('defsrc',x,d.sources.includes(x),'b')).join('')}</div></fieldset>
-    <label class="field"><span>출처 메모</span><textarea rows="1" class="one" id="def-srcnote" data-f="define:sourceNote" placeholder="예: 11/3 담임교사와 짧은 대화, 의뢰서 내용">${esc(d.sourceNote)}</textarea></label>
-    <fieldset class="field"><legend>이 행동을 표적으로 고른 이유</legend><div class="chips">${DEF_PRIORITY.map(x=>chip('defpri',x,d.priority.includes(x),'b')).join('')}</div></fieldset>
-    <label class="field"><span>이유 메모</span><textarea rows="1" class="one" id="def-prinote" data-f="define:priorityNote" placeholder="예: 수업마다 여러 번 나타나 본인 학습 시간이 줄어듦">${esc(d.priorityNote)}</textarea></label>
+    <div class="sec-head"><h2 class="h3">정의 점검</h2><span class="meta" id="check-count">${d.checks.length}/${DEF_CHECKS.length} 확인${nw?` · 경고 ${nw}`:''}</span></div>
+    <ul class="checklist">${DEF_CHECKS.map((c,i)=>`<li><label class="check"><input type="checkbox" id="defchk-${i}" data-f="defcheck:${i}" ${d.checks.includes(i)?'checked':''}> <span>${esc(c)}<span class="def-warn" id="defwarn-${i}">${w[i]?'⚠ '+esc(w[i]):''}</span></span></label></li>`).join('')}</ul>
   </section>
   <section class="card">
-    <h2 class="h3">관찰 준비</h2>
+    <h2 class="h3">관찰 계획</h2>
     <label class="field"><span>관찰·면담에서 확인할 질문</span><textarea id="def-questions" data-f="define:questions" rows="3" placeholder="한 줄에 하나씩. 예: 1m 기준이 이 교실 배치에 맞나?&#10;허락받은 이탈은 어떻게 볼까?">${esc(d.questions)}</textarea></label>
     <fieldset class="field"><legend>관찰 계획 (예정)</legend>
       <div class="three">
@@ -1850,6 +1854,9 @@ function viewDefine(p){
       </div>
       <label class="field"><span>기록 방법·도구</span><textarea rows="1" class="one" id="def-ptools" data-f="define:planTools" placeholder="예: 빈도는 계수기 · ABC 관찰지 함께 작성">${esc(d.planTools)}</textarea></label>
     </fieldset>
+  </section>
+  <section class="card">
+    <h2 class="h3">측정 방법</h2>
     <fieldset class="field"><legend>측정 방법 (예정 1개)</legend><div class="chips">${MEASURES.map(m=>chip('measure',m,d.measure===m,'b')).join('')}</div></fieldset>
     <p class="measure-tip" id="measure-tip">${measureTip(d)}</p>
     ${measureOpts(d)}
@@ -1859,17 +1866,15 @@ function viewDefine(p){
     </div>
     <label class="check"><input type="checkbox" id="def-mfixed" data-f="defbool:measureFixed" ${d.measureFixed?'checked':''}> <span>관찰해 보고 이 측정 방법으로 확정했다</span></label>
   </section>
-  <details class="card later">
-    <summary>관찰한 뒤에 채울 내용<small>주로 나타나는 상황</small></summary>
-    <p class="hint">관찰·면담 후 채우기</p>
+  ${String(d.setting||'').trim()?`<details class="card later">
+    <summary>예전에 적은 내용<small>주로 나타나는 상황</small></summary>
     <label class="field"><span>주로 나타나는 상황</span><textarea rows="1" class="one" id="def-setting" data-f="define:setting" placeholder="예: 국어·수학 시간, 학습지 활동">${esc(d.setting)}</textarea></label>
-  </details>
+  </details>`:''}
   <section class="card">
-    <div class="sec-head"><h2 class="h3">정의 점검</h2><span class="meta" id="check-count">${d.checks.length}/${DEF_CHECKS.length} 확인${nw?` · 경고 ${nw}`:''}</span></div>
-    <ul class="checklist">${DEF_CHECKS.map((c,i)=>`<li><label class="check"><input type="checkbox" id="defchk-${i}" data-f="defcheck:${i}" ${d.checks.includes(i)?'checked':''}> <span>${esc(c)}<span class="def-warn" id="defwarn-${i}">${w[i]?'⚠ '+esc(w[i]):''}</span></span></label></li>`).join('')}</ul>
-  </section>
-  <section class="card">
-    <div class="sec-head"><h2 class="h3">수정 기록</h2><button type="button" class="btn small" data-act="def-revlog">오늘 날짜로 한 줄 추가</button></div>
+    <div class="sec-head"><h2 class="h3">정의 상태 · 수정 기록</h2><span class="meta">관찰·면담하며 고치기</span></div>
+    <div class="chips">${DEF_STAGES.map(x=>chip('defstage',x,d.stage===x,'b')).join('')}</div>
+    <p class="hint" id="stage-tip">${esc(DEF_STAGE_TIP[d.stage]||'')}</p>
+    <div class="sec-head"><h3>수정 기록</h3><button type="button" class="btn small" data-act="def-revlog">오늘 날짜로 한 줄 추가</button></div>
     <label class="field"><span>무엇을 왜 고쳤나</span><textarea id="def-revlog" data-f="define:revLog" rows="3" placeholder="예: 11/12 1차 관찰 후 — '1m 이상'을 '자기 모둠 구역 밖'으로 바꿈 (교실이 좁아 1m를 재기 어려움)">${esc(d.revLog)}</textarea></label>
   </section>`;
 }
@@ -1881,12 +1886,11 @@ function viewQabf(p){
   return `
   <section class="q-top">
     <div class="tabs" id="q-tabs">${tabs}<button type="button" class="tab add" data-act="qadd">+ 응답지 추가</button></div>
-    <button type="button" class="btn small" data-act="qitems">${ui.qItemsOpen?'문항 문구 설정 닫기':'문항 문구 설정'}</button>
   </section>
-  ${ui.qItemsOpen?qItemsPanel():''}
   ${f?qFormView(p,f):`<div class="empty">아직 응답지가 없습니다. 교사·보호자 등 응답자마다 응답지를 하나씩 추가하세요.<button type="button" class="btn primary" data-act="qadd">응답지 추가</button></div>`}
-  ${q.forms.length?qCompare(q.forms):''}
-  <p class="hint">25문항·5척도, 0~3점</p>`;
+  ${q.forms.length>1?qCompare(q.forms):''}
+  ${ui.qItemsOpen?qItemsPanel():''}
+  <div class="row end q-foot"><p class="hint">25문항·5척도, 0~3점</p><button type="button" class="btn small ghost" data-act="qitems">${ui.qItemsOpen?'문항 문구 설정 닫기':'문항 문구 설정'}</button></div>`;
 }
 function qItemsPanel(){
   const items=store.settings.qabfItems;
@@ -1905,16 +1909,15 @@ function qFormView(p,f){
       <label class="field"><span>작성일</span><input type="date" id="qf-date" data-f="qform:date" value="${esc(f.date)}"></label>
       <label class="field"><span>평가한 행동</span><textarea rows="1" class="one" id="qf-beh" data-f="qform:behavior">${esc(f.behavior)}</textarea></label>
     </div>
-  </section>
-  <section class="card">
-    <div class="sec-head"><h2 class="h3">문항 응답</h2><span class="meta" id="q-count">응답 ${qAnswered(f)}/25</span></div>
-    <p class="scale-legend">${QABF_OPTS.map(o=>`<span><b class="mono">${o.v}</b> ${o.full}</span>`).join('')}</p>
-    <ol class="q-list">${Array.from({length:25},(_,i)=>qItemRow(f,i+1)).join('')}</ol>
-  </section>
-  <section class="card">
     <label class="field"><span>메모</span><textarea id="qf-note" data-f="qform:note" rows="3" placeholder="응답 상황, 특이사항">${esc(f.note)}</textarea></label>
     <div class="row end"><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-qform:${f.id}">이 응답지 삭제</button></div>
     ${ui.confirm==='del-qform:'+f.id?confirmBox('이 응답지를 삭제합니다. 되돌릴 수 없습니다.','del-qform',f.id):''}
+  </section>
+  <section class="card">
+    <div class="sec-head"><h2 class="h3">문항 응답</h2><span class="meta" id="q-count">응답 ${qAnswered(f)}/25</span></div>
+    <p class="q-who">응답자: <b>${esc(f.rater||'미입력')}</b>${f.role?` · ${esc(f.role)}`:''}</p>
+    <p class="scale-legend">${QABF_OPTS.map(o=>`<span><b class="mono">${o.v}</b> ${o.full}</span>`).join('')}</p>
+    <ol class="q-list">${Array.from({length:25},(_,i)=>qItemRow(f,i+1)).join('')}</ol>
   </section>
   <section class="card" id="q-result">${qResult(f)}</section>`;
 }
@@ -1955,7 +1958,7 @@ function qCompare(forms){
   all.forEach((sc,j)=>{const c=`qc-s${j%6}`;const pts=sc.map((s,i)=>`${x(i,j)},${y(s.total)}`).join(' ');
     g+=`<g class="qc-ser ${c}${j>=6?' qc-dash':''}"><polyline points="${pts}" class="qc-line"/>${sc.map((s,i)=>`<g><circle cx="${x(i,j)}" cy="${y(s.total)}" r="12" class="bl-hit"/><circle cx="${x(i,j)}" cy="${y(s.total)}" r="4.5" class="qc-dot"/><title>${esc(nm(forms[j]))} · ${s.name}: ${s.total}점</title></g>`).join('')}</g>`;});
   const lab='응답자별 하위척도 점수 선 그래프: '+forms.map((f,j)=>`${nm(f)} ${all[j].map(s=>s.name+' '+s.total).join(', ')}`).join(' / ');
-  return `<section class="card"><h2 class="h3">응답자별 비교</h2>
+  return `<section class="card" data-pg-join><h2 class="h3">응답자별 비교</h2>
   <ul class="qc-legend">${forms.map((f,j)=>`<li class="qc-s${j%6}${j>=6?' qc-dash':''}"><svg width="22" height="10" aria-hidden="true"><line x1="1" x2="21" y1="5" y2="5" class="qc-line"/><circle cx="11" cy="5" r="3.5" class="qc-dot"/></svg>${esc(nm(f))}${f.role?` <small>${esc(f.role)}</small>`:''}</li>`).join('')}</ul>
   <svg class="bl-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(lab)}">${g}</svg>
   <p class="hint">척도별 합(15점 만점)</p></section>`;
@@ -2181,6 +2184,8 @@ const FUNC_STEM={'관심 얻기':'관심을 얻','과제·요구 피하기':'과
 const C_FUNC=[[/중단|제거|면제|미루|늦춰|피하|빼 ?주|그만/,'과제·요구 피하기'],[/관심|꾸중|이름|부름|칭찬|훈계|달래|쳐다|또래 반응|웃음/,'관심 얻기'],[/선호물|물건|활동 제공|간식|장난감|허락/,'물건·활동 얻기']];
 function hyNew(){return {id:uid('hy'),setting:'',when:'',cons:'',funcs:[],funcOther:'',evidence:'',confidence:'',verify:[],verifyNote:''};}
 function hyFix(h){const d=hyNew();for(const k in d)if(k!=='id'&&h[k]==null)h[k]=d[k];['funcs','verify'].forEach(k=>{if(!Array.isArray(h[k]))h[k]=[];});return h;}
+/* 앞 절차에 쓴 '행동이 일어나는 상황'(정의의 주로 나타나는 상황, 기본 정보의 촉발 요인)을 한 줄로 */
+function hyCtx(p){const a=String(p.procs.define.data.setting||'').trim(),b=String((p.procs.profile&&p.procs.profile.data.triggers)||'').trim().replace(/\s*\n+\s*/g,', ');return [a,b].filter(Boolean).join(' · ');}
 function hyData(p,k){const d=p.procs.hypo.data;if(!k||k==='m')return d;return (d.more||[]).find(x=>x.id===k)||null;}
 function hyAnalysis(p){
   const sums={};p.procs.qabf.data.forms.forEach(f=>qabfScores(f).forEach(s=>{sums[s.key]=(sums[s.key]||0)+s.total;}));
@@ -2237,6 +2242,7 @@ function hyBlock(p,h,k,n,multi){
     ${!main&&ui.confirm==='del-hy:'+k?confirmBox(`가설 ${n}을 삭제합니다.`,'del-hy',k):''}
     <label class="field"><span>배경사건 <small>행동을 부르는 조건</small></span><textarea rows="1" class="one" id="${I('setting')}" data-f="${F('setting')}" placeholder="예: 잠이 부족한 날, 아침에 가정에서 갈등이 있었던 날">${esc(h.setting||'')}</textarea></label>
     <label class="field"><span>어떤 상황에서 <small>직접 선행사건</small></span><textarea rows="1" class="one" id="${I('when')}" data-f="${F('when')}" placeholder="예: 국어 시간에 학습지를 받았을 때">${esc(h.when||'')}</textarea></label>
+    ${!String(h.when||'').trim()&&hyCtx(p)?`<div class="row"><button type="button" class="btn small" data-act="hy-ctx" data-id="${k}">앞에 쓴 상황 넣기</button><small class="muted">기본 정보·정의에서</small></div>`:''}
     ${beh}
     <label class="field"><span>어떤 결과가 따르나 <small>행동을 유지시키는 후속결과</small></span><textarea rows="1" class="one" id="${I('cons')}" data-f="${F('cons')}" placeholder="예: 교사가 학습지를 거두어 과제가 중단된다">${esc(h.cons||'')}</textarea></label>
     <fieldset class="field"><legend>추정 기능</legend><div class="chips">${FUNCS.map(v=>chip(G('func'),v,funcs.includes(v),'b')).join('')}${showOther?'':`<button type="button" class="chip c-b hy-other-btn" data-act="hy-other" data-id="${k}">기타…</button>`}</div>
@@ -2259,7 +2265,7 @@ function viewHypo(p){
   const aSum=abc.length?`<p class="meta">ABC 기록 ${abc.length}행 (관찰지 ${nSheets}장)</p><p><b>선행사건</b> ${tA.map(([k,v])=>`${esc(k)} ${v}`).join(', ')||'-'}</p><p><b>후속결과</b> ${tC.map(([k,v])=>`${esc(k)} ${v}`).join(', ')||'-'}</p>`:'<p class="muted">아직 없음</p>';
   const multi=more.length>0;
   return `
-  <section class="card"><h2 class="h3">자료 요약</h2>
+  <section class="card" data-pg-name="참고 자료"><h2 class="h3">자료 요약</h2>
     <div class="two"><div class="sum-box"><h3>QABF (가장 높은 척도)</h3>${qSum}</div><div class="sum-box"><h3>ABC 관찰 (많은 순 3개)</h3>${aSum}</div></div>
     ${hyMatchView(p)}
   </section>
@@ -2403,13 +2409,16 @@ function blFixView(p){
 function viewBaseline(p){
   const bd=p.procs.baseline.data;
   return `
-  <section class="card"><h2 class="h3">측정 방법</h2>${measureLine(p)}
-    <p class="hint">같은 정의·방법·상황 유지</p></section>
   <section class="card"><div class="sec-head"><h2 class="h3">회기별 기록</h2><span class="meta">관찰 1회마다 한 줄</span></div>
+    ${measureLine(p)}<p class="hint">같은 정의·방법·상황 유지</p>
     ${sesSection(p,'bl')}
   </section>
   <section class="card"><div class="sec-head"><h2 class="h3">그래프 · 안정성</h2><span class="meta">음영: ±25% 안정 범위</span></div>
     <div id="bl-live">${blLive(p)}</div>
+  </section>
+  <section class="card"><h2 class="h3">기초선 확정</h2>
+    <div id="bl-fix">${blFixView(p)}</div>
+    <label class="field"><span>메모</span><textarea id="bl-note" data-f="base:note" rows="3" placeholder="예: 3회기는 행사로 수업 시간이 짧았음">${esc(bd.note)}</textarea></label>
   </section>
   <section class="card"><h2 class="h3">목표 기준</h2>
     <fieldset class="field"><legend>목표 방향</legend><div class="chips">${BL_DIRS.map(v=>chip('bldir',v,bd.dir===v,'b')).join('')}</div><p class="hint">미선택 시 줄이기</p></fieldset>
@@ -2417,10 +2426,6 @@ function viewBaseline(p){
       <label class="field"><span>목표 값 <small>그래프에 목표선으로 표시</small></span><span class="bl-val-in"><input id="bl-goal" data-f="base:goal" value="${esc(bd.goal)}" inputmode="decimal" placeholder="${esc(p.procs.define.data.unit||'숫자')}"><button type="button" class="btn small" data-act="bl-goal">평균 기준 제안</button></span></label>
       <label class="field"><span>달성 기준</span><textarea rows="1" class="one" id="bl-goalnote" data-f="base:goalNote" placeholder="예: 3회기 연속 목표 값 이하">${esc(bd.goalNote)}</textarea></label>
     </div>
-  </section>
-  <section class="card"><h2 class="h3">기초선 확정</h2>
-    <div id="bl-fix">${blFixView(p)}</div>
-    <label class="field"><span>메모</span><textarea id="bl-note" data-f="base:note" rows="3" placeholder="예: 3회기는 행사로 수업 시간이 짧았음">${esc(bd.note)}</textarea></label>
   </section>`;
 }
 /* 기초선과 중재기 비교 */
@@ -2440,21 +2445,22 @@ function blCompare(p){
   const text=`기초선 평균 ${rnd(a.mean)}(${a.n}회기) → 중재 평균 ${rnd(b.mean)}(${b.n}회기)${ch!=null?`, ${ch>0?'+':''}${ch}%`:''}. PND ${pnd}%.${goal!=null?` 목표 ${rnd(goal)}: 최근 ${last.length}회기 ${met?'모두 충족':'일부 미충족'}.`:''}`;
   return {html,text};
 }
-function memoFields(p,key){const d=p.procs[key].data;return MEMO_FIELDS[key].map(([k,l,ph])=>`<label class="field"><span>${esc(l)}</span><textarea id="mf-${k}" data-f="mf:${k}" rows="${k==='log'?6:3}" placeholder="${esc(ph)}">${esc(d[k])}</textarea></label>`).join('');}
+function memoFields(p,key,only){const d=p.procs[key].data;return MEMO_FIELDS[key].filter(f=>!only||only.includes(f[0])).map(([k,l,ph])=>`<label class="field"><span>${esc(l)}</span><textarea id="mf-${k}" data-f="mf:${k}" rows="${k==='log'?6:3}" placeholder="${esc(ph)}">${esc(d[k])}</textarea></label>`).join('');}
 function ivLive(p){const c=blCompare(p);return `${blChart(p,true)}${c.text?`<p class="bl-judge pill-muted">${esc(c.text)}</p>`:''}`;}
 function viewIntervene(p){
   const a=blStats(blVals(p.procs.baseline.data.sessions));
   return `
-  <section class="card"><h2 class="h3">측정 방법</h2>${measureLine(p)}
-    <p class="hint">${a.n?`기초선 ${a.n}회기 · 평균 ${rnd(a.mean)}${p.procs.baseline.data.fixed?' (확정)':' (아직 확정 전)'}`:'기초선 먼저 측정하세요'}</p></section>
   <section class="card"><div class="sec-head"><h2 class="h3">중재 회기별 기록</h2><span class="meta">관찰 1회마다 한 줄</span></div>
+    ${measureLine(p)}<p class="hint">${a.n?`기초선 ${a.n}회기 · 평균 ${rnd(a.mean)}${p.procs.baseline.data.fixed?' (확정)':' (아직 확정 전)'}`:'기초선 먼저 측정하세요'}</p>
     ${sesSection(p,'iv')}
   </section>
-  <section class="card"><div class="sec-head"><h2 class="h3">그래프</h2><span class="meta">기초선(A) | 중재(B)</span></div>
+  <section class="card"><div class="sec-head"><h2 class="h3">그래프 · 충실도</h2><span class="meta">기초선(A) | 중재(B)</span></div>
     <div id="iv-live">${ivLive(p)}</div>
+    ${memoFields(p,'intervene',['fidelity'])}
   </section>
-  <section class="card">${ivAutoView(p)}${memoFields(p,'intervene')}</section>`;
+  <section class="card">${ivAutoView(p)}${memoFields(p,'intervene',['log'])}</section>`;
 }
+const EV_DECS=['유지','수정','중단'];
 function viewEvaluate(p){
   const c=blCompare(p);
   return `
@@ -2463,7 +2469,7 @@ function viewEvaluate(p){
     ${blChart(p,true)}
     ${evAutoView(p)}
   </section>
-  <section class="card">${memoFields(p,'evaluate')}</section>`;
+  <section class="card"><fieldset class="field"><legend>결정</legend><div class="chips">${EV_DECS.map(v=>chip('evdec',v,p.procs.evaluate.data.decPick===v,'b')).join('')}</div></fieldset>${memoFields(p,'evaluate')}</section>`;
 }
 function refreshBl(p){
   const a=$('#bl-live');if(a)a.innerHTML=blLive(p);
@@ -2543,19 +2549,19 @@ function viewRating(p){
     <button type="button" class="btn small" data-act="r-add" data-kind="row">+ 하위영역 추가</button>
     <div id="r-compare">${ratingCompare(d)}</div>
   </section>
-  <section class="card"><h2 class="h3">표적행동과의 연결</h2>
+  <section class="card" data-pg-name="해석"><h2 class="h3">표적행동과의 연결</h2>
     <label class="field"><span>이 결과가 표적행동에 대해 말해 주는 것</span><textarea id="rt-target" data-f="rating:target" rows="3" placeholder="예: 주의력 문제 영역이 임상 범위 — 자리 이탈이 과제 집중 시간과 관련 있을 수 있음">${esc(d.target)}</textarea></label>
     <fieldset class="field"><legend>기능 가설 단서 <small>해당하면 고르세요</small></legend><div class="chips">${FUNCS.map(v=>chip('rfunc',v,d.funcs.includes(v),'b')).join('')}</div></fieldset>
     <label class="field"><span>단서가 된 문항·영역</span><textarea rows="1" class="one" id="rt-funcnote" data-f="rating:funcNote" placeholder="예: '과제를 주면 자리를 뜬다' 문항에 두 응답자 모두 '자주'">${esc(d.funcNote)}</textarea></label>
     <p class="hint">여기엔 기능 단서만</p>
   </section>
-  <section class="card"><h2 class="h3">응답자 간 차이</h2>
+  ${d.raters.length>1||String(d.diff||'').trim()?`<section class="card" data-pg-join><h2 class="h3">응답자 간 차이</h2>
     <label class="field"><span>차이와 가능한 이유</span><textarea id="rt-diff" data-f="rating:diff" rows="3" placeholder="예: 보호자 평정이 교사보다 낮음 — 가정에서는 앉아서 하는 과제가 적음">${esc(d.diff)}</textarea></label>
-  </section>
-  <section class="card"><h2 class="h3">해석 시 주의점 · 메모</h2>
+  </section>`:''}
+  <section class="card" data-pg-name="메모 · 파일"><h2 class="h3">해석 시 주의점 · 메모</h2>
     <label class="field"><span>제한점과 그 밖의 메모</span><textarea id="rt-cautions" data-f="rating:cautions" rows="4" placeholder="예: 응답자 편향(최근 큰 사건 뒤 작성), 실시 상황(바쁜 시기에 급히 작성), 규준이 이 학생에게 맞는지(연령·장애 특성)">${esc(d.cautions)}</textarea></label>
   </section>
-  <section class="card"><h2 class="h3">원본 파일 · 재실시</h2>
+  <section class="card" data-pg-join><h2 class="h3">원본 파일 · 재실시</h2>
     <div class="r-list" id="r-files">${d.files.length?d.files.map(rFileRow).join(''):'<p class="rows-empty">검사지 사진·PDF 첨부</p>'}</div>
     <label class="btn small" style="align-self:flex-start">파일 첨부 (사진·PDF)<input type="file" accept="image/*,application/pdf" data-rfile="1" hidden></label>
     <p class="hint">이 브라우저에만 저장</p>
@@ -3161,7 +3167,7 @@ const actions={
   'chip':el=>{
     const p=curProject();const g=el.dataset.g,v=el.dataset.v;
     const multi={defsrc:()=>[p.procs.define.data.sources,'define'],defpri:()=>[p.procs.define.data.priority,'define'],rfunc:()=>[p.procs.rating.data.funcs,'rating'],pfcomm:()=>[p.procs.profile.data.comm,'profile']};
-    const single={measure:()=>[p.procs.define.data,'measure','define'],defstage:()=>[p.procs.define.data,'stage','define'],rtype:()=>[p.procs.rating.data,'type','rating'],bldir:()=>[p.procs.baseline.data,'dir','baseline'],pfclass:()=>[p.procs.profile.data,'classType','profile']};
+    const single={measure:()=>[p.procs.define.data,'measure','define'],defstage:()=>[p.procs.define.data,'stage','define'],rtype:()=>[p.procs.rating.data,'type','rating'],bldir:()=>[p.procs.baseline.data,'dir','baseline'],evdec:()=>[p.procs.evaluate.data,'decPick','evaluate'],pfclass:()=>[p.procs.profile.data,'classType','profile']};
     const hm=/^(func|conf|verify)(?::(.+))?$/.exec(g);
     if(hm){/* 가설 칸: func·conf·verify(가설 1) 또는 func:id 등(가설 2부터) */
       const h=hyData(p,hm[2]);if(!h)return;
@@ -3207,6 +3213,11 @@ const actions={
   'del-hy':el=>{
     const p=curProject();const d=p.procs.hypo.data;d.more=(d.more||[]).filter(x=>x.id!==el.dataset.id);
     ui.confirm=null;touch(p,'hypo');saveNow();rerenderForConfirm();toast('가설을 삭제했습니다');
+  },
+  'hy-ctx':el=>{
+    const p=curProject();const h=hyData(p,el.dataset.id);if(!h)return;const t=hyCtx(p);if(!t)return;
+    if(String(h.when||'').trim()){toast('이미 채워져 있습니다');return;}
+    h.when=t;touch(p,'hypo');saveNow();const y=window.scrollY;render();window.scrollTo(0,y);toast('상황 칸에 넣었습니다. 고쳐 쓰세요');
   },
   'hy-fill':el=>{
     const p=curProject();const h=hyData(p,el.dataset.id);if(!h)return;
@@ -3309,7 +3320,7 @@ const actions={
     const r=$('#qf-rater');if(r)r.focus();
   },
   'qform':el=>{const p=curProject();p.procs.qabf.data.activeForm=el.dataset.id;ui.confirm=null;scheduleSave();render();},
-  'qitems':()=>{ui.qItemsOpen=!ui.qItemsOpen;render();},
+  'qitems':()=>{ui.qItemsOpen=!ui.qItemsOpen;if(ui.qItemsOpen)pgPosSave('문항 문구 설정');render();},
   'qrate':el=>{
     const p=curProject();const f=activeForm(p);if(!f)return;
     const n=el.dataset.n,v=el.dataset.v;f.ratings[n]=f.ratings[n]===v?'':v;f.updatedAt=nowISO();touch(p,'qabf');
@@ -6260,7 +6271,7 @@ function repHTML(p){
   ${sec(5,'가설',hs.length?`<ol>${hs.map(h=>`<li>${esc(hyPlain(p,h))}${aiT(h.evidence)?`<br><small>근거: ${esc(h.evidence)}</small>`:''}${h.confidence?` <small>(확신 ${esc(h.confidence)})</small>`:''}</li>`).join('')}</ol>`:'<p class="muted">기록 없음</p>')}
   ${sec(6,'중재 계획',repTable(MEMO_FIELDS.plan.map(([k,l])=>repRow(l,pl[k]))))}
   ${sec(7,'중재 실행',`${ivl.length?`<ol class="rep-log">${ivl.map(l=>`<li>${esc(l)}</li>`).join('')}</ol>`:'<p class="muted">회기 기록 없음</p>'}${repTable([repRow('프로그램 밖 기록',iv.log),repRow('실행 충실도',iv.fidelity)])}`)}
-  ${sec(8,'평가',`<div class="rep-chart">${blChart(p,true)}</div>${evSentence(p)?`<p>${esc(evSentence(p))}</p>`:''}${repTable(MEMO_FIELDS.evaluate.map(([k,l])=>repRow(l,ev[k])))}`)}
+  ${sec(8,'평가',`<div class="rep-chart">${blChart(p,true)}</div>${evSentence(p)?`<p>${esc(evSentence(p))}</p>`:''}${repTable([repRow('결정',ev.decPick),...MEMO_FIELDS.evaluate.map(([k,l])=>repRow(l,ev[k]))])}`)}
   <section class="rep-sec rep-ai"><h2>종합 의견 <small class="no-print">AI 초안 · 고쳐 쓰기</small></h2>
     <div class="no-print row">${aiBtn('ai-rep',ai1?'AI 종합 의견 다시 쓰기':'AI 종합 의견 쓰기')}<button type="button" class="btn small ghost" data-act="ai-set">AI 설정</button></div>${aiErrLine('ai-rep')}
     <div class="rep-opinion" id="rep-opinion" contenteditable="true" aria-label="종합 의견" data-ph="여기에 종합 의견을 쓰세요">${esc(ai1&&ai1.text||'').replace(/\n/g,'<br>')}</div></section>`;
@@ -6288,6 +6299,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-20-3',d:'2026-11-20',k:'web',t:'절차 화면 정리',items:['정의: 근거부터 쓰는 순서','기초선: 확정 뒤 목표','측정 방법은 한 줄로','작은 장은 한 장으로','가설: 앞에 쓴 상황 넣기','평가: 결정 고르기']},
   {id:'2026-11-20-2',d:'2026-11-20',k:'web',t:'AI 도우미·보고서',items:['중재 계획: AI 제안 고르기','실행 기록 자동 작성','평가 변화 문장 자동','최종 보고서 인쇄·저장','Firebase 콘솔 설정 필요']},
   {id:'2026-11-20-1',d:'2026-11-20',k:'web',t:'절차 화면 나눠 보기',items:['한 화면에 묶음 하나씩','위 띠로 묶음 바로 가기','아래 이전·다음 버튼','QABF는 5문항씩','전체 보기로 한 화면','맨 위 찾기(단축키 /)']},
   {id:'2026-11-19-12',d:'2026-11-19',k:'web',t:'협력자 접속 표시',items:['공유 프로젝트 왼쪽 아래','협력자 n: 지금 접속 인원','누르면 각자 하는 일','내 이름은 안 보임']},
