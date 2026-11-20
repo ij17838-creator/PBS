@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-11-20 · AI 도우미(제미나이) · 실행 기록 자동 · 평가 문장 · 최종 보고서
+### 한 일
+- 멘토 'API KEY 사용 요소' 반영. 앱에 키를 넣지 않고 Firebase AI Logic(Blaze 요금제, 사용자가 선택)으로 제미나이를 부름. 기본 모델 gemini-4-neon, 사고 수준 높음/보통(xhigh 안 씀, Neon이 보통을 거절하면 사고 칸 빼고 다시 부름). 로그인한 사람만 사용.
+- 중재 계획: 'AI 제안 받기' → 선행·대체·후속·위기 제안 카드, 고른 것만 '칸에 넣기'. 가설·기초선/목표 줄을 위에 보여 줌.
+- 중재 실행: 회기 기록으로 '자동 실행 기록' 목록. 수기 칸 이름은 '프로그램 밖 기록 (수기)'(묶음 띠 이름은 '실행 기록').
+- 평가: 수치 근거 변화 문장(평균·범위·%·PND 판정·추세·목표) 규칙으로 자동, AI 보고서 문단은 선택. 둘 다 '아래 칸에 넣기' 후 고쳐 저장.
+- 프로젝트 화면 '최종 보고서' 카드: AI 설정, 보고서 보기(1~8절 + 종합 의견 AI·직접 수정) → 인쇄(앱은 HTML 저장). 공지 '2026-11-20-2' k:'web'(앱 재시작만).
+- AI 연결 제공자 한 줄 전환: index.html `AI_BACKEND`('google'=Gemini Developer API, 'vertex'=Vertex AI, Google Cloud 크레딧 쪽). 콘솔 AI Logic에서 고른 제공자와 같게.
+### 데이터
+- 저장 자료: plan 칸·evaluate change·intervene log에 고른 글만 들어감. AI 결과는 기기에만 localStorage 'pbs-ai-out', 설정 'pbs-ai'.
+- 보내는 내용: 학생 특성(장애·약·건강·가족 제외)·표적행동·기능평가·가설·기초선/중재 수치. 학생 코드·이름은 안 보냄(화면 '보낼 내용 보기'로 확인 가능).
+### 확인한 것
+- Playwright 1280·390, SDK 12.19.0 실제 모듈 + 가짜 응답: 요청 주소 firebasevertexai.googleapis.com/.../gemini-4-neon, thinkingLevel HIGH·JSON·system 지시 들어감, 학생 코드 안 나감, 칸 넣기·자동 기록·PND 문장·보고서·인쇄 PDF 통과. 화면 /mnt/project-files/screens/AI-도우미/.
+- 시험 못 한 것: 실제 Gemini 호출, App Check(reCAPTCHA Enterprise) 토큰, 안드로이드 webview(https://localhost)에서의 App Check, 크레딧이 Gemini Developer API에 적용되는지, Vertex 쪽 실제 호출.
+### 한계
+- APPCHECK_SITE_KEY가 비어 있음(콘솔에서 키 받으면 넣기). 콘솔에서 App Check 강제하면 키 넣기 전엔 거절됨.
+- 모델 이름이 바뀌면 AI 설정에서 고치기.
+### 다음
+- 사용자: 결제 계정 바꾸기 → AI Logic 시작(제공자 선택) → App Check 웹 앱 등록, 사이트 키 전달(도메인 ij17838-creator.github.io, localhost).
+- 키 받으면 APPCHECK_SITE_KEY 넣기, Vertex 고르면 AI_BACKEND='vertex'.
+- 정리 목록(Claude Doc) 중 AI 외 항목(순서 바꾸기·작은 묶음 합치기)은 아직.
+
+---
+
 ## 2026-11-20 · 절차 화면 한 장씩 나눠 보기 + 찾기
 ### 한 일
 - 멘토 피드백(정보 줄이기·잘게 나누기) 반영. 절차 화면에서 카드(묶음) 1개씩만 보임. 제목 아래 묶음 띠(쓴 묶음은 초록 점, 눌러 바로 이동), 아래 고정 막대 '‹ 앞 묶음 | n/전체 · 전체 보기 | 다음 묶음 ›'. 마지막 장에 '이 절차 완료' 칸과 '다음 절차' 버튼.
@@ -41,14 +65,3 @@
 - PRES·PRES_RE·PRES_BEAT·PRES_STALE·pres, presDk·presAct·presSend·presLeave·presTick·presSoon·presGot·presPeople·presUI, 어댑터 watch의 h.pres, syncSubscribe pres, sync-logout, CSS .pres·.pres-btn·.pres-pop·.pres-list, #pres
 ### 다음에 할 일
 - 사용자: 두 계정으로 같은 공유 프로젝트를 열어 왼쪽 아래 '협력자' 버튼 확인.
-
-## 2026-11-19 · 공지 창 목록 동그라미 없애기
-### 한 일
-- '공지 · 바뀐 점' 창의 각 항목 줄 앞 속 빈 동그라미(글머리표)를 없애고 들여쓰기 0, 줄 사이 2px·줄 높이 1.45로 정리. 공지 k:'web'(앱 재시작만).
-### 확인한 것
-- Playwright 390px 화면에서 공지 창 열어 동그라미 없음·줄 간격 확인. 시험 못 함: 실제 휴대폰·탭.
-### 코드 위치 (index.html)
-- CSS .notice-item ul, NOTICES 맨 앞 2026-11-19-11
-### 다음에 할 일
-- 없음(팀원 휴대폰에서 보기 확인 정도).
-
