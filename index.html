@@ -423,8 +423,13 @@ td.top{color:var(--accent);font-weight:700}
 .tally3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}.tally3 .tally li{grid-template-columns:minmax(0,1fr) 64px 50px}
 @media (max-width:900px){.tally3{grid-template-columns:1fr}}
 .tally .tlink{border:0;background:none;padding:2px 0;font:inherit;color:inherit;text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:3px}.tally .tlink:hover{color:var(--accent)}
-.kw-ex{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:6px;overflow:auto;font-size:.92rem}#kw-ex .kw-box{max-height:calc(100dvh - 120px)}
-@media (max-width:560px){#kw-ex{padding:72px 14px 14px;align-items:flex-start}#kw-ex .kw-box{height:auto;border-radius:14px}}
+.kw-ex{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:6px;overflow:auto;font-size:.92rem}
+#kw-ex[hidden]{display:none}
+.kw-win{position:fixed;z-index:58;display:flex;flex-direction:column;min-width:200px;min-height:120px;max-width:calc(100vw - 8px);max-height:calc(100dvh - 8px);background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.22);overflow:hidden}
+.kw-win-rs{position:absolute;right:0;bottom:0;width:28px;height:28px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 50%,var(--line-strong) 50%,var(--line-strong) 58%,transparent 58%,transparent 70%,var(--line-strong) 70%,var(--line-strong) 78%,transparent 78%);border-bottom-right-radius:12px}
+.kw-win-h{display:flex;align-items:center;gap:6px;padding:8px 6px 8px 12px;border-bottom:1px solid var(--line);background:var(--surface-2);cursor:move;touch-action:none;user-select:none;-webkit-user-select:none}
+.kw-win-h small{flex:1;min-width:0}.kw-win-x{border:0;background:none;color:var(--muted);font-size:1rem;min-width:36px;min-height:36px;border-radius:8px;cursor:pointer}.kw-win-x:hover{background:var(--sunk);color:var(--ink)}
+.kw-win .kw-ex{flex:1;padding:10px 12px 14px 2em}
 .tally .tval{font-family:var(--font-mono);text-align:right;font-size:.82rem;color:var(--muted)}
 .list-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
 .day{font-size:.85rem;font-weight:700;color:var(--muted);margin:14px 0 8px;letter-spacing:.02em}
@@ -809,7 +814,7 @@ body.find-open{overflow:hidden}
 <div class="find" id="find" hidden></div>
 <div class="find" id="ai-dlg" hidden></div>
 <div class="find" id="kw-dlg" hidden></div>
-<div class="find" id="kw-ex" hidden></div>
+<div id="kw-ex" hidden></div>
 <div class="report" id="report" hidden></div>
 <div class="mini" id="mini" hidden>
   <button type="button" class="mini-mark" id="mini-mark" aria-label="1 더하기"><span class="mini-plus">＋1</span><small id="mini-n">0</small></button>
@@ -1284,7 +1289,7 @@ function render(){
   if(ui.view==='proc'&&!PROC[ui.proc])ui.view='project';
   if(ui.view==='proc')ui.cat=PROC[ui.proc].cat;
   if(ui.cat&&!CAT[ui.cat])ui.cat=null;
-  stopDictation();
+  stopDictation();kwExClose();
   const p=curProject();
   if(ui.view==='home')main.innerHTML=viewHome();
   else if(ui.view==='project')main.innerHTML=viewProject(p);
@@ -2177,18 +2182,48 @@ function tallyView(title,rows,n,cls,col){
 }
 /* 낱말을 누르면: 그 낱말이 들어 있던 문장(구절)을 창으로 */
 const KW_COL={a:'선행사건 (A)',b:'행동 (B)',c:'후속결과 (C)'};
-function kwExOpen(col,k){
+function kwExOpen(col,k,el){
   const p=curProject();const d=$('#kw-ex');if(!p||!d)return;
   const rows=allRows(p);const g=tally(rows,col,p).find(x=>x[0]===k);if(!g)return;
   const occ=g[3].slice().sort((x,y)=>x[0]-y[0]);
-  d.innerHTML=`<div class="find-box ai-box kw-box" role="dialog" aria-modal="true" aria-label="${esc(k)} 적힌 문장">
-    <div><h2 class="h3">「${esc(k)}」 <small class="muted">${KW_COL[col]||''} · ${g[1]}행</small></h2></div>
+  d.innerHTML=`<div class="kw-win" role="dialog" aria-label="${esc(k)} 적힌 문장">
+    <div class="kw-win-h" title="끌어서 옮기기"><b>「${esc(k)}」</b> <small class="muted">${KW_COL[col]||''} · ${g[1]}행</small><button type="button" class="kw-win-x" data-act="kw-ex-close" aria-label="닫기">✕</button></div>
     <ol class="kw-ex">${occ.map(([ri,ph])=>{const r=rows[ri]||{};return `<li>${esc(ph)}${r.time?` <small class="muted">${esc(String(r.time).slice(11,16)||r.time)}</small>`:''}</li>`;}).join('')}</ol>
-    <div class="row"><button type="button" class="btn" data-act="kw-ex-close">닫기</button></div>
+    <span class="kw-win-rs" title="끌어서 크기 조절" aria-hidden="true"></span>
   </div>`;
-  d.hidden=false;d.onclick=e=>{if(e.target===d)kwExClose();};
+  d.hidden=false;
+  const w=d.firstElementChild,vw=innerWidth,vh=innerHeight,W=Math.min(320,vw-16);
+  w.style.width=W+'px';
+  const r=el&&el.getBoundingClientRect?el.getBoundingClientRect():{left:(vw-W)/2,bottom:80,top:80};
+  const H=w.offsetHeight;
+  let x=Math.min(Math.max(8,r.left),vw-W-8),y=r.bottom+6;
+  if(y+H>vh-8)y=Math.max(8,r.top-H-6);/* 아래 자리가 없으면 낱말 위로 */
+  w.style.left=x+'px';w.style.top=y+'px';
+  kwWinDrag(w);
 }
-function kwExClose(){const d=$('#kw-ex');if(!d)return;d.hidden=true;d.innerHTML='';}
+/* 제목 줄을 끌어 옮기기(마우스·손가락·펜), 크기는 오른쪽 아래 모서리 */
+function kwWinDrag(w){
+  const h=w.querySelector('.kw-win-h');if(!h)return;
+  h.addEventListener('pointerdown',e=>{
+    if(e.target.closest('button'))return;e.preventDefault();
+    const sx=e.clientX,sy=e.clientY,ox=w.offsetLeft,oy=w.offsetTop;
+    try{h.setPointerCapture(e.pointerId);}catch(_){}
+    const mv=ev=>{const x=Math.min(Math.max(0,ox+ev.clientX-sx),innerWidth-60),y=Math.min(Math.max(0,oy+ev.clientY-sy),innerHeight-40);w.style.left=x+'px';w.style.top=y+'px';};
+    const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up);};
+    h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up);
+  });
+  /* 손가락·펜에서는 CSS 크기 조절이 안 되므로 모서리 손잡이를 직접 끈다 */
+  const g=w.querySelector('.kw-win-rs');if(!g)return;
+  g.addEventListener('pointerdown',e=>{
+    e.preventDefault();e.stopPropagation();
+    const sx=e.clientX,sy=e.clientY,ow=w.offsetWidth,oh=w.offsetHeight;
+    try{g.setPointerCapture(e.pointerId);}catch(_){}
+    const mv=ev=>{w.style.width=Math.min(Math.max(200,ow+ev.clientX-sx),innerWidth-w.offsetLeft-4)+'px';w.style.height=Math.min(Math.max(120,oh+ev.clientY-sy),innerHeight-w.offsetTop-4)+'px';};
+    const up=()=>{g.removeEventListener('pointermove',mv);g.removeEventListener('pointerup',up);g.removeEventListener('pointercancel',up);};
+    g.addEventListener('pointermove',mv);g.addEventListener('pointerup',up);g.addEventListener('pointercancel',up);
+  });
+}
+function kwExClose(){const d=$('#kw-ex');if(!d||d.hidden)return;d.hidden=true;d.innerHTML='';}
 /* 제외 낱말 창: 어두운 배경 위에 입력·추가, 지금 목록, 요약에 나온 낱말 고르기, 닫기 */
 function kwDlgOpen(){const d=$('#kw-dlg');if(!d)return;d.hidden=false;d.onclick=e=>{if(e.target===d)kwDlgClose();};kwDlgPaint();const i=$('#kw-new');if(i){try{i.focus({preventScroll:true});}catch(e){}}}
 function kwDlgClose(){const d=$('#kw-dlg');if(!d)return;d.hidden=true;d.innerHTML='';}
@@ -3286,7 +3321,7 @@ const actions={
     const p=curProject();const d=p.procs.hypo.data;d.more=(d.more||[]).filter(x=>x.id!==el.dataset.id);
     ui.confirm=null;touch(p,'hypo');saveNow();rerenderForConfirm();toast('가설을 삭제했습니다');
   },
-  'kw-open':()=>kwDlgOpen(),'kw-ex':el=>kwExOpen(el.dataset.col,el.dataset.k),'kw-ex-close':()=>kwExClose(),'kw-close':()=>kwDlgClose(),
+  'kw-open':()=>kwDlgOpen(),'kw-ex':el=>kwExOpen(el.dataset.col,el.dataset.k,el),'kw-ex-close':()=>kwExClose(),'kw-close':()=>kwDlgClose(),
   'kw-stop':el=>{const p=curProject();const ws=String(el.dataset.k||'').split(' · ');kwStopSet(p,ws,true);},
   'kw-unstop':el=>{const p=curProject();kwStopSet(p,[el.dataset.w],false);},
   'kw-add':()=>ACTIONS_KW_ADD(),
@@ -6375,6 +6410,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-20-5',d:'2026-11-20',k:'web',t:'ABC 낱말 창',items:['누른 낱말 옆에 뜸','제목 줄 끌어 옮기기','모서리로 크기 조절']},
   {id:'2026-11-20-4',d:'2026-11-20',k:'web',t:'ABC 요약 개선',items:['핵심 낱말로 묶어 세기','낱말 누르면 적힌 문장','행동(B)도 집계','제외 낱말 정하기']},
   {id:'2026-11-20-3',d:'2026-11-20',k:'web',t:'절차 화면 정리',items:['정의: 근거부터 쓰는 순서','기초선: 확정 뒤 목표','측정 방법은 한 줄로','작은 장은 한 장으로','가설: 앞에 쓴 상황 넣기','평가: 결정 고르기']},
   {id:'2026-11-20-2',d:'2026-11-20',k:'web',t:'AI 도우미·보고서',items:['중재 계획: AI 제안 고르기','실행 기록 자동 작성','평가 변화 문장 자동','최종 보고서 인쇄·저장','Firebase 콘솔 설정 필요']},
