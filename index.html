@@ -413,7 +413,7 @@ td.top{color:var(--accent);font-weight:700}
 .tally h3{font-size:.9rem;margin-bottom:8px}
 .tally ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .tally li{display:grid;grid-template-columns:minmax(0,1fr) 90px 52px;gap:10px;align-items:center;font-size:.88rem}
-.tally .tname{overflow-wrap:anywhere}
+.tally .tname{overflow-wrap:anywhere}.tally .tex{display:block;color:var(--muted);font-size:.78rem;line-height:1.35}
 .tally .ttrack{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden}
 .tally .tfill{height:100%}
 .tally.ta .tfill{background:var(--a)} .tally.tc .tfill{background:var(--c)}
@@ -1236,10 +1236,33 @@ function qabfScores(f){
   });
 }
 function qAnswered(f){return Object.keys(f.ratings).filter(k=>f.ratings[k]!==''&&f.ratings[k]!=null).length;}
+/* ABC 기록 세기: 문장이 달라도 핵심 낱말(조사·어미를 뗀 2글자 이상)이 같으면 같은 것으로 센다.
+   한 기록 행에서 같은 낱말은 한 번만. 늘 함께 나온 낱말(같은 행들)은 한 줄로 묶는다. 결과 [이름, 행 수, 예시 문장들] */
+const KW_END=['하였었다','하였다','했었다','했다','하다','하였음','했음','하자마자','하자','하면서','하며','해서','하여','하고','하기','하는데','하는','하던','한다','합니다','했는데','했고','하니','함','되었다','됐다','되다','되자','되어','됨','되는','된','시켰다','시킴','받았다','받음','받자'];
+const KW_JOSA=['에서는','에게서','으로는','이라고','에서','에게','한테','께서','으로','부터','까지','처럼','보다','이랑','라고','하고','랑','을','를','이','가','은','는','에','의','와','과','도','만','로','께'];
+const KW_STOP=new Set(['학생','아이','대상','그리고','그래서','다시','계속','바로','조금','많이','같이','함께','해당','경우','정도','이후','직후','동안','상황','행동','모습','그때','이때','시간','해도','하고']);
+function kwNorm(w){
+  w=String(w||'').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');
+  for(const e of KW_END)if(w.length>=e.length+2&&w.endsWith(e)){w=w.slice(0,-e.length);break;}
+  for(const j of KW_JOSA)if(w.length>j.length+1&&w.endsWith(j)){w=w.slice(0,-j.length);break;}
+  return w;
+}
+function kwOf(ph){return [...new Set(String(ph).split(/[\s·/()\[\]~.!?'"“”‘’-]+/).map(kwNorm).filter(w=>w.length>=2&&!KW_STOP.has(w)&&!/^\d+$/.test(w)))];}
 function tally(rows,f){
-  const m=new Map();
-  rows.forEach(r=>{const seen=new Set();String(r[f]||'').split(/[,，;\n]+/).map(x=>x.trim()).filter(Boolean).forEach(v=>{if(seen.has(v))return;seen.add(v);m.set(v,(m.get(v)||0)+1);});});
-  return Array.from(m.entries()).sort((a,b)=>b[1]-a[1]);
+  const kw=new Map();
+  rows.forEach((r,ri)=>{
+    String(r[f]||'').split(/[,，;\n]+/).map(x=>x.trim()).filter(Boolean).forEach(ph=>{
+      const ks=kwOf(ph);if(!ks.length)ks.push(ph);
+      ks.forEach(k=>{let o=kw.get(k);if(!o)kw.set(k,o={rows:new Set(),ex:new Map()});o.rows.add(ri);o.ex.set(ph,(o.ex.get(ph)||0)+1);});
+    });
+  });
+  const groups=new Map();
+  for(const [k,o] of kw){
+    const sig=[...o.rows].sort((a,b)=>a-b).join(',');const g=groups.get(sig);
+    if(g){g.keys.push(k);o.ex.forEach((n,ph)=>{if(!g.ex.has(ph))g.ex.set(ph,n);});}
+    else groups.set(sig,{keys:[k],n:o.rows.size,ex:new Map(o.ex)});
+  }
+  return [...groups.values()].map(g=>[g.keys.slice(0,2).join(' · '),g.n,[...g.ex.entries()].sort((a,b)=>b[1]-a[1]).map(e=>e[0])]).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ko'));
 }
 
 /* ---------- rendering ---------- */
@@ -2134,11 +2157,11 @@ function summaryView(p){
   <div class="stats">
     <div><b>${sheets.length}</b><span>관찰지</span></div><div><b>${rows.length}</b><span>기록 행</span></div><div><b>${mins}</b><span>관찰 시간(분)</span></div><div><b>${nAud}</b><span>녹음</span></div><div><b>${days}</b><span>관찰한 날</span></div>
   </div>
-  ${rows.length?`<div class="two">${tallyView('자주 적힌 선행사건 (A)',tally(rows,'a'),rows.length,'ta')}${tallyView('자주 적힌 후속결과 (C)',tally(rows,'c'),rows.length,'tc')}</div><p class="hint">같은 말끼리 셈</p>`:''}`;
+  ${rows.length?`<div class="two">${tallyView('자주 적힌 선행사건 (A)',tally(rows,'a'),rows.length,'ta')}${tallyView('자주 적힌 후속결과 (C)',tally(rows,'c'),rows.length,'tc')}</div><p class="hint">핵심 낱말로 묶어 셈</p>`:''}`;
 }
 function tallyView(title,rows,n,cls){
   if(!rows.length)return `<div class="tally ${cls}"><h3>${title}</h3><p class="muted">적은 내용이 없습니다.</p></div>`;
-  return `<div class="tally ${cls}"><h3>${title}</h3><ol>${rows.slice(0,5).map(([k,v])=>`<li><span class="tname">${esc(k)}</span><span class="ttrack"><span class="tfill" style="display:block;width:${(v/n*100).toFixed(1)}%"></span></span><span class="tval">${v}/${n}행</span></li>`).join('')}</ol></div>`;
+  return `<div class="tally ${cls}"><h3>${title}</h3><ol>${rows.slice(0,5).map(([k,v,ex])=>`<li><span class="tname">${esc(k)}${ex&&ex.length&&!(ex.length===1&&ex[0].replace(/\s+/g,'')===k.replace(/ · /g,''))?`<small class="tex">${esc(ex.slice(0,2).join(' / '))}${ex.length>2?` 외 ${ex.length-2}`:''}</small>`:''}</span><span class="ttrack"><span class="tfill" style="display:block;width:${(v/n*100).toFixed(1)}%"></span></span><span class="tval">${v}/${n}행</span></li>`).join('')}</ol></div>`;
 }
 function refreshSummary(p){const el=$('#abc-summary');if(el&&onAbcPage(p))el.innerHTML=summaryView(p);}
 function pastView(p){
@@ -6299,6 +6322,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-20-4',d:'2026-11-20',k:'web',t:'ABC 요약 개선',items:['핵심 낱말로 묶어 세기','예시 문장 함께 보기']},
   {id:'2026-11-20-3',d:'2026-11-20',k:'web',t:'절차 화면 정리',items:['정의: 근거부터 쓰는 순서','기초선: 확정 뒤 목표','측정 방법은 한 줄로','작은 장은 한 장으로','가설: 앞에 쓴 상황 넣기','평가: 결정 고르기']},
   {id:'2026-11-20-2',d:'2026-11-20',k:'web',t:'AI 도우미·보고서',items:['중재 계획: AI 제안 고르기','실행 기록 자동 작성','평가 변화 문장 자동','최종 보고서 인쇄·저장','Firebase 콘솔 설정 필요']},
   {id:'2026-11-20-1',d:'2026-11-20',k:'web',t:'절차 화면 나눠 보기',items:['한 화면에 묶음 하나씩','위 띠로 묶음 바로 가기','아래 이전·다음 버튼','QABF는 5문항씩','전체 보기로 한 화면','맨 위 찾기(단축키 /)']},
