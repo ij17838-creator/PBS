@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-11-20 · 절차 화면 한 장씩 나눠 보기 + 찾기
+### 한 일
+- 멘토 피드백(정보 줄이기·잘게 나누기) 반영. 절차 화면에서 카드(묶음) 1개씩만 보임. 제목 아래 묶음 띠(쓴 묶음은 초록 점, 눌러 바로 이동), 아래 고정 막대 '‹ 앞 묶음 | n/전체 · 전체 보기 | 다음 묶음 ›'. 마지막 장에 '이 절차 완료' 칸과 '다음 절차' 버튼.
+- 입력 칸 없는 작은 카드(안내·측정 방법 표시·녹음 카드·접힌 '나중에 채울 내용')는 앞(맨 앞이면 다음) 묶음에 붙임. 묶음을 지우거나 순서를 바꾸지는 않음(사용자: 아직 하지 말 것).
+- QABF 문항은 5문항씩 5장. '전체 보기'는 기기마다 기억, 예전처럼 한 화면 + 띠 누르면 그 카드로 내려감. 절차마다 마지막 본 묶음 기억.
+- 맨 위 '찾기'(프로젝트·절차 화면, 단축키 / 또는 Ctrl+K): 절차·묶음·칸 이름과 '내가 쓴 내용'을 찾고, 누르면 그 절차의 그 장으로 가서 칸을 노랗게 반짝. 휴대폰은 전체 화면 창. 공지 k:'web'(앱 재시작만).
+### 데이터
+- 저장 자료 변화 없음. localStorage 'pbs-pg-all'(전체 보기), 'pbs-pg-pos'(프로젝트/절차별 마지막 묶음 이름).
+### 확인한 것
+- Playwright 1280·390·1920px: 10개 절차 묶음 수, 이전·다음·띠 이동, 입력값 유지, 마지막 장 완료 칸, 묶음 기억, 전체 보기 전환, QABF 6~10 표시·응답 뒤 그대로, / 로 찾기·Esc·Enter 이동(종료 기준→행동 정의 장), QABF 문항 찾기, 찾기 전후 저장 자료 같음, 손글씨 모드 전환 뒤 넘기기 오류 없음.
+- 시험 못 함: 실제 갤럭시 탭·폰·전자칠판 터치, 설치형 앱, 공유 프로젝트 충돌 칸 이동(pgReveal 넣음), 회기 측정 중 넘기기.
+### 알려진 한계
+- 묶음 나누기는 카드 높이로 작은 카드를 판단해 휴대폰에서 일부 다름(중재 실행 '그래프'가 비어 있으면 앞 묶음에 붙음).
+- 줄이 늘어나는 목록(회기 기록·하위영역 점수·ABC 관찰지)과 휴대폰의 긴 카드는 한 장 안에서 스크롤이 남음.
+- 찾기의 '내가 쓴 내용'은 글자 칸만(손글씨 그림·녹음·회기 숫자 제외).
+### 코드 위치 (index.html)
+- PG_ALL_KEY·PG_POS_KEY·PG_SMALL·QABF_PER·PG_NAMES·PG_MEMO·pg, pgSmall·pgTitle·pgBuild·pgPaint·pgGo·pgReveal, MutationObserver(main), procBody(viewProc가 사용), find·findIndex·findRun·findOpen·findClose·findGo·FIND_SVG, render의 pgBuild·#find-btn, actions pg-go·pg-all·find-*, CSS .pg-strip·.pg-pill·.pg-nav·.pg-mid·.find*, #find, NOTICES 2026-11-20-1
+### 다음에 할 일
+- 사용자: 앱 재시작 후 탭·폰·전자칠판에서 넘기기와 찾기 확인, 묶음 정리(지우기·순서 바꾸기) 여부 결정.
+
 ## 2026-11-19 · 공유 프로젝트 협력자 접속 표시
 ### 한 일
 - 공유 프로젝트를 열면 왼쪽 아래에 '협력자 n' 버튼(다른 사람이 접속해 있을 때만). 누르면 사람별로 기기마다 '어느 화면 · 하는 일'(보는 중/쓰는 중/기초선·중재 회기 측정 중/간편 측정/함께 세기/ABC 녹음 중), 기기 종류, 다른 창 여부, 마지막 소식.
@@ -31,38 +51,4 @@
 - CSS .notice-item ul, NOTICES 맨 앞 2026-11-19-11
 ### 다음에 할 일
 - 없음(팀원 휴대폰에서 보기 확인 정도).
-
-## 2026-11-19 · 앱 안에서 계정 합치기(구글↔이메일)
-### 한 일
-- 첫 화면 계정 카드(로그인 상태)에 '계정 합치기' → 창에서 '구글 계정 합치기' 또는 이메일·비밀번호 입력.
-- 그 로그인 방법이 아직 계정이 아니면: 지금 계정에 로그인 방법으로 붙임(linkWithCredential/linkWithPopup, 앱은 PbsAuth) → 이후 어느 방법으로 들어와도 같은 uid.
-- 이미 따로 있는 계정이면(부드러운 합치기): 두 번째 Firebase 앱으로 그 계정에 로그인해 공유 목록을 읽고, 서로의 공유 프로젝트에 저장된 공유 코드로 멤버 가입, 양쪽 users/{uid}/links에 서로 표시. 기기에서는 연결된 uid의 프로젝트도 보임. 지금 로그인은 그대로.
-- 로그인 때 links를 받아 와 반영, 합친 계정으로만 보이는 공유 프로젝트는 기기에 남은 공유 코드로 이 계정도 멤버 가입. 공지 k:'web'.
-### 데이터
-- Firestore users/{uid}/links/{다른uid}. 규칙을 users/{uid}/{document=**} 본인만으로 넓힘 → 사용자가 다시 게시해야 함.
-- localStorage 'pbs-acct-links' {uid:[연결 uid]}. projVisible이 acctIds(내 uid+연결 uid)로 판단.
-### 확인한 것
-- Playwright(가짜 어댑터): 구글 계정의 로컬·공유 프로젝트 → 네이버 이메일 로그인 시 예시만 → 합치기 후 모두 보임, 서버 목록·멤버·links 양쪽 기록, 새 기기 네이버 로그인 시 공유 프로젝트 자동 받기, 새 이메일 붙이기 메시지.
-- 시험 못 함: 실제 Firebase(linkWithPopup·credentialFromError·두 번째 앱), 설치형 앱 구글 합치기.
-### 알려진 한계
-- 두 계정이 하나의 uid가 되지는 않음(Firebase는 이미 있는 두 계정을 못 합침). 다른 계정이 소유자인 공유 프로젝트의 삭제·코드 바꾸기·멤버 내보내기는 그 계정으로 로그인해야 함.
-- 공유 코드가 바뀐 프로젝트는 못 옮김(공유 ID·코드로 받기 안내). 합치기 취소 기능 없음.
-### 코드 위치 (index.html)
-- 어댑터 linkOther·myLinks·addLink, ACCT_LINKS_KEY·acctLinks·acctLinksSet·acctIds·projVisible, acctMergeDlg·acctMerge, syncAutoPull(links·연결 계정 가입), syncAcctInner, actions acct-merge·acct-merge-google / firestore.rules
-### 다음에 할 일
-- 사용자: 새 firestore.rules 게시 → 팀원이 원래 계정(구글 등)으로 공유를 받았는지 확인 → 네이버로 로그인해 계정 합치기에서 구글 계정 합치기.
-
-## 2026-11-19 · 로그인하면 공유 프로젝트 자동 받기
-### 한 일
-- 공유 시작·공유 받기·코드 바꾸기 때 서버의 '내 공유 프로젝트 목록'에 기록. 다른 기기에서 같은 계정으로 로그인하면 이 기기에 없는 공유 프로젝트를 코드 없이 받아 옴(멤버일 때만). 토스트 '공유 프로젝트 n개를 받았습니다'.
-- 이 기능 전에 받은 공유 프로젝트는 그 기기에서 로그인할 때 목록에 올림. 소유자가 지웠거나 내보낸 프로젝트는 목록에서 뺌. 이 기기에서 공유 프로젝트를 지우면 목록에서도 빠짐(다른 기기 로그인 때 다시 안 내려옴). 공지 k:'web'.
-### 데이터
-- Firestore users/{uid}/projects/{pid} = {role, code, at}. firestore.rules에 본인만 읽기·쓰기 규칙 추가 → 사용자가 콘솔에 다시 게시해야 함(안 하면 자동 받기만 조용히 안 됨).
-### 확인한 것
-- Playwright(가짜 어댑터, 기기 3개): 기기1 받기 → 목록 기록, 기기2 같은 계정 로그인 → 자동으로 내려옴, 지워진 프로젝트는 목록에서 빠짐, 다른 계정 기기3엔 안 내려옴.
-- 시험 못 함: 실제 Firebase 규칙·쿼리, 이 기기에서 지울 때 목록에서 빠지는 것.
-### 코드 위치 (index.html)
-- 어댑터 myList·myAdd·myDel·fetchShared, syncMyAdd·syncMyDel·syncBuildShared·syncAutoPull, syncOnAuth, actions sync-join·sync-start, deleteProject / firestore.rules, docs/firebase-setup.md 6
-### 다음에 할 일
-- 사용자: Firebase 콘솔 → Firestore → 규칙에 firestore.rules 전체 붙여 넣고 게시. 그 뒤 기존 기기에서 한 번 로그인(목록 올리기) → 다른 기기 로그인해 내려오는지 확인.
 
