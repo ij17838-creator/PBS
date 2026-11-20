@@ -21,6 +21,7 @@
 ### 한계
 - APPCHECK_SITE_KEY 넣음(reCAPTCHA Enterprise 6LfI…). 키 없이 부르면 'Firebase App Check token is invalid'(401)로 거절됨을 실제 호출로 확인 = AI Logic 켜짐·App Check 강제 중. 이 작업 환경은 gstatic·google.com(reCAPTCHA)이 막혀 키를 넣은 실제 호출은 못 해 봄 → 기기에서 AI 설정 '연결 시험'으로 확인.
 - 모델 이름이 바뀌면 AI 설정에서 고치기.
+- 기기 첫 연결 시험(2026-11-20): '권한·요금제 문제'(403류). 원인 확인용으로 그 문구 뒤에 오류 원문(주소 뺀 220자)을 붙여 보이게 함.
 ### 다음
 - 사용자: 결제 계정 바꾸기 → AI Logic 시작(제공자 선택) → App Check 웹 앱 등록, 사이트 키 전달(도메인 ij17838-creator.github.io, localhost).
 - 키 받으면 APPCHECK_SITE_KEY 넣기, Vertex 고르면 AI_BACKEND='vertex'.

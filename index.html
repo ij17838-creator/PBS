@@ -6075,7 +6075,7 @@ async function aiSdk(){
 function aiErrMsg(e){
   const m=String(e&&e.message||e||'');
   if(/app.?check|attestation|recaptcha/i.test(m))return '앱 확인(App Check)에서 막혔습니다. 콘솔 설정을 확인하세요';
-  if(/billing|blaze|requires.*plan|PERMISSION_DENIED|403/i.test(m))return '권한·요금제 문제입니다(Blaze·AI Logic 켜짐 확인)';
+  if(/billing|blaze|requires.*plan|PERMISSION_DENIED|403/i.test(m))return '권한·요금제 문제입니다(Blaze·AI Logic 켜짐 확인) · 원문: '+m.replace(/https?:\/\/\S+/g,'').replace(/\s+/g,' ').slice(0,220);/* 원문을 보여야 콘솔에서 무엇을 켤지 안다 */
   if(/not.?found|404/i.test(m))return '모델을 찾지 못했습니다(AI 설정의 모델 이름 확인)';
   if(/quota|429|RESOURCE_EXHAUSTED/i.test(m))return '사용 한도를 넘었습니다. 잠시 뒤 다시';
   if(/network|fetch|Failed to fetch|import/i.test(m))return '인터넷 연결을 확인하세요';
