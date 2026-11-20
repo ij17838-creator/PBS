@@ -428,8 +428,16 @@ td.top{color:var(--accent);font-weight:700}
 .kw-win{position:fixed;z-index:58;display:flex;flex-direction:column;min-width:200px;min-height:120px;max-width:calc(100vw - 8px);max-height:calc(100dvh - 8px);background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.22);overflow:hidden}
 .kw-win-rs{position:absolute;right:0;bottom:0;width:28px;height:28px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 50%,var(--line-strong) 50%,var(--line-strong) 58%,transparent 58%,transparent 70%,var(--line-strong) 70%,var(--line-strong) 78%,transparent 78%);border-bottom-right-radius:12px}
 .kw-win-h{display:flex;align-items:center;gap:6px;padding:8px 6px 8px 12px;border-bottom:1px solid var(--line);background:var(--surface-2);cursor:move;touch-action:none;user-select:none;-webkit-user-select:none}
-.kw-win-h small{flex:1;min-width:0}.kw-win-x{border:0;background:none;color:var(--muted);font-size:1rem;min-width:36px;min-height:36px;border-radius:8px;cursor:pointer}.kw-win-x:hover{background:var(--sunk);color:var(--ink)}
-.kw-win .kw-ex{flex:1;padding:10px 12px 14px 2em}
+.kw-win-h small{flex:1;min-width:0}.kw-win-x-old{border:0;background:none;color:var(--muted);font-size:1rem;min-width:36px;min-height:36px;border-radius:8px;cursor:pointer}.kw-win-x:hover{background:var(--sunk);color:var(--ink)}
+.kw-win .kw-ex{flex:1;padding:8px 12px 6px 6px;list-style:none;min-height:0}
+.kw-win .kw-ex li{display:flex;gap:6px;align-items:flex-start}
+.kw-grip{flex:0 0 auto;width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;border-radius:6px}.kw-grip:hover{background:var(--sunk);color:var(--ink)}
+.kw-tip{margin:0;padding:0 34px 8px 12px;font-size:.74rem;color:var(--muted)}
+.kw-win-b{border:0;background:none;color:var(--muted);font-size:.95rem;min-width:34px;min-height:34px;border-radius:8px;cursor:pointer}.kw-win-b:hover{background:var(--sunk);color:var(--ink)}
+.kw-win.pinned{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent),0 14px 40px rgba(0,0,0,.22)}.kw-win.pinned .kw-pin{background:var(--accent-soft,var(--sunk));color:var(--ink)}.kw-win:not(.pinned) .kw-pin{filter:grayscale(1);opacity:.6}
+.kw-flash{animation:kwfl .6s}@keyframes kwfl{0%,100%{transform:none}30%{transform:scale(1.03)}}
+.kw-ghost{position:fixed;z-index:9999;pointer-events:none;max-width:260px;padding:6px 10px;border-radius:8px;background:var(--ink);color:var(--surface);font-size:.85rem;box-shadow:0 8px 20px rgba(0,0,0,.25)}
+textarea.kw-drop-on,input.kw-drop-on{outline:3px dashed var(--accent);outline-offset:2px}textarea.kw-drop-done,input.kw-drop-done{outline:3px solid var(--accent);outline-offset:2px}
 .tally .tval{font-family:var(--font-mono);text-align:right;font-size:.82rem;color:var(--muted)}
 .list-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
 .day{font-size:.85rem;font-weight:700;color:var(--muted);margin:14px 0 8px;letter-spacing:.02em}
@@ -1289,7 +1297,7 @@ function render(){
   if(ui.view==='proc'&&!PROC[ui.proc])ui.view='project';
   if(ui.view==='proc')ui.cat=PROC[ui.proc].cat;
   if(ui.cat&&!CAT[ui.cat])ui.cat=null;
-  stopDictation();kwExClose();
+  stopDictation();kwExKeep();
   const p=curProject();
   if(ui.view==='home')main.innerHTML=viewHome();
   else if(ui.view==='project')main.innerHTML=viewProject(p);
@@ -2182,48 +2190,98 @@ function tallyView(title,rows,n,cls,col){
 }
 /* 낱말을 누르면: 그 낱말이 들어 있던 문장(구절)을 창으로 */
 const KW_COL={a:'선행사건 (A)',b:'행동 (B)',c:'후속결과 (C)'};
+/* 낱말 창: 고정(📌)한 창은 다른 낱말을 누르거나 다른 절차로 가도 남는다. 끌어 옮긴 자리·크기는 이 기기에 기억(pbs-kwwin). */
+let kwZ=58;
+function kwPos(){try{return JSON.parse(localStorage.getItem('pbs-kwwin')||'{}')||{};}catch(e){return {};}}
+function kwPosSet(o){try{localStorage.setItem('pbs-kwwin',JSON.stringify(Object.assign(kwPos(),o)));}catch(e){}}
+function kwWins(){const d=$('#kw-ex');return d?[...d.querySelectorAll('.kw-win')]:[];}
 function kwExOpen(col,k,el){
   const p=curProject();const d=$('#kw-ex');if(!p||!d)return;
   const rows=allRows(p);const g=tally(rows,col,p).find(x=>x[0]===k);if(!g)return;
-  const occ=g[3].slice().sort((x,y)=>x[0]-y[0]);
-  d.innerHTML=`<div class="kw-win" role="dialog" aria-label="${esc(k)} 적힌 문장">
-    <div class="kw-win-h" title="끌어서 옮기기"><b>「${esc(k)}」</b> <small class="muted">${KW_COL[col]||''} · ${g[1]}행</small><button type="button" class="kw-win-x" data-act="kw-ex-close" aria-label="닫기">✕</button></div>
-    <ol class="kw-ex">${occ.map(([ri,ph])=>{const r=rows[ri]||{};return `<li>${esc(ph)}${r.time?` <small class="muted">${esc(String(r.time).slice(11,16)||r.time)}</small>`:''}</li>`;}).join('')}</ol>
-    <span class="kw-win-rs" title="끌어서 크기 조절" aria-hidden="true"></span>
-  </div>`;
-  d.hidden=false;
-  const w=d.firstElementChild,vw=innerWidth,vh=innerHeight,W=Math.min(320,vw-16);
-  w.style.width=W+'px';
-  const r=el&&el.getBoundingClientRect?el.getBoundingClientRect():{left:(vw-W)/2,bottom:80,top:80};
-  const H=w.offsetHeight;
-  let x=Math.min(Math.max(8,r.left),vw-W-8),y=r.bottom+6;
-  if(y+H>vh-8)y=Math.max(8,r.top-H-6);/* 아래 자리가 없으면 낱말 위로 */
-  w.style.left=x+'px';w.style.top=y+'px';
+  const same=kwWins().find(w=>w.dataset.col===col&&w.dataset.k===k);
+  if(same&&same.dataset.pin){same.style.zIndex=++kwZ;same.classList.remove('kw-flash');void same.offsetWidth;same.classList.add('kw-flash');return;}
+  kwWins().filter(w=>!w.dataset.pin).forEach(w=>w.remove());
+  const occ=g[3].slice().sort((x,y)=>x[0]-y[0]);const pos=kwPos();
+  const w=document.createElement('div');w.className='kw-win';w.setAttribute('role','dialog');w.setAttribute('aria-label',k+' 적힌 문장');
+  w.dataset.col=col;w.dataset.k=k;w.dataset.pid=p.id;
+  w.innerHTML=`<div class="kw-win-h" title="끌어서 옮기기"><b>「${esc(k)}」</b> <small class="muted">${KW_COL[col]||''} · ${g[1]}행</small>
+      ${pos.fixed?`<button type="button" class="kw-win-b" data-act="kw-ex-near" title="다음부터 낱말 옆에 띄우기" aria-label="낱말 옆에 띄우기">↩</button>`:''}
+      <button type="button" class="kw-win-b kw-pin" data-act="kw-ex-pin" title="창 고정" aria-label="창 고정" aria-pressed="false">📌</button>
+      <button type="button" class="kw-win-b" data-act="kw-ex-close" aria-label="닫기">✕</button></div>
+    <ol class="kw-ex">${occ.map(([ri,ph])=>{const r=rows[ri]||{};return `<li data-ph="${esc(ph)}"><span class="kw-grip" title="끌어서 글 칸에 넣기" aria-hidden="true">⠿</span><span>${esc(ph)}${r.time?` <small class="muted">${esc(String(r.time).slice(11,16)||r.time)}</small>`:''}</span></li>`;}).join('')}</ol>
+    <p class="kw-tip">⠿ 끌어 글 칸에 넣기</p>
+    <span class="kw-win-rs" title="끌어서 크기 조절" aria-hidden="true"></span>`;
+  d.appendChild(w);d.hidden=false;w.style.zIndex=++kwZ;
+  const vw=innerWidth,vh=innerHeight,W=Math.min(pos.w||320,vw-16);
+  w.style.width=W+'px';if(pos.h)w.style.height=Math.min(pos.h,vh-16)+'px';
+  const H=w.offsetHeight;let x,y;
+  if(pos.fixed){x=pos.x;y=pos.y;/* 고정된 창과 겹치면 조금씩 비켜 놓기 */
+    for(let i=0;i<8&&kwWins().some(o=>o!==w&&Math.abs(o.offsetLeft-x)<12&&Math.abs(o.offsetTop-y)<12);i++){x+=28;y+=28;}}
+  else{const r=el&&el.getBoundingClientRect?el.getBoundingClientRect():{left:(vw-W)/2,bottom:80,top:80};
+    x=r.left;y=r.bottom+6;if(y+H>vh-8)y=Math.max(8,r.top-H-6);/* 아래 자리가 없으면 낱말 위로 */}
+  w.style.left=Math.min(Math.max(8,x),vw-W-8)+'px';w.style.top=Math.min(Math.max(8,y),Math.max(8,vh-H-8))+'px';
   kwWinDrag(w);
 }
-/* 제목 줄을 끌어 옮기기(마우스·손가락·펜), 크기는 오른쪽 아래 모서리 */
+/* 제목 줄을 끌어 옮기기(마우스·손가락·펜), 크기는 오른쪽 아래 모서리, 문장은 ⠿를 끌어 글 칸에 */
 function kwWinDrag(w){
-  const h=w.querySelector('.kw-win-h');if(!h)return;
+  w.addEventListener('pointerdown',()=>{w.style.zIndex=++kwZ;},true);
+  const h=w.querySelector('.kw-win-h');
   h.addEventListener('pointerdown',e=>{
     if(e.target.closest('button'))return;e.preventDefault();
-    const sx=e.clientX,sy=e.clientY,ox=w.offsetLeft,oy=w.offsetTop;
+    const sx=e.clientX,sy=e.clientY,ox=w.offsetLeft,oy=w.offsetTop;let moved=false;
     try{h.setPointerCapture(e.pointerId);}catch(_){}
-    const mv=ev=>{const x=Math.min(Math.max(0,ox+ev.clientX-sx),innerWidth-60),y=Math.min(Math.max(0,oy+ev.clientY-sy),innerHeight-40);w.style.left=x+'px';w.style.top=y+'px';};
-    const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up);};
+    const mv=ev=>{moved=true;const x=Math.min(Math.max(0,ox+ev.clientX-sx),innerWidth-60),y=Math.min(Math.max(0,oy+ev.clientY-sy),innerHeight-40);w.style.left=x+'px';w.style.top=y+'px';};
+    const up=()=>{h.removeEventListener('pointermove',mv);h.removeEventListener('pointerup',up);h.removeEventListener('pointercancel',up);
+      if(moved){kwPosSet({fixed:true,x:w.offsetLeft,y:w.offsetTop});kwNearBtns();}};
     h.addEventListener('pointermove',mv);h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up);
   });
   /* 손가락·펜에서는 CSS 크기 조절이 안 되므로 모서리 손잡이를 직접 끈다 */
-  const g=w.querySelector('.kw-win-rs');if(!g)return;
+  const g=w.querySelector('.kw-win-rs');
   g.addEventListener('pointerdown',e=>{
     e.preventDefault();e.stopPropagation();
     const sx=e.clientX,sy=e.clientY,ow=w.offsetWidth,oh=w.offsetHeight;
     try{g.setPointerCapture(e.pointerId);}catch(_){}
     const mv=ev=>{w.style.width=Math.min(Math.max(200,ow+ev.clientX-sx),innerWidth-w.offsetLeft-4)+'px';w.style.height=Math.min(Math.max(120,oh+ev.clientY-sy),innerHeight-w.offsetTop-4)+'px';};
-    const up=()=>{g.removeEventListener('pointermove',mv);g.removeEventListener('pointerup',up);g.removeEventListener('pointercancel',up);};
+    const up=()=>{g.removeEventListener('pointermove',mv);g.removeEventListener('pointerup',up);g.removeEventListener('pointercancel',up);kwPosSet({w:w.offsetWidth,h:w.offsetHeight});};
     g.addEventListener('pointermove',mv);g.addEventListener('pointerup',up);g.addEventListener('pointercancel',up);
   });
+  w.querySelectorAll('.kw-grip').forEach(gr=>gr.addEventListener('pointerdown',e=>kwPhDrag(e,gr.closest('li').dataset.ph)));
 }
-function kwExClose(){const d=$('#kw-ex');if(!d||d.hidden)return;d.hidden=true;d.innerHTML='';}
+function kwNearBtns(){kwWins().forEach(w=>{const h=w.querySelector('.kw-win-h');if(h&&!h.querySelector('[data-act="kw-ex-near"]')){const b=document.createElement('button');b.type='button';b.className='kw-win-b';b.dataset.act='kw-ex-near';b.title='다음부터 낱말 옆에 띄우기';b.setAttribute('aria-label','낱말 옆에 띄우기');b.textContent='↩';h.insertBefore(b,h.querySelector('.kw-pin'));}});}
+/* 놓을 수 있는 글 칸: 저장되는 칸(data-f)인 여러 줄·한 줄 입력 */
+function kwDropAt(x,y){
+  for(const el of document.elementsFromPoint(x,y)){
+    if(el.closest&&el.closest('#kw-ex'))continue;
+    const f=el.matches('textarea[data-f],input[data-f]')?el:(el.closest&&el.closest('.field')||{}).querySelector?.('textarea[data-f]');
+    if(f&&!f.disabled&&!f.readOnly&&(f.tagName==='TEXTAREA'||/^(text|search|)$/.test(f.getAttribute('type')||''))&&!/decimal|numeric/.test(f.inputMode||''))return f;
+  }
+  return null;
+}
+function kwPhDrag(e,ph){
+  e.preventDefault();e.stopPropagation();
+  const gr=e.currentTarget;try{gr.setPointerCapture(e.pointerId);}catch(_){}
+  const gh=document.createElement('div');gh.className='kw-ghost';gh.textContent=ph;document.body.appendChild(gh);
+  let tgt=null,last=e,tm=null;
+  const place=ev=>{gh.style.left=(ev.clientX+12)+'px';gh.style.top=(ev.clientY+12)+'px';
+    const t=kwDropAt(ev.clientX,ev.clientY);if(t!==tgt){if(tgt)tgt.classList.remove('kw-drop-on');tgt=t;if(tgt)tgt.classList.add('kw-drop-on');}};
+  const auto=()=>{const m=60,yy=last.clientY;const dy=yy<m?-14:yy>innerHeight-m?14:0;if(dy){scrollBy(0,dy);place(last);}tm=requestAnimationFrame(auto);};
+  const mv=ev=>{last=ev;place(ev);};
+  const up=ev=>{cancelAnimationFrame(tm);gr.removeEventListener('pointermove',mv);gr.removeEventListener('pointerup',up);gr.removeEventListener('pointercancel',cc);gh.remove();
+    if(tgt){tgt.classList.remove('kw-drop-on');const v=tgt.value||'';const sep=tgt.tagName==='TEXTAREA'?'\n':', ';
+      tgt.value=v.trim()?v.replace(/\s+$/,'')+sep+ph:ph;tgt.dispatchEvent(new Event('input',{bubbles:true}));tgt.dispatchEvent(new Event('change',{bubbles:true}));
+      tgt.classList.add('kw-drop-done');setTimeout(()=>tgt.classList.remove('kw-drop-done'),900);toast('문장을 넣었습니다');}
+    else if(Math.hypot(ev.clientX-e.clientX,ev.clientY-e.clientY)>20)toast('글 칸 위에 놓으세요');};
+  const cc=()=>{cancelAnimationFrame(tm);gh.remove();if(tgt)tgt.classList.remove('kw-drop-on');gr.removeEventListener('pointermove',mv);gr.removeEventListener('pointerup',up);gr.removeEventListener('pointercancel',cc);};
+  place(e);tm=requestAnimationFrame(auto);
+  gr.addEventListener('pointermove',mv);gr.addEventListener('pointerup',up);gr.addEventListener('pointercancel',cc);
+}
+/* 닫기: w가 있으면 그 창, 없으면 고정 안 한 창(all이면 모두) */
+function kwExClose(w,all){const d=$('#kw-ex');if(!d)return;
+  if(w)w.remove();else kwWins().filter(x=>all||!x.dataset.pin).forEach(x=>x.remove());
+  if(!kwWins().length)d.hidden=true;}
+function kwExKeep(){/* 화면이 바뀔 때: 고정한 창은 같은 프로젝트 안이면 남김 */
+  const p=curProject();kwWins().forEach(w=>{if(!w.dataset.pin||ui.view==='home'||!p||w.dataset.pid!==p.id)w.remove();});
+  const d=$('#kw-ex');if(d&&!kwWins().length)d.hidden=true;}
 /* 제외 낱말 창: 어두운 배경 위에 입력·추가, 지금 목록, 요약에 나온 낱말 고르기, 닫기 */
 function kwDlgOpen(){const d=$('#kw-dlg');if(!d)return;d.hidden=false;d.onclick=e=>{if(e.target===d)kwDlgClose();};kwDlgPaint();const i=$('#kw-new');if(i){try{i.focus({preventScroll:true});}catch(e){}}}
 function kwDlgClose(){const d=$('#kw-dlg');if(!d)return;d.hidden=true;d.innerHTML='';}
@@ -2240,7 +2298,7 @@ function kwDlgPaint(){
   </div>`;
   const i=$('#kw-new');if(i)i.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();ACTIONS_KW_ADD();}});
 }
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){const x=$('#kw-ex');if(x&&!x.hidden){e.preventDefault();kwExClose();return;}const d=$('#kw-dlg');if(d&&!d.hidden){e.preventDefault();kwDlgClose();}}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const ws=kwWins();if(ws.length){e.preventDefault();const top=ws.filter(w=>!w.dataset.pin).pop()||ws.sort((a,b)=>(+a.style.zIndex||0)-(+b.style.zIndex||0)).pop();kwExClose(top);return;}const d=$('#kw-dlg');if(d&&!d.hidden){e.preventDefault();kwDlgClose();}}});
 function ACTIONS_KW_ADD(){const p=curProject();const i=$('#kw-new');const ws=String(i&&i.value||'').split(/[,\s]+/).filter(Boolean);if(!ws.length){if(i)i.focus();return;}kwStopSet(p,ws,true);const j=$('#kw-new');if(j){try{j.focus({preventScroll:true});}catch(e){}}}
 function kwStopSet(p,words,on){
   const d=p.procs.abc.data;const cur=kwStops(p).slice();
@@ -3321,7 +3379,9 @@ const actions={
     const p=curProject();const d=p.procs.hypo.data;d.more=(d.more||[]).filter(x=>x.id!==el.dataset.id);
     ui.confirm=null;touch(p,'hypo');saveNow();rerenderForConfirm();toast('가설을 삭제했습니다');
   },
-  'kw-open':()=>kwDlgOpen(),'kw-ex':el=>kwExOpen(el.dataset.col,el.dataset.k,el),'kw-ex-close':()=>kwExClose(),'kw-close':()=>kwDlgClose(),
+  'kw-open':()=>kwDlgOpen(),'kw-ex':el=>kwExOpen(el.dataset.col,el.dataset.k,el),'kw-ex-close':el=>kwExClose(el.closest('.kw-win')),
+  'kw-ex-pin':el=>{const w=el.closest('.kw-win');const on=!w.dataset.pin;if(on)w.dataset.pin='1';else delete w.dataset.pin;w.classList.toggle('pinned',on);el.setAttribute('aria-pressed',String(on));toast(on?'창을 고정했습니다':'고정을 풀었습니다');},
+  'kw-ex-near':()=>{kwPosSet({fixed:false});document.querySelectorAll('#kw-ex [data-act="kw-ex-near"]').forEach(b=>b.remove());toast('다음부터 낱말 옆에 뜹니다');},'kw-close':()=>kwDlgClose(),
   'kw-stop':el=>{const p=curProject();const ws=String(el.dataset.k||'').split(' · ');kwStopSet(p,ws,true);},
   'kw-unstop':el=>{const p=curProject();kwStopSet(p,[el.dataset.w],false);},
   'kw-add':()=>ACTIONS_KW_ADD(),
@@ -6410,6 +6470,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-20-6',d:'2026-11-20',k:'web',t:'ABC 낱말 창 더하기',items:['📌 창 고정','⠿ 끌어 글 칸에 넣기','옮긴 자리·크기 기억']},
   {id:'2026-11-20-5',d:'2026-11-20',k:'web',t:'ABC 낱말 창',items:['누른 낱말 옆에 뜸','제목 줄 끌어 옮기기','모서리로 크기 조절']},
   {id:'2026-11-20-4',d:'2026-11-20',k:'web',t:'ABC 요약 개선',items:['핵심 낱말로 묶어 세기','낱말 누르면 적힌 문장','행동(B)도 집계','제외 낱말 정하기']},
   {id:'2026-11-20-3',d:'2026-11-20',k:'web',t:'절차 화면 정리',items:['정의: 근거부터 쓰는 순서','기초선: 확정 뒤 목표','측정 방법은 한 줄로','작은 장은 한 장으로','가설: 앞에 쓴 상황 넣기','평가: 결정 고르기']},
