@@ -487,10 +487,6 @@ textarea.kw-drop-on,input.kw-drop-on{outline:3px dashed var(--accent);outline-of
 .ctx-rows{margin:0;padding:4px 12px 10px 30px;font-size:.84rem;display:flex;flex-direction:column;gap:4px}
 .ctx-rows .both{font-weight:700}
 .ctx-rows small{color:var(--muted)}
-.out-pick{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
-.out-q{font-size:.76rem;color:var(--muted);margin-right:2px;white-space:nowrap}
-.out-b{min-height:32px;padding:3px 10px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font:inherit;font-size:.78rem;cursor:pointer;white-space:nowrap}
-.out-b.on{background:var(--c-soft);border-color:var(--c);color:var(--c);font-weight:700}
 .hy-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .hy-beh{font-weight:700;margin:0}
 .hy-memo summary{cursor:pointer;font-weight:700;font-size:.9rem;min-height:36px;display:flex;align-items:center;gap:8px}
@@ -532,13 +528,12 @@ textarea.kw-drop-on,input.kw-drop-on{outline:3px dashed var(--accent);outline-of
 .obs-btns{display:flex;flex-wrap:wrap;gap:8px}
 .ro{min-height:44px;display:flex;align-items:center;padding:0 10px;border:1px dashed var(--line-strong);border-radius:10px;font-size:.92rem;white-space:nowrap;overflow:hidden}
 .abc-tbl{border-top:1px solid var(--line)}
-.abc-tr{display:grid;grid-template-columns:136px repeat(3,minmax(0,1fr)) 64px;grid-template-areas:"t a b c x" ". o o o ." "f f f f f";border-bottom:1px solid var(--line)}
+.abc-tr{display:grid;grid-template-columns:136px repeat(3,minmax(0,1fr)) 64px;grid-template-areas:"t a b c x" "f f f f f";border-bottom:1px solid var(--line)}
 .abc-tr .td{padding:8px;min-width:0}
 .abc-tr .td+.td{border-left:1px solid var(--line)}
 .td.t{grid-area:t}.td.a{grid-area:a}.td.b{grid-area:b}.td.c{grid-area:c}
 .td.x{grid-area:x;display:flex;align-items:flex-start;justify-content:center}
 .abc-tr .td.cf{grid-area:f;border-left:0}
-.abc-tr .td.o{grid-area:o;border-left:0;padding-top:0}
 .abc-thead{background:var(--surface-2);font-weight:700;font-size:.86rem}
 .abc-thead .td{display:flex;align-items:center;gap:6px;line-height:1.25}
 .abc-thead small{display:block;font-size:.7rem;font-weight:500;color:var(--muted)}
@@ -566,7 +561,7 @@ textarea.kw-drop-on,input.kw-drop-on{outline:3px dashed var(--accent);outline-of
 .sheet-past > .sheet{border:0;border-top:1px solid var(--line);border-radius:0 0 var(--r) var(--r);box-shadow:none}
 @media (max-width:720px){
   .abc-thead{display:none}
-  .abc-tr{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"t x" "a a" "b b" "c c" "o o" "f f";padding:6px 0}
+  .abc-tr{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"t x" "a a" "b b" "c c" "f f";padding:6px 0}
   .abc-tr .td+.td{border-left:0}
   .abc-tr .td{padding:4px 12px}
   .cell-label{display:flex;align-items:center;gap:6px;font-size:.82rem;font-weight:700;color:var(--muted);margin-bottom:4px}
@@ -2384,15 +2379,12 @@ function rowView(p,sh,r){
     <div class="td a"><span class="cell-label"><span class="abc-tag t-a">A</span>선행사건</span><textarea rows="2" id="rw-${r.id}-a" data-f="row:${k}:a" aria-label="선행사건">${esc(r.a)}</textarea></div>
     <div class="td b"><span class="cell-label"><span class="abc-tag t-b">B</span>행동</span><textarea rows="2" id="rw-${r.id}-b" data-f="row:${k}:b" placeholder="${ph}" aria-label="행동">${esc(r.b)}</textarea></div>
     <div class="td c"><span class="cell-label"><span class="abc-tag t-c">C</span>후속결과</span><textarea rows="2" id="rw-${r.id}-c" data-f="row:${k}:c" aria-label="후속결과">${esc(r.c)}</textarea></div>
-    <div class="td o">${outPick(sh,r)}</div>
     <div class="td x"><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-row:${k}" title="이 행 삭제">삭제</button></div>
     ${ui.confirm==='del-row:'+k?`<div class="td cf">${confirmBox('이 행을 삭제합니다.','del-row',r.id,`data-sid="${sh.id}"`)}</div>`:''}
   </div>`;
 }
-/* '그 뒤 학생은?': 교사의 반응(후속결과 글)과 따로, 학생에게 무엇이 바뀌었는지 눌러 고름(여럿 가능, 고르지 않아도 됨). r.out=['esc','att','tan','sen','unk'] 중 */
+/* r.out: 잠깐 있던 '그 뒤 학생은?' 버튼으로 고른 값(버튼은 뺌). 남아 있는 행만 읽는다 */
 const OUT_OPTS=[['esc','과제 멈춤'],['att','관심 받음'],['tan','물건·활동 얻음'],['sen','감각·변화 없음'],['unk','모름']];
-function outPick(sh,r){const o=Array.isArray(r.out)?r.out:[];
-  return `<div class="out-pick" role="group" aria-label="그 뒤 학생은?"><span class="out-q">그 뒤 학생은?</span>${OUT_OPTS.map(([v,l])=>`<button type="button" class="out-b${o.includes(v)?' on':''}" data-act="row-out" data-sid="${sh.id}" data-rid="${r.id}" data-v="${v}" aria-pressed="${o.includes(v)}">${l}</button>`).join('')}</div>`;}
 function sheetAudio(p,sh){
   return `${sh.audioIds.length?`<div class="sub-label">이 관찰지의 녹음 ${sh.audioIds.length}개</div>${sh.audioIds.map(id=>audioRow(p,id,sh.id)).join('')}`:''}
   <div class="row"><label class="btn small">녹음 파일 첨부<input type="file" accept="audio/*" data-attach="${sh.id}" hidden></label></div>`;
@@ -2641,7 +2633,7 @@ function ctxView(p){
   const rowLine=x=>{const r=x.r;const t=r.time?fmtTime(r.time):'';const o=outText(r);
     return `<li class="${x.both?'both':''}">${t?`<small class="mono">${t}</small> `:''}${esc(r.a||'-')} → ${esc(r.b||'-')} → ${esc(r.c||'-')}${o?` <small>· 그 뒤: ${esc(o)}</small>`:''}</li>`;};
   return `<div class="ctx-box" id="ctx-box"><h3>ABC 전체 맥락 <small class="muted">${c.n}행을 이어 봄</small></h3>
-  <p class="meta">그 뒤 학생 고름 ${c.src.pick}행 · 후속결과 낱말 ${c.src.word}행 · 모름·못 읽음 ${c.src.unk+c.src.none}행</p>
+  <p class="meta">그 뒤를 읽은 행 ${c.src.pick+c.src.word} · 못 읽은 행 ${c.src.unk+c.src.none}</p>
   <ul class="ctx-list">${c.fns.map(x=>{const [cls,lb]=CTX_LV[x.level];const ev=x.ev.slice().sort((a,b)=>b.both-a.both||(Date.parse(a.r.time)||0)-(Date.parse(b.r.time)||0));
     return `<li><details><summary><b>${x.n}</b><span class="pill ${cls}">${lb}</span><span class="ctx-why">${x.why}</span>
       <span class="ctx-n"><span>앞 상황 <b>${x.A}</b></span><span>그 뒤 학생 <b>${x.O}</b></span><span>이어짐 <b>${x.both}</b></span></span>
@@ -2670,7 +2662,7 @@ function hyMatchView(p){
   else{
     pill='<span class="pill muted">판단 보류</span>';
     const miss=[];if(!a.qF.length)miss.push('QABF 점수');if(!a.cF.length)miss.push(a.nRows?'ABC에서 반복되는 기능(이어짐 2행 이상)':'ABC 기록');
-    msg=`${miss.join('와 ')}가 아직 없어 두 자료를 비교할 수 없습니다.${a.qF.length?` QABF는 ${q}를 가리킵니다.`:''}${a.cF.length?` ABC 전체 맥락은 ${c}를 가리킵니다.`:''}${!a.cF.length&&a.nRows?' ABC 행마다 \'그 뒤 학생은?\'을 고르면 판단이 쉬워집니다.':''}`;
+    msg=`${miss.join('와 ')}가 아직 없어 두 자료를 비교할 수 없습니다.${a.qF.length?` QABF는 ${q}를 가리킵니다.`:''}${a.cF.length?` ABC 전체 맥락은 ${c}를 가리킵니다.`:''}`;
   }
   return `<div class="hy-match" id="hy-match">${pill}<p>${msg}<br><small class="muted">QABF 최고 점수·ABC 반복 비교</small></p></div>`;
 }
@@ -3325,13 +3317,13 @@ async function deleteAudio(p,id){
 function exportCSV(p){
   const sheets=p.procs.abc.data.sheets.slice().sort(byStart);
   const cell=v=>{v=String(v==null?'':v);if(/^[=+@]/.test(v))v="'"+v;return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
-  const rows=[['날짜','관찰지 시간','아동','관찰자','장소','상황','발생 시각','선행사건(A)','행동(B)','후속결과(C)','그 뒤 학생','일화 기술 · 메모','관찰자 해석','녹음 수']];
+  const rows=[['날짜','관찰지 시간','아동','관찰자','장소','상황','발생 시각','선행사건(A)','행동(B)','후속결과(C)','일화 기술 · 메모','관찰자 해석','녹음 수']];
   sheets.forEach(sh=>{
     const base=[dayKey(sh.start),rangeText(sh),sh.child,sh.observer,sh.place,sh.situation];
     const tail=[sh.note,sh.interp,sh.audioIds.length];
     const rs=sortedRows(sh).filter(rowFilled);
-    if(!rs.length)rows.push(base.concat(['','','','',''],tail));
-    else rs.forEach((r,i)=>rows.push(base.concat([r.time?fmtTime(r.time,true):'',r.a,r.b,r.c,outText(r)],i===0?tail:['','',''])));
+    if(!rs.length)rows.push(base.concat(['','','',''],tail));
+    else rs.forEach((r,i)=>rows.push(base.concat([r.time?fmtTime(r.time,true):'',r.a,r.b,r.c],i===0?tail:['','',''])));
   });
   const csv='﻿'+rows.map(r=>r.map(cell).join(',')).join('\r\n');
   offerFile(`ABC관찰지_${safeName(p.code)}_${stamp()}.csv`,new Blob([csv],{type:'text/csv'}));
@@ -3833,14 +3825,6 @@ const actions={
     tx.focus();
   },
   'sheet-manual':()=>addManualSheet(curProject()),
-  'row-out':el=>{const p=curProject();const sh=p&&sheetById(p,el.dataset.sid);const r=sh&&sh.rows.find(x=>x.id===el.dataset.rid);if(!r)return;
-    const v=el.dataset.v;let o=Array.isArray(r.out)?r.out.slice():[];
-    if(o.includes(v))o=o.filter(x=>x!==v);else{o=v==='unk'?['unk']:o.filter(x=>x!=='unk');if(v!=='unk')o.push(v);}
-    o=OUT_OPTS.map(x=>x[0]).filter(x=>o.includes(x));
-    if(o.length)r.out=o;else delete r.out;
-    sh.updatedAt=nowISO();touch(p,'abc');
-    const box=el.closest('.out-pick');if(box)box.querySelectorAll('.out-b').forEach(b=>{const on=o.includes(b.dataset.v);b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
-    const h=$('#shh-'+sh.id);if(h)h.innerHTML=sheetHead(p,sh);},
   'row-add':el=>{const p=curProject();const sh=sheetById(p,el.dataset.sid);if(sh)addRow(p,sh,null);},
   'del-row':el=>{
     const p=curProject();const sh=sheetById(p,el.dataset.sid);if(!sh)return;
@@ -7068,7 +7052,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
-  {id:'2026-11-21-11',d:'2026-11-21',k:'web',t:'ABC 전체 맥락으로 기능',items:['ABC 행마다 그 뒤 학생은?','여러 행 묶어 네 기능 근거','자료 요약에서 QABF와 비교']},
+  {id:'2026-11-21-11',d:'2026-11-21',k:'web',t:'ABC 전체 맥락으로 기능',items:['여러 행 묶어 네 기능 근거','자료 요약에서 QABF와 비교']},
   {id:'2026-11-21-10',d:'2026-11-21',k:'web',t:'측정 방법 고르기',items:['새 프로젝트: 처음엔 전체 선택','안 쓸 방법만 눌러 해제','측정 화면에서 방법 추가']},
   {id:'2026-11-21-9',d:'2026-11-21',k:'web',t:'앱 색 밝기',items:['색 막대 아래 밝게~어둡게','밝으면 버튼 글자는 진하게','밝기도 계정에 저장']},
   {id:'2026-11-21-8',d:'2026-11-21',k:'web',t:'앱 색은 계정마다',items:['로그인하면 내 계정 색','다른 기기도 같은 색','로그아웃하면 기본색']},
