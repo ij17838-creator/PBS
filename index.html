@@ -791,6 +791,36 @@ body.pg-body .toast{bottom:calc(86px + env(safe-area-inset-bottom,0px))}
 body.find-open{overflow:hidden}
 @media (max-width:560px){.find{padding:0;align-items:stretch}.find-box{border-radius:0;width:100%;max-height:none;height:100dvh}.find-foot{display:none}.pg-nav{gap:4px;padding:6px}.pg-nav .btn{padding:0 10px;font-size:.88rem}.pg-mid{padding:0 4px}}
 @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important;scroll-behavior:auto!important} }
+/* ---------- 유리 질감: 떠 있는 층(위 막대·아래 넘김·오른쪽 버튼·창)에만. 기록 칸·그래프·표는 불투명 그대로 ---------- */
+:root{--glass:rgba(255,255,255,.58);--glass-strong:rgba(255,255,255,.86);--glass-line:rgba(255,255,255,.75);--glass-blur:blur(14px) saturate(160%);
+  --glass-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 8px 28px rgba(14,124,112,.14);--glass-dim:rgba(20,39,42,.18);
+  --glow1:rgba(79,209,181,.22);--glow2:rgba(230,242,154,.30);--glow3:rgba(79,209,181,.16);--pri-top:#14958A;--toast-bg:rgba(20,39,42,.78)}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--glass:rgba(22,35,37,.62);--glass-strong:rgba(22,35,37,.88);--glass-line:rgba(255,255,255,.10);
+  --glass-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 8px 28px rgba(0,0,0,.35);--glass-dim:rgba(0,0,0,.35);
+  --glow1:rgba(93,182,171,.12);--glow2:rgba(181,204,94,.07);--glow3:rgba(93,182,171,.08);--pri-top:#79C7BD;--toast-bg:rgba(227,236,234,.88)}}
+:root[data-theme="dark"]{--glass:rgba(22,35,37,.62);--glass-strong:rgba(22,35,37,.88);--glass-line:rgba(255,255,255,.10);
+  --glass-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 8px 28px rgba(0,0,0,.35);--glass-dim:rgba(0,0,0,.35);
+  --glow1:rgba(93,182,171,.12);--glow2:rgba(181,204,94,.07);--glow3:rgba(93,182,171,.08);--pri-top:#79C7BD;--toast-bg:rgba(227,236,234,.88)}
+body{background:radial-gradient(900px 520px at 8% -6%,var(--glow1),transparent 60%),radial-gradient(760px 520px at 100% 30%,var(--glow2),transparent 62%),radial-gradient(820px 600px at 30% 110%,var(--glow3),transparent 60%),var(--bg);background-attachment:fixed}
+body::before,.topbar,.pg-nav,.bigdock .btn:not(.primary),.mini-tools .btn,.pres-btn,.find-box,.sync-box,.kw-win,.pres-pop,.kb-float,.web-upd,.live-bar,.mini-pad,.toast{-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
+body::before{background:var(--glass)}
+.topbar{background:var(--glass);border-bottom-color:var(--glass-line);box-shadow:0 4px 18px rgba(14,124,112,.08)}
+.pg-nav{background:var(--glass);border-color:var(--glass-line);box-shadow:var(--glass-shadow)}
+.pg-nav .btn:not(.primary){background:var(--glass)}
+.bigdock .btn:not(.primary),.mini-tools .btn,.pres-btn{background:var(--glass);border-color:var(--glass-line);box-shadow:var(--glass-shadow)}
+.find,.sync-dlg{background:var(--glass-dim);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.find-box,.sync-box,.kw-win,.pres-pop,.kb-float,.web-upd,.live-bar{background:var(--glass-strong);border:1px solid var(--glass-line);box-shadow:var(--glass-shadow)}
+.find-in input{background:var(--glass-strong)}
+.mini-pad{background:var(--glass-strong)}
+.mini-mark{box-shadow:0 0 0 6px rgba(255,255,255,.45),0 10px 30px rgba(14,124,112,.35);background:linear-gradient(160deg,var(--pri-top),var(--accent))}
+.btn.primary{background:linear-gradient(160deg,var(--pri-top),var(--accent));box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 4px 12px rgba(14,124,112,.25)}
+.btn.primary:hover{background:var(--accent-hover)}
+.toast{background:var(--toast-bg)}
+/* 흐림을 못 쓰는 기기·투명도 줄이기 설정: 불투명으로 */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  body::before,.topbar,.pg-nav,.bigdock .btn:not(.primary),.mini-tools .btn,.pres-btn,.find-box,.sync-box,.kw-win,.pres-pop,.kb-float,.web-upd,.live-bar,.mini-pad{background:var(--surface)}}
+@media (prefers-reduced-transparency: reduce){
+  body::before,.topbar,.pg-nav,.bigdock .btn:not(.primary),.mini-tools .btn,.pres-btn,.find-box,.sync-box,.kw-win,.pres-pop,.kb-float,.web-upd,.live-bar,.mini-pad{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
 </style>
 
 <header class="topbar"><div class="wrap topbar-in">
@@ -6552,6 +6582,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-21-2',d:'2026-11-21',k:'web',t:'유리 질감',items:['위·아래 막대, 창이 비침','기록 칸·그래프는 그대로']},
   {id:'2026-11-21-1',d:'2026-11-21',k:'web',t:'화면 색 민트 청록',items:['배치는 그대로, 색만 바꿈','그래프 기초선·중재 색 나눔']},
   {id:'2026-11-20-10',d:'2026-11-20',k:'web',t:'AI 중재 제안',items:['다시 받아도 지난 제안 1개 남김','지난 제안에서도 넣기']},
   {id:'2026-11-20-9',d:'2026-11-20',k:'web',t:'ABC 관찰 시작',items:['시간만 정하면 시작 안 함','저절로 시작은 체크로 켬','간편 측정 뒤 설정 되돌림']},
