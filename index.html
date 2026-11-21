@@ -369,7 +369,7 @@ td.top{color:var(--accent);font-weight:700}
 .qm-go{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .qm-head{justify-content:space-between;align-items:center}.qm-sum{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .qm-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:2px solid var(--qc);border-radius:999px;font-weight:600;font-size:.9rem}.qm-chip .qm-dot{margin:0;width:10px;height:10px}.qm-chip small{color:var(--muted);font-weight:700}
-.set-more .qm-n,.set-more .qm-slots{flex:1 1 100%}
+.set-more .qm-n,.set-more .qm-slots{flex:1 1 100%;min-width:0}.set-more .qm-slots{grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr))}
 .qm-key{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1 1 100%}
 .qm-go .qm-go{flex:1 1 100%}
 .qm-key-t{font-weight:700}
