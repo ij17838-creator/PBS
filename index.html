@@ -4637,6 +4637,9 @@ async function makeFirestoreAdapter(){
         }catch(err){await drop();throw err;}
       }
     },
+    /* 앱 색 등 내 화면 설정: users/{uid}/prefs/look = {hue:0~359|null, at}. 본인만(규칙 users/{uid}/** 그대로) */
+    async lookGet(me){const d=await F.getDoc(F.doc(db,'users',me.uid,'prefs','look'));return d.exists()?d.data():null;},
+    async lookSet(me,o){await F.setDoc(F.doc(db,'users',me.uid,'prefs','look'),Object.assign({},o,{at:ts()}));count(1);},
     async myLinks(me){const s=await F.getDocs(F.collection(db,'users',me.uid,'links'));return s.docs.map(d=>d.id);},
     async addLink(me,uid){await F.setDoc(F.doc(db,'users',me.uid,'links',uid),{at:ts()});count(1);},
     signOut(){if(PAUTH)PAUTH.googleSignOut().catch(()=>{});return U.signOut(auth);},
@@ -4749,6 +4752,7 @@ function syncOnAuth(u){
   Sync.user=u;Sync.authKnown=true;
   acctOnAuth(u);
   if(!u&&mini.on)miniOff();
+  if(u)setTimeout(hueAcctLoad,0);else if(before)hueLocal(null);/* 앱 색은 계정마다: 로그인하면 계정 색, 로그아웃하면 기본색 */
   if(u)setTimeout(syncAutoPull,0);/* 다른 기기에서 받은 공유 프로젝트도 내려받기 */
   if(!u&&PCN)setTimeout(natDrain,0);/* 설치형 앱: 숨긴 프로젝트의 앱 밖 측정도 끈다(natLockHidden) *//* 로그아웃: 세기 대기 창(작은 창·화면 안 ＋1)도 닫는다 */
   if(acctUid()!==before)setTimeout(render,0);/* 계정이 바뀌면 보이는 프로젝트가 달라진다 */
@@ -6457,6 +6461,17 @@ const HUE_VARS=Object.keys(Object.assign({},huePal(0,false),huePal(0,true)));
 function hueApply(h){const r=document.documentElement;HUE_VARS.forEach(k=>r.style.removeProperty(k));
   if(h===undefined)h=hueGet();if(h===null||isNaN(h)||hcOn())return;Object.entries(huePal(h,isDark())).forEach(([k,v])=>r.style.setProperty(k,v));}
 hueApply();try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>hueApply());}catch(e){}
+function hueLocal(v){try{if(v===null||v===undefined)localStorage.removeItem(HUE_KEY);else localStorage.setItem(HUE_KEY,String(v));}catch(e){}hueApply();setRefresh();}
+/* 고른 색을 기기(바로 보이게)와 계정에 저장. 로그아웃이면 이 기기에만 */
+function hueSave(v){hueLocal(v);const me=syncMe();if(me&&Sync.ad&&Sync.ad.lookSet)Sync.ad.lookSet(me,{hue:v===null?null:Number(v)}).catch(e=>console.warn('lookSet',e&&e.code));}
+/* 로그인하면 계정에 저장된 색을 받는다. 계정에 없고 이 기기에서 고른 색이 있으면 그 색을 계정에 올린다 */
+async function hueAcctLoad(){
+  const ad=Sync.ad||await syncAdapter().catch(()=>null);const me=syncMe();if(!ad||!ad.lookGet||!me)return;
+  let d;try{d=await ad.lookGet(me);}catch(e){console.warn('lookGet',e&&e.code);return;}
+  if((syncMe()||{}).uid!==me.uid)return;
+  if(d&&'hue' in d){const v=d.hue===null||isNaN(Number(d.hue))?null:Number(d.hue);if(v!==hueGet())hueLocal(v);}
+  else{const v=hueGet();if(v!==null&&ad.lookSet)ad.lookSet(me,{hue:v}).catch(e=>console.warn('lookSet',e&&e.code));}
+}
 const HUE_PRE=[[173,'민트'],[205,'바다'],[228,'파랑'],[262,'보라'],[330,'분홍'],[18,'노을'],[40,'호박'],[135,'풀잎']];
 function hueMore(){const h=hueGet();const cur=h===null?HUE_DEF:h;
   return `<div class="hue-wrap"><input type="range" class="hue-sl" min="0" max="359" step="1" value="${cur}" data-hue="sl" aria-label="앱 색 고르기"${hcOn()?' disabled':''}>
@@ -6465,6 +6480,8 @@ function hueMore(){const h=hueGet();const cur=h===null?HUE_DEF:h;
     <div class="hue-fixed"><span>그대로:</span><span><i style="background:var(--rec)"></i>진행 중</span><span><i style="background:var(--ok)"></i>완료</span><span><i style="background:var(--warn)"></i>경고</span><span><i style="background:var(--ser-a)"></i>기초선</span><span><i style="background:var(--ser-b)"></i>중재</span></div></div>`;}
 document.addEventListener('input',e=>{const el=e.target;if(!el.matches||!el.matches('[data-hue="sl"]'))return;const v=Number(el.value);hueApply(v);
   try{localStorage.setItem(HUE_KEY,String(v));}catch(x){}});
+/* 손을 떼면(change) 계정에도 저장 */
+document.addEventListener('change',e=>{const el=e.target;if(el.matches&&el.matches('[data-hue="sl"]'))hueSave(Number(el.value));});
 const setUI={tmr:false};/* tmr: 측정 시간을 켰지만 아직 분을 안 고름 */
 function setCtx(){return ui.view==='proc'&&PROC[ui.proc]?ui.proc:(ui.view==='project'&&ui.cat?ui.cat:'');}
 function setCtxName(k){return PROC[k]?PROC[k].title:(CAT[k]?CAT[k].title:'');}
@@ -6474,7 +6491,7 @@ function setNatTimer(){return Object.assign({min:0,renew:false,reset:true},nat.t
 const SET_ROWS=[
   {id:'glass',g:'화면',t:'유리 효과',sc:'이 기기',rel:[],on:()=>glassOn()&&!hcOn(),dis:()=>hcOn(),hint:()=>hcOn()?'고대비면 꺼져요':'막대·창 뒤가 흐리게 비침'},
   {id:'hc',g:'화면',t:'고대비',sc:'이 기기',rel:[],on:()=>hcOn(),hint:()=>'진한 글자·굵은 테두리'},
-  {id:'hue',g:'화면',t:'앱 색',sc:'이 기기',rel:[],on:null,ctl:()=>`<button type="button" class="btn small" data-act="hue-reset"${hueGet()===null?' disabled':''}>기본색으로</button>`,hint:()=>hcOn()?'고대비면 기본색':'버튼·배경 색이 함께 바뀜',more:()=>hueMore()},
+  {id:'hue',g:'화면',t:'앱 색',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:null,ctl:()=>`<button type="button" class="btn small" data-act="hue-reset"${hueGet()===null?' disabled':''}>기본색으로</button>`,hint:()=>hcOn()?'고대비면 기본색':syncMe()?'버튼·배경 색이 함께 바뀜':'로그인하면 계정에 저장',more:()=>hueMore()},
   {id:'pg',g:'화면',t:'절차 한 장씩 보기',sc:'이 기기',rel:['profile','define','qabf','rating','hypo','plan','evaluate'],on:()=>!pgAll(),hint:()=>pgAll()?'지금은 한 화면에 모두':''},
   {id:'cover',g:'화면',t:'나갔다 오면 가리기',sc:'이 기기',rel:['baseline','intervene','abc'],on:()=>{try{return localStorage.getItem(COVER_KEY)==='1';}catch(e){return false;}},hint:()=>'돌아오면 시계 화면'},
   {id:'ink',g:'입력',t:'손글씨 모드',sc:'이 기기',rel:['profile','define','rating','abc','hypo','plan','evaluate'],on:()=>inkUI.mode==='ink',
@@ -6575,7 +6592,7 @@ document.addEventListener('change',e=>{
 });
 Object.assign(actions,{
   'set-open':()=>setOpen(),
-  'set-open-qm':()=>{setOpen();const r=$('#set-dlg [data-row="qm"]');if(r)r.scrollIntoView({block:'center'});},'set-close':()=>setClose(),'hue-pre':el=>{try{localStorage.setItem(HUE_KEY,el.dataset.v);}catch(e){}hueApply();setRefresh();},'hue-reset':()=>{try{localStorage.removeItem(HUE_KEY);}catch(e){}hueApply();setRefresh();toast('기본색으로 되돌렸습니다');},
+  'set-open-qm':()=>{setOpen();const r=$('#set-dlg [data-row="qm"]');if(r)r.scrollIntoView({block:'center'});},'set-close':()=>setClose(),'hue-pre':el=>hueSave(Number(el.dataset.v)),'hue-reset':()=>{hueSave(null);toast('기본색으로 되돌렸습니다');},
   'set-ai':()=>{setClose();aiDlgOpen();},
   'set-go':el=>{setClose();go('proc',{proc:el.dataset.key});},
 });
@@ -6891,6 +6908,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-21-8',d:'2026-11-21',k:'web',t:'앱 색은 계정마다',items:['로그인하면 내 계정 색','다른 기기도 같은 색','로그아웃하면 기본색']},
   {id:'2026-11-21-7',d:'2026-11-21',k:'web',t:'앱 색 고르기',items:['설정 > 앱 색: 색 막대로 고름','버튼·배경 색이 함께 바뀜','기본색으로 버튼으로 되돌림']},
   {id:'2026-11-21-6',d:'2026-11-21',k:'web',t:'AI 요청 취소',items:['쓰는 중에 버튼 다시 누르면 취소','취소해도 지금·지난 제안 그대로']},
   {id:'2026-11-21-5',d:'2026-11-21',k:'web',t:'간편 측정 옵션은 설정에',items:['동시에 몇 개·측정·색은 설정','측정 화면엔 요약·켜기만','단축키도 설정에서']},
