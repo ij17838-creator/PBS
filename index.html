@@ -153,6 +153,9 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .new-form{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
 .new-form .field{flex:1 1 180px}
 .new-form .grow{flex:2 1 240px}
+.new-form .new-m{flex:1 1 100%;margin:0}
+.new-m-order{margin:8px 0 0}
+.m-add{margin-top:12px}.m-add.card{display:grid;gap:10px}.m-add-h{margin:0;font-weight:600}.m-add-h small{color:var(--muted);font-weight:400}
 .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
 .proj-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .proj-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -1018,6 +1021,15 @@ const CATS=[
 ];
 const CAT=Object.fromEntries(CATS.map(c=>[c.key,c]));
 CATS.forEach(c=>c.procs.forEach(k=>{PROC[k].cat=c.key;}));
+/* 프로젝트 만들 때 고르는 측정 방법(측정 카테고리 절차). p.mprocs에 고른 것만 둔다. p.mprocs가 없으면(예전 프로젝트) 모두.
+   고르지 않은 절차도 자료(p.procs)는 그대로 두고 목록에서만 뺀다. 시작한 절차는 늘 보인다. 순서는 늘 PROCS 순서 */
+const MPROCS=['baseline','qabf','rating','abc'];
+function procOn(p,k){if(!p||!Array.isArray(p.mprocs)||!MPROCS.includes(k))return true;return p.mprocs.includes(k)||!!(p.procs[k]&&p.procs[k].status!=='none');}
+function activeProcs(p){return PROCS.filter(x=>procOn(p,x.key));}
+function catProcs(p,c){return c.procs.filter(k=>procOn(p,k));}
+function procNo(p,k){const i=activeProcs(p).findIndex(x=>x.key===k);return i>=0?i+1:PROC[k].no;}
+function mprocsMissing(p){return MPROCS.filter(k=>!procOn(p,k));}
+function mprocsSort(arr){return MPROCS.filter(k=>arr.includes(k));}
 const MEMO_FIELDS={
   rating:[['scale','척도 이름','사용한 행동평정척도 이름'],['when','실시일 · 응답자','예: 11/3, 담임교사'],['scores','점수 · 결과','하위영역별 점수와 해석을 적으세요'],['memo','메모','']],
   plan:[['antecedent','선행사건 중재 (환경 조정)','예: 과제를 작은 단위로 나누어 제시'],['replacement','대체행동 교수','문제행동과 같은 기능을 하는 적절한 행동. 예: "쉬어도 돼요?" 카드 사용'],['consequence','후속결과 중재','적절한 행동은 강화하고, 문제행동에는 일관되게 대응'],['crisis','위기 대응 · 역할 분담','']],
@@ -1094,6 +1106,7 @@ function defaultData(key){
 }
 function ensureProject(p){
   p.procs=p.procs||{};
+  if(p.mprocs!=null)p.mprocs=Array.isArray(p.mprocs)?mprocsSort(p.mprocs):undefined;
   PROCS.forEach(x=>{
     const s=p.procs[x.key]=p.procs[x.key]||{status:'none',updatedAt:null,completedAt:null,data:null};
     const def=defaultData(x.key);
@@ -1331,10 +1344,11 @@ function acctOnAuth(u){
 function projById(id){return store.projects.find(p=>p.id===id)||null;}
 
 /* ---------- model ops ---------- */
-function newProject(code,memo){
+function newProject(code,memo,mprocs){
   const t=nowISO();const procs={};
   PROCS.forEach(x=>procs[x.key]={status:'none',updatedAt:null,completedAt:null,data:defaultData(x.key)});
   const o={id:uid('p'),code,memo:memo||'',createdAt:t,updatedAt:t,lastBackupAt:null,example:false,procs};
+  if(Array.isArray(mprocs))o.mprocs=mprocsSort(mprocs);
   const u=acctUid();if(u)o.owner=u;
   return o;
 }
@@ -1579,7 +1593,7 @@ function pgPaint(){
   let nv=$('.pg-nav',m);
   if(!pg.on){if(nv)nv.remove();return;}
   if(!nv){nv=document.createElement('div');nv.className='pg-nav';m.appendChild(nv);}else if(nv!==m.lastElementChild)m.appendChild(nv);
-  const pv=P[pg.cur-1],nx=P[pg.cur+1];const np=PROCS[PROC[ui.proc].no];/* no는 1부터 → 다음 절차 */
+  const pv=P[pg.cur-1],nx=P[pg.cur+1];const np=(()=>{const cp=curProject(),A=cp?activeProcs(cp):PROCS,i=A.findIndex(x=>x.key===ui.proc);return i>=0?A[i+1]:PROCS[PROC[ui.proc].no];})();/* 이 프로젝트에 있는 다음 절차 */
   nv.innerHTML=`<button type="button" class="btn" data-act="pg-go" data-i="${pg.cur-1}"${pv?'':' disabled'}><span class="ar">‹</span><span class="t">${pv?esc(pv.t):'처음'}</span></button>`
     +`<button type="button" class="pg-mid" data-act="pg-all" title="한 화면에 모두 보기"><b class="mono">${pg.cur+1} / ${P.length}</b><small>전체 보기</small></button>`
     +(nx?`<button type="button" class="btn primary" data-act="pg-go" data-i="${pg.cur+1}"><span class="t">${esc(nx.t)}</span><span class="ar">›</span></button>`
@@ -1636,9 +1650,9 @@ function procBody(p,key){
 function findIndex(p){
   const out=[];const tp=document.createElement('template');
   const keep={confirm:ui.confirm,q:ui.qItemsOpen};ui.confirm=null;ui.qItemsOpen=false;
-  PROCS.forEach(x=>{
-    const path=`${CAT[x.cat].title} › ${x.no}. ${x.title}`;
-    out.push({k:x.key,kind:'proc',label:`${x.no}. ${x.title}`,hay:x.title+' '+CAT[x.cat].title+' '+x.desc,path:CAT[x.cat].title});
+  activeProcs(p).forEach(x=>{
+    const no=procNo(p,x.key);const path=`${CAT[x.cat].title} › ${no}. ${x.title}`;
+    out.push({k:x.key,kind:'proc',label:`${no}. ${x.title}`,hay:x.title+' '+CAT[x.cat].title+' '+x.desc,path:CAT[x.cat].title});
     let html='';try{html=procBody(p,x.key);}catch(e){return;}
     tp.innerHTML=html;
     Array.from(tp.content.children).forEach(sec=>{
@@ -1751,6 +1765,9 @@ function viewHome(){
     <form id="new-form" class="new-form" novalidate>
       <label class="field"><span>학생 코드</span><input id="new-code" autocomplete="off" maxlength="40" placeholder="예: 3-2-A"></label>
       <label class="field grow"><span>메모 <small>(선택)</small></span><input id="new-memo" autocomplete="off" maxlength="120" placeholder="예: 3학년, 2학기 국어 시간 관찰"></label>
+      <fieldset class="field new-m"><legend>어떤 방법을 사용하시겠어요? <small>여러 개 가능</small></legend>
+        <div class="chips">${MPROCS.map(k=>`<button type="button" class="chip c-b" data-act="new-m" data-v="${k}" aria-pressed="false">${esc(PROC[k].title)}</button>`).join('')}</div>
+        <p class="hint new-m-order" id="new-m-order">${newMOrder([])}</p></fieldset>
       <button class="btn primary" type="submit">만들기</button>
     </form>
     <p class="hint">실명 대신 코드 사용</p>
@@ -1776,16 +1793,23 @@ function viewHome(){
     </div>
   </section>`}`;
 }
+/* 새 프로젝트: 고른 측정 방법을 절차 순서대로 보여 준다(누른 순서와 상관없이) */
+function newMOrder(ks){
+  if(!ks.length)return '고르지 않으면 나중에 추가';
+  return '절차 순서: '+mprocsSort(ks).map(k=>esc(PROC[k].title)).join(' → ');
+}
+function newMPicked(){return $$('#new-form [data-act="new-m"].on').map(b=>b.dataset.v);}
 function projCard(p){
-  const done=PROCS.filter(x=>p.procs[x.key].status==='done').length;
+  const AP=activeProcs(p);
+  const done=AP.filter(x=>p.procs[x.key].status==='done').length;
   const name=p.procs.define.data.name;
   return `<article class="proj-card">
     <header class="proj-top"><h3 class="mono" title="${esc(p.code||'')}">${esc(p.code||'(코드 없음)')}</h3>${p.example?'<span class="pill muted">예시</span>':''}${p.shared?'<span class="pill">공유</span>':''}</header>
     <p class="proj-target">${name?'표적행동 · '+esc(name):'<span class="muted">표적행동 미정</span>'}</p>
     ${p.memo?`<p class="proj-memo">${esc(p.memo)}</p>`:''}
-    <div class="dots" role="img" aria-label="${PROCS.length}개 절차 중 ${done}개 완료">${PROCS.map(x=>`<span class="dot s-${p.procs[x.key].status}" title="${esc(x.title)}: ${statusInfo(p.procs[x.key]).label}"></span>`).join('')}</div>
+    <div class="dots" role="img" aria-label="${AP.length}개 절차 중 ${done}개 완료">${AP.map(x=>`<span class="dot s-${p.procs[x.key].status}" title="${esc(x.title)}: ${statusInfo(p.procs[x.key]).label}"></span>`).join('')}</div>
     ${projShareLine(p)}
-    <p class="meta">완료 ${done}/${PROCS.length} · 최근 수정 ${p.updatedAt?fmtShort(p.updatedAt):'-'}<br>마지막 백업 ${p.lastBackupAt?relDays(p.lastBackupAt):'아직 없음'}</p>
+    <p class="meta">완료 ${done}/${AP.length} · 최근 수정 ${p.updatedAt?fmtShort(p.updatedAt):'-'}<br>마지막 백업 ${p.lastBackupAt?relDays(p.lastBackupAt):'아직 없음'}</p>
     <div class="card-actions">
       <button type="button" class="btn primary small" data-act="open-proj" data-id="${p.id}">열기</button>
       <button type="button" class="btn small" data-act="dup-proj" data-id="${p.id}">복제</button>
@@ -1842,11 +1866,11 @@ function viewProject(p){
   </details>`;
 }
 function catCard(p,c){
-  const done=c.procs.filter(k=>p.procs[k].status==='done').length;
+  const ks=catProcs(p,c);const done=ks.filter(k=>p.procs[k].status==='done').length;
   return `<button type="button" class="cat-card" data-act="open-cat" data-key="${c.key}">
-    <span class="cat-top"><span class="cat-no">${c.no}</span><span class="cat-title">${esc(c.title)}</span><span class="cat-count">완료 ${done}/${c.procs.length}</span></span>
+    <span class="cat-top"><span class="cat-no">${c.no}</span><span class="cat-title">${esc(c.title)}</span><span class="cat-count">완료 ${done}/${ks.length}</span></span>
     <span class="cat-desc">${esc(c.desc)}</span>
-    <span class="cat-procs">${c.procs.map(k=>{const x=PROC[k];const s=p.procs[k];return `<span class="cat-proc"><span class="dot s-${s.status}" aria-hidden="true"></span><span class="mono">${x.no}</span> ${esc(x.title)}<span class="sr-only"> · ${statusInfo(s).label}</span></span>`;}).join('')}</span>
+    <span class="cat-procs">${ks.map(k=>{const x=PROC[k];const s=p.procs[k];return `<span class="cat-proc"><span class="dot s-${s.status}" aria-hidden="true"></span><span class="mono">${procNo(p,k)}</span> ${esc(x.title)}<span class="sr-only"> · ${statusInfo(s).label}</span></span>`;}).join('')}</span>
   </button>`;
 }
 function viewCat(p,c){
@@ -1860,14 +1884,23 @@ function viewCat(p,c){
   ${syncConflictCard(p)}
   <section class="cat-zone">
     <h2 class="zone-title">절차</h2>
-    <div class="proc-grid">${c.procs.map(k=>procCard(p,PROC[k])).join('')}</div>
+    <div class="proc-grid">${catProcs(p,c).map(k=>procCard(p,PROC[k])).join('')}</div>
+    ${c.key==='measure'?mAddBox(p):''}
   </section>
   ${c.key==='measure'?`<section class="cat-zone qm-zone"><h2 class="zone-title">간편 측정</h2>${qmCard(p)}</section>`:''}`;
 }
+/* 측정 카테고리: 아직 넣지 않은 측정 방법 추가(절차 순서 자리에 들어감) */
+function mAddBox(p){
+  const miss=mprocsMissing(p);if(!miss.length)return '';
+  if(!ui.mAdd)return `<div class="m-add"><button type="button" class="btn" data-act="m-add-open">＋ 측정 방법 추가</button></div>`;
+  return `<div class="m-add card" id="m-add"><p class="m-add-h">추가할 방법 <small>여러 개 가능</small></p>
+    <div class="chips">${miss.map(k=>`<button type="button" class="chip c-b" data-act="m-add-pick" data-v="${k}" aria-pressed="false">${esc(PROC[k].title)}</button>`).join('')}</div>
+    <div class="tool-row"><button type="button" class="btn primary" data-act="m-add-do">추가</button><button type="button" class="btn ghost" data-act="m-add-close">닫기</button></div></div>`;
+}
 function procCard(p,x){
-  const s=p.procs[x.key];const st=statusInfo(s);
+  const s=p.procs[x.key];const st=statusInfo(s);const no=procNo(p,x.key);
   return `<button type="button" class="proc-card s-${s.status}" data-act="open-proc" data-key="${x.key}">
-    <span class="proc-no" aria-label="권장 순서 ${x.no}">${x.no}</span>
+    <span class="proc-no" aria-label="권장 순서 ${no}">${no}</span>
     <span class="proc-title">${esc(x.title)}</span>
     <span class="proc-desc">${esc(x.desc)}</span>
     <span class="proc-foot"><span class="status ${st.cls}">${st.label}</span>${st.detail?`<span class="proc-detail">${st.detail}</span>`:''}${x.basic?'<span class="basic-tag">기본 메모</span>':''}</span>
@@ -1881,7 +1914,7 @@ function viewProc(p,key){
   const body=procBody(p,key);
   return `
   <section class="proc-head">
-    <div style="min-width:0;flex:1 1 300px"><p class="eyebrow"><span class="mono">${esc(p.code)}</span> · 권장 순서 ${x.no}</p><h1>${esc(x.title)}</h1>${key==='hypo'?(store.settings.hypoLedeHidden?'<p class="lede"><button type="button" class="btn small ghost lede-toggle" data-act="hy-lede">설명 보기</button></p>':`<p class="lede">${x.lede} <button type="button" class="btn small ghost lede-toggle" data-act="hy-lede">접기</button></p>`):`<p class="lede">${x.lede}</p>`}</div>
+    <div style="min-width:0;flex:1 1 300px"><p class="eyebrow"><span class="mono">${esc(p.code)}</span> · 권장 순서 ${procNo(p,key)}</p><h1>${esc(x.title)}</h1>${key==='hypo'?(store.settings.hypoLedeHidden?'<p class="lede"><button type="button" class="btn small ghost lede-toggle" data-act="hy-lede">설명 보기</button></p>':`<p class="lede">${x.lede} <button type="button" class="btn small ghost lede-toggle" data-act="hy-lede">접기</button></p>`):`<p class="lede">${x.lede}</p>`}</div>
     <div id="status-slot">${statusPill(s)}</div>
   </section>
   ${key!=='define'&&key!=='profile'?targetBanner(p):''}
@@ -3753,6 +3786,21 @@ const actions={
   'csv':()=>exportCSV(curProject()),
   'dictate':el=>toggleDictation(el.dataset.sid)
 };
+/* 새 프로젝트 측정 방법 고르기·측정 방법 추가 */
+actions['new-m']=el=>{
+  const on=!el.classList.contains('on');el.classList.toggle('on',on);el.setAttribute('aria-pressed',String(on));
+  const o=$('#new-m-order');if(o)o.innerHTML=newMOrder(newMPicked());
+};
+actions['m-add-open']=()=>{ui.mAdd=true;render();const b=$('#m-add');if(b)b.scrollIntoView({block:'nearest'});};
+actions['m-add-close']=()=>{ui.mAdd=false;render();};
+actions['m-add-pick']=el=>{const on=!el.classList.contains('on');el.classList.toggle('on',on);el.setAttribute('aria-pressed',String(on));};
+actions['m-add-do']=()=>{
+  const p=curProject();if(!p)return;
+  const ks=$$('#m-add [data-act="m-add-pick"].on').map(b=>b.dataset.v);
+  if(!ks.length){toast('추가할 방법을 고르세요');return;}
+  if(Array.isArray(p.mprocs)){p.mprocs=mprocsSort(p.mprocs.concat(ks));p.updatedAt=nowISO();saveNow();}
+  ui.mAdd=false;render();toast(ks.map(k=>PROC[k].title).join(', ')+' 추가');
+};
 function rerenderForConfirm(){
   if(ui.view==='proc'&&ui.proc==='abc'){renderAbcAll();return;}
   const y=window.scrollY;render();window.scrollTo(0,y);
@@ -3770,7 +3818,7 @@ document.addEventListener('submit',e=>{
   const code=$('#new-code').value.trim();const memo=$('#new-memo').value.trim();
   if(!code){toast('학생 코드를 입력하세요');$('#new-code').focus();return;}
   if(acctGate()&&!acctUid()){toast('로그인한 뒤 만들 수 있습니다');syncEnsureUser().catch(()=>{});return;}
-  const p=newProject(code,memo);store.projects.push(p);saveNow();go('project',{projectId:p.id,proc:null,cat:null});toast('프로젝트를 만들었습니다');
+  const p=newProject(code,memo,newMPicked());store.projects.push(p);saveNow();go('project',{projectId:p.id,proc:null,cat:null});toast('프로젝트를 만들었습니다');
 });
 function onField(el){
   const p=curProject();
@@ -5197,7 +5245,7 @@ function syncLabel(p,path){
       }
     }catch(e){}
     finally{Object.assign(ui,sv);}
-  }else if(path==='code')name='학생 코드';else if(path==='memo')name='메모';
+  }else if(path==='code')name='학생 코드';else if(path==='memo')name='메모';else if(path==='mprocs')name='측정 방법';
   return {proc,name};
 }
 function syncConfView(path){
@@ -5335,7 +5383,7 @@ function presAct(p){
   else if(mini.on&&mini.id&&miniSes())doing=`${phN(mini.ph)} 회기 측정 중`;
   else if(rec.state==='recording'&&onAbcPage(p))doing='ABC 녹음 중';
   let where='프로젝트 첫 화면';
-  if(ui.view==='proc'&&PROC[ui.proc])where=`${PROC[ui.proc].no}. ${PROC[ui.proc].title}`;
+  if(ui.view==='proc'&&PROC[ui.proc])where=`${procNo(p,ui.proc)}. ${PROC[ui.proc].title}`;
   else if(ui.view==='project'&&ui.cat&&CAT[ui.cat])where=`'${CAT[ui.cat].title}' 목록`;
   if(!doing){const a=document.activeElement;
     const typing=(a&&main.contains(a)&&a.matches('textarea,select,[contenteditable="true"],input:not([type=button]):not([type=checkbox]):not([type=radio]):not([type=file])'))||!!inkUI.pad;
@@ -6895,7 +6943,7 @@ function repHTML(p){
   const qf=p.procs.qabf.data.forms.map(f=>{const sc=qabfScores(f);return `<tr><th>${esc(f.rater||'응답자')}${f.role?` (${esc(f.role)})`:''}</th><td>${sc.map(s=>`${esc(s.name)} ${s.total}`).join(' · ')}</td></tr>`;}).join('');
   const rtRows=rt.rows.filter(r=>aiT(r.domain)).map(r=>{const who=(rt.raters.find(x=>x.id===r.rater)||{}).name||'';return `<tr><th>${esc(r.domain)}</th><td>${esc([who,r.raw&&'원점수 '+r.raw,r.std,r.level].filter(aiT).join(' · '))}</td></tr>`;}).join('');
   const ivl=ivAutoLines(p);const hs=hyAll(p);const ai1=aiOut(p,'rep');
-  const status=PROCS.map(x=>`${x.no}.${x.title} ${statusInfo(p.procs[x.key]).label}`).join(' · ');
+  const status=activeProcs(p).map(x=>`${procNo(p,x.key)}.${x.title} ${statusInfo(p.procs[x.key]).label}`).join(' · ');
   return `<header class="rep-head"><p class="eyebrow">긍정적 행동지원 최종 보고서</p><h1>${esc(p.code||'(코드 없음)')}</h1>
     <p>표적행동 <b>${esc(df.name||'-')}</b>${allS.length?` · 기간 ${esc(allS[0])} ~ ${esc(allS[allS.length-1])}`:''} · 작성 ${esc(ymdLocal())}</p><p class="rep-status">${esc(status)}</p></header>
   ${sec(1,'학생 기본 정보',repTable([repRow('학년·반',pf.grade),repRow('학급 형태',pf.classType),repRow('의사소통',[pf.comm.join(', '),pf.commNote].filter(aiT).join(' · ')),repRow('학업 수준',pf.academic),repRow('강점',[pf.strengths,pf.likes].filter(aiT).join(' / ')),repRow('선호(강화제 후보)',pf.prefs.map(pfPrefText).filter(aiT).join(', ')),repRow('어려움',[pf.hard,pf.dislikes].filter(aiT).join(' / ')),repRow('촉발 요인',pf.triggers),repRow('지원 이력',pf.history.filter(r=>aiT(r.what)).map(r=>r.what+(r.effect?` (${r.effect})`:'')).join(', ')),repRow('목표',[pf.goalStudent,pf.goalFamily,pf.goalTeacher].filter(aiT).join(' / '))]))}
@@ -6933,6 +6981,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-21-10',d:'2026-11-21',k:'web',t:'측정 방법 고르기',items:['새 프로젝트에서 측정 방법 고름','고른 방법만 절차 순서대로','측정 화면에서 방법 추가']},
   {id:'2026-11-21-9',d:'2026-11-21',k:'web',t:'앱 색 밝기',items:['색 막대 아래 밝게~어둡게','밝으면 버튼 글자는 진하게','밝기도 계정에 저장']},
   {id:'2026-11-21-8',d:'2026-11-21',k:'web',t:'앱 색은 계정마다',items:['로그인하면 내 계정 색','다른 기기도 같은 색','로그아웃하면 기본색']},
   {id:'2026-11-21-7',d:'2026-11-21',k:'web',t:'앱 색 고르기',items:['설정 > 앱 색: 색 막대로 고름','버튼·배경 색이 함께 바뀜','기본색으로 버튼으로 되돌림']},
