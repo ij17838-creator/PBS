@@ -367,6 +367,9 @@ td.top{color:var(--accent);font-weight:700}
 .qm-pick{display:inline-flex;align-items:center;gap:4px;font-size:.8rem;color:var(--muted);cursor:pointer}
 .qm-pick input{width:32px;height:30px;padding:0;border:1px solid var(--line-strong);border-radius:6px;background:none}
 .qm-go{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qm-head{justify-content:space-between;align-items:center}.qm-sum{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qm-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:2px solid var(--qc);border-radius:999px;font-weight:600;font-size:.9rem}.qm-chip .qm-dot{margin:0;width:10px;height:10px}.qm-chip small{color:var(--muted);font-weight:700}
+.set-more .qm-n,.set-more .qm-slots{flex:1 1 100%}
 .qm-key{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1 1 100%}
 .qm-go .qm-go{flex:1 1 100%}
 .qm-key-t{font-weight:700}
@@ -6200,12 +6203,11 @@ async function qmFinish(quiet,keepTarget){
   }
   if(!quiet)toast('간편 측정을 껐습니다');
 }
-function qmCard(p){
+/* 간편 측정 옵션(동시에 몇 개·측정 종류·색)은 설정 창(SET_ROWS 'qm')에서. 카드에는 요약·켜기/끄기만 */
+function qmOpts(p){
   const cfg=qmCfg(p);const items=cfg.items.slice(0,cfg.n);const run=qmRun();const on=!!(run&&run.pid===p.id&&nat.target);
   const main=on?run.main:qmMain(p,items);
-  const tgt=items.find(x=>x.k!=='abc')||items[0];const ok=!!(tgt&&natMode(p,tgt.k));
   const slot=(x,i)=>{
-    const other=cfg.n>1?cfg.items[1-i]:null;
     const opts=['bl','iv','abc'].map(k=>`<option value="${k}"${k===x.k?' selected':''}>${QM_NAME[k]}${k!=='abc'&&natMode(p,k)?' · '+NAT_MODE_NAME[natMode(p,k)]:''}</option>`).join('');
     const t=qmTime(p,x.k);const tt=x.k==='abc'?`${t}분 간격`:(t?`${t}분 회기`:'관찰 시간 없음');
     const role=cfg.n>1?(x.k===main?'<span class="qm-role main">기준 · 자동 갱신</span>':'<span class="qm-role">동시 진행</span>'):'';
@@ -6215,16 +6217,22 @@ function qmCard(p){
       <div class="qm-cols" role="group" aria-label="측정 ${i+1} 색">${QM_COLORS.map(c=>`<button type="button" class="qm-sw${c.toLowerCase()===x.c.toLowerCase()?' on':''}" style="--sw:${c}" data-act="qm-col" data-i="${i}" data-c="${c}" aria-label="색 ${c}" aria-pressed="${c.toLowerCase()===x.c.toLowerCase()}"></button>`).join('')}<label class="qm-pick" title="색 직접 고르기"><input type="color" value="${x.c}" data-qm="c:${i}" aria-label="측정 ${i+1} 색 직접 고르기"><span>직접</span></label></div>
     </div>`;
   };
+  return `<div class="qm-n"><span>동시에</span><span class="trig-seg" role="group" aria-label="동시에 할 측정 수">${[1,2].map(n=>`<button type="button" class="seg-btn" data-act="qm-n" data-v="${n}" aria-pressed="${cfg.n===n}"${on?' disabled':''}>${n}개</button>`).join('')}</span><span class="muted">${on?'끈 뒤 바꿀 수 있음':cfg.n>1?'긴 측정 기준':'고른 측정만'}</span></div>
+    <div class="qm-slots">${items.map(slot).join('')}</div>`;
+}
+function qmCard(p){
+  const cfg=qmCfg(p);const items=cfg.items.slice(0,cfg.n);const run=qmRun();const on=!!(run&&run.pid===p.id&&nat.target);
+  const main=on?run.main:qmMain(p,items);
+  const tgt=items.find(x=>x.k!=='abc')||items[0];const ok=!!(tgt&&natMode(p,tgt.k));
+  const chip=x=>`<span class="qm-chip" style="--qc:${x.c}"><span class="qm-dot" aria-hidden="true"></span>${esc(QM_NAME[x.k])}${cfg.n>1&&x.k===main?' <small>기준</small>':''}</span>`;
   return `<section class="card qm-card" id="qm-card">
-    <div class="qm-head"><span class="muted">트리거 한 번에 함께</span></div>
-    <div class="qm-n"><span>동시에</span><span class="trig-seg" role="group" aria-label="동시에 할 측정 수">${[1,2].map(n=>`<button type="button" class="seg-btn" data-act="qm-n" data-v="${n}" aria-pressed="${cfg.n===n}"${on?' disabled':''}>${n}개</button>`).join('')}</span><span class="muted">${cfg.n>1?'긴 측정 기준':'고른 측정만'}</span></div>
-    <div class="qm-slots">${items.map(slot).join('')}</div>
+    <div class="qm-head"><span class="qm-sum">${items.map(chip).join('<span class="muted">+</span>')}</span><button type="button" class="btn small" data-act="set-open-qm">옵션은 설정에서</button></div>
     <div class="qm-go">${PCN?`<button type="button" class="btn${on?'':' primary'}" data-act="${on?'qm-off':'qm-on'}"${ok||on?'':' disabled'}>${on?'간편 측정 끄기':'간편 측정 켜기'}</button>
       ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>${nat.ver>=6?`<button type="button" class="btn small${nat.bub&&nat.bub.on&&nat.bub.perm?' primary':''}" data-act="nat-bub">${nat.bub&&nat.bub.on&&nat.bub.perm?'떠 있는 ＋1 끄기':'떠 있는 ＋1'}</button>`:''}`:''}
       <span class="muted">${on?'위젯·음량으로 기록':ok?'켜면 트리거가 이쪽으로':'새 앱 설치 필요'}</span>`:qkRow(p)}</div>
   </section>`;
 }
-function qmSave(p,cfg){p.quick={n:cfg.n,items:cfg.items.map(x=>({k:x.k,c:x.c}))};p.updatedAt=nowISO();saveNow();const y=window.scrollY;render();window.scrollTo(0,y);}
+function qmSave(p,cfg){p.quick={n:cfg.n,items:cfg.items.map(x=>({k:x.k,c:x.c}))};p.updatedAt=nowISO();saveNow();const y=window.scrollY;render();window.scrollTo(0,y);setRefresh();}
 function qmSetKind(i,k){
   const p=curProject();if(!p||!QM_NAME[k])return;const cfg=qmCfg(p);const it=cfg.items;if(!it[i])return;
   it[i].k=k;const o=it[1-i];if(o)o.k=k==='abc'?(o.k==='abc'?'bl':o.k):'abc';/* 기초선·중재 중 하나 + ABC */
@@ -6363,18 +6371,10 @@ function qkRefresh(){const p=curProject();const q=$('#qm-card');if(p&&q)q.outerH
 /* 간편 측정 카드(컴퓨터): 단축키 줄 */
 function qkRow(p){
   const o=qkGet();const tp=o.pid&&projById(o.pid);const other=tp&&tp.id!==p.id;const r=qmPcGet();const runHere=!!(r&&r.pid===p.id&&qmPcCur(p));
-  const ns=[2,3,4,5].map(n=>`<option value="${n}"${n===o.n?' selected':''}>${n}번</option>`).join('');
-  return `<div class="qm-key">
-    <span class="qm-key-t">대기 창 단축키</span>
-    <span class="trig-seg" role="group" aria-label="단축키 방식"><button type="button" class="seg-btn" data-act="qk-mode" data-v="tap" aria-pressed="${o.mode!=='combo'}">연타</button><button type="button" class="seg-btn" data-act="qk-mode" data-v="combo" aria-pressed="${o.mode==='combo'}">조합</button></span>
-    ${o.mode==='combo'?'':`<label class="field qm-key-n"><span class="sr-only">연타 횟수</span><select data-qk="n">${ns}</select></label>`}
-    <button type="button" class="btn small${qk.cap?' primary':''}" data-act="qk-cap">${qk.cap?(o.mode==='combo'?'조합키를 누르세요':'키를 누르세요'):'커맨드 입력'}</button>
-    <span class="mono qm-key-l">${esc(qkLabel(o))}</span>
-    <label class="check"><input type="checkbox" data-qk="on"${o.on?' checked':''}> <span>켜기</span></label>
-  </div>
-  <div class="qm-go">${other?`<span class="muted">대상: ${esc(tp.code||'다른 프로젝트')}</span><button type="button" class="btn small" data-act="qk-here">이 학생으로</button>`:`<span class="muted">${o.on?'누르면 바로 ＋1':'단축키 꺼짐'}</span>`}
+  return `<div class="qm-go"><span class="qm-key-t">대기 창 단축키</span><span class="mono qm-key-l">${o.on?esc(qkLabel(o)):'꺼짐'}</span>
+    ${other?`<span class="muted">대상: ${esc(tp.code||'다른 프로젝트')}</span><button type="button" class="btn small" data-act="qk-here">이 학생으로</button>`:`<span class="muted">${o.on?'누르면 바로 ＋1':'설정에서 켜기'}</span>`}
     ${runHere?`<span class="muted">· PC 회기 ${qmPcCount()}회</span><button type="button" class="btn small" data-act="qk-end">PC 회기 끝</button>`:''}
-    <span class="muted">· 위·아래 화살표=±1</span></div>`;
+    ${o.on?'<span class="muted">· 위·아래 화살표=±1</span>':''}</div>`;
 }
 Object.assign(actions,{
   'qk-mode':el=>{const o=qkGet();o.mode=el.dataset.v==='combo'?'combo':'tap';o.pid=(curProject()||{}).id||o.pid;qkSet(o);qk.cap=o.mode==='combo'&&!o.combo;qkRefresh();},
@@ -6426,6 +6426,7 @@ const SET_ROWS=[
   {id:'cover',g:'화면',t:'나갔다 오면 가리기',sc:'이 기기',rel:['baseline','intervene','abc'],on:()=>{try{return localStorage.getItem(COVER_KEY)==='1';}catch(e){return false;}},hint:()=>'돌아오면 시계 화면'},
   {id:'ink',g:'입력',t:'손글씨 모드',sc:'이 기기',rel:['profile','define','rating','abc','hypo','plan','evaluate'],on:()=>inkUI.mode==='ink',
     more:()=>`<label class="check"><input type="checkbox" data-set="pen"${inkUI.penSeen?' checked':''}> <span>S펜만 쓰기</span></label><span class="muted">손바닥·손가락은 무시 · 숫자 칸은 키보드</span>`},
+  {id:'qm',g:'측정',t:'간편 측정',sc:'이 학생',rel:['baseline','intervene','abc','measure'],show:()=>!!curProject(),on:null,ctl:()=>'',hint:()=>'트리거 한 번에 함께 기록',more:()=>qmOpts(curProject())},
   {id:'qk',g:'측정',t:'간편 측정 단축키',sc:'이 기기',rel:['baseline','intervene','abc','measure'],show:()=>!PCN,on:()=>qkGet().on,ck:'data-qk="on"',more:()=>{
     const o=qkGet();const ns=[2,3,4,5].map(n=>`<option value="${n}"${n===o.n?' selected':''}>${n}번</option>`).join('');
     return `<span class="trig-seg" role="group" aria-label="단축키 방식"><button type="button" class="seg-btn" data-act="qk-mode" data-v="tap" aria-pressed="${o.mode!=='combo'}">연타</button><button type="button" class="seg-btn" data-act="qk-mode" data-v="combo" aria-pressed="${o.mode==='combo'}">조합</button></span>
@@ -6462,7 +6463,7 @@ function setRow(o){
   const ck=o.ck||`data-set="${o.id}"`;
   const head=on===null?`<span class="set-t">${esc(o.t)}</span>${o.ctl()}`
     :`<label class="check"><input type="checkbox" ${ck}${on?' checked':''}${dis?' disabled':''}> <span class="set-t">${esc(o.t)}</span></label>`;
-  const more=on&&o.more?`<div class="set-more">${o.more()}</div>`:(o.id==='btn3'&&nat.btn&&nat.btn.test?'<input type="checkbox" data-btn3="test" checked hidden>':'');/* 꺼 있어도 시험 진동 값은 그대로 보낸다 */
+  const more=(on||on===null)&&o.more?`<div class="set-more">${o.more()}</div>`:(o.id==='btn3'&&nat.btn&&nat.btn.test?'<input type="checkbox" data-btn3="test" checked hidden>':'');/* 꺼 있어도 시험 진동 값은 그대로 보낸다 */
   return `<div class="set-row${on?' on':''}${on===null?' pick':''}" data-row="${o.id}"${o.box?` ${o.box}`:''}><div class="set-main">${head}<span class="set-sc">${esc(o.sc)}</span></div>${hint?`<p class="set-hint">${esc(hint)}</p>`:''}${more}</div>`;
 }
 function setInner(){
@@ -6520,7 +6521,8 @@ document.addEventListener('change',e=>{
   setTimeout(setRefresh,0);
 });
 Object.assign(actions,{
-  'set-open':()=>setOpen(),'set-close':()=>setClose(),
+  'set-open':()=>setOpen(),
+  'set-open-qm':()=>{setOpen();const r=$('#set-dlg [data-row="qm"]');if(r)r.scrollIntoView({block:'center'});},'set-close':()=>setClose(),
   'set-ai':()=>{setClose();aiDlgOpen();},
   'set-go':el=>{setClose();go('proc',{proc:el.dataset.key});},
 });
@@ -6826,6 +6828,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-21-5',d:'2026-11-21',k:'web',t:'간편 측정 옵션은 설정에',items:['동시에 몇 개·측정·색은 설정','측정 화면엔 요약·켜기만','단축키도 설정에서']},
   {id:'2026-11-21-4',d:'2026-11-21',k:'web',t:'위 막대 정리',items:['맨 위로·한 단계 위 뺌','입력·저장은 작은 신호로','신호 누르면 지금 상태','설정 톱니는 늘 맨 오른쪽']},
   {id:'2026-11-21-3',d:'2026-11-21',k:'web',t:'설정 창',items:['위 막대 톱니 = 설정','켜면 세부 설정이 열림','절차 관련 설정이 맨 위','유리 효과 끄기·고대비']},
   {id:'2026-11-21-2',d:'2026-11-21',k:'web',t:'유리 질감',items:['위·아래 막대, 창이 비침','기록 칸·그래프는 그대로']},
