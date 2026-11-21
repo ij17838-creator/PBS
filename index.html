@@ -821,6 +821,61 @@ body::before{background:var(--glass)}
   body::before,.topbar,.pg-nav,.bigdock .btn:not(.primary),.mini-tools .btn,.pres-btn,.find-box,.sync-box,.kw-win,.pres-pop,.kb-float,.web-upd,.live-bar,.mini-pad{background:var(--surface)}}
 @media (prefers-reduced-transparency: reduce){
   body::before,.topbar,.pg-nav,.bigdock .btn:not(.primary),.mini-tools .btn,.pres-btn,.find-box,.sync-box,.kw-win,.pres-pop,.kb-float,.web-upd,.live-bar,.mini-pad{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
+/* ---------- 설정: 유리 효과 끄기(.no-glass)·고대비(.hc, 유리도 끔). <html>에 붙는다 ---------- */
+:root.no-glass,:root.hc{--glass:var(--surface);--glass-strong:var(--surface);--glass-line:var(--line);--glass-shadow:var(--shadow);--glass-blur:none;--glass-dim:rgba(10,20,20,.45);--toast-bg:#14272A}
+:root.no-glass body,:root.hc body{background:var(--bg)}
+:root.no-glass .find,:root.no-glass .sync-dlg,:root.hc .find,:root.hc .sync-dlg{-webkit-backdrop-filter:none;backdrop-filter:none}
+:root.no-glass .btn.primary,:root.hc .btn.primary{background:var(--accent);box-shadow:none}
+:root.no-glass .btn.primary:hover,:root.hc .btn.primary:hover{background:var(--accent-hover)}
+:root.no-glass .mini-mark,:root.hc .mini-mark{background:var(--accent)}
+:root.hc{
+  --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#FFFFFF; --sunk:#EDF2F1;
+  --ink:#000000; --muted:#1E2B2D; --line:#3D4F51; --line-strong:#000000;
+  --accent:#00574F; --accent-hover:#003F39; --accent-ink:#FFFFFF; --accent-soft:#CDEFE8;
+  --a:#1D3A85; --a-soft:#DCE4F8; --c:#4D3D00; --c-soft:#F0F5C0;
+  --rec:#A01F12; --rec-soft:#FBDCD7; --ok:#0B5232; --ok-soft:#D2F0DE; --warn:#4A3D00; --warn-soft:#EEF2B0;
+  --shadow:none; --ser-a:#3F4A5A; --ser-b:#007A68; --toast-bg:#000000;
+}
+@media (prefers-color-scheme: dark){ :root.hc:not([data-theme="light"]){
+  --bg:#000000; --surface:#000000; --surface-2:#0A0A0A; --sunk:#141414;
+  --ink:#FFFFFF; --muted:#E0E8E7; --line:#B8C8C6; --line-strong:#FFFFFF;
+  --accent:#7FF0E0; --accent-hover:#A8F7EC; --accent-ink:#000000; --accent-soft:#063A34;
+  --a:#B8CCFF; --a-soft:#14203D; --c:#FFD27A; --c-soft:#3A2915;
+  --rec:#FF9A8C; --rec-soft:#45201B; --ok:#8FE8B4; --ok-soft:#0F2E1E; --warn:#FFE07A; --warn-soft:#352B08;
+  --ser-a:#C8D2E0; --ser-b:#5FF0D0; --toast-bg:#FFFFFF; --glass-dim:rgba(0,0,0,.7);
+}}
+:root.hc[data-theme="dark"]{
+  --bg:#000000; --surface:#000000; --surface-2:#0A0A0A; --sunk:#141414;
+  --ink:#FFFFFF; --muted:#E0E8E7; --line:#B8C8C6; --line-strong:#FFFFFF;
+  --accent:#7FF0E0; --accent-hover:#A8F7EC; --accent-ink:#000000; --accent-soft:#063A34;
+  --a:#B8CCFF; --a-soft:#14203D; --c:#FFD27A; --c-soft:#3A2915;
+  --rec:#FF9A8C; --rec-soft:#45201B; --ok:#8FE8B4; --ok-soft:#0F2E1E; --warn:#FFE07A; --warn-soft:#352B08;
+  --ser-a:#C8D2E0; --ser-b:#5FF0D0; --toast-bg:#FFFFFF; --glass-dim:rgba(0,0,0,.7);
+}
+:root.hc .card,:root.hc .btn,:root.hc input,:root.hc select,:root.hc textarea,:root.hc .trig-seg{border-width:2px}
+:root.hc :focus-visible{outline:3px solid var(--ink)!important;outline-offset:2px}
+:root.hc a{text-decoration:underline}
+/* 설정 창 */
+.set-btn svg{flex-shrink:0}
+.set-ctx{margin:0;font-size:.86rem;color:var(--muted)}
+.set-g{display:flex;flex-direction:column;gap:8px}
+.set-g>h3{margin:4px 0 0;font-size:.82rem;font-weight:700;color:var(--muted);letter-spacing:.02em}
+.set-g.rel{background:var(--accent-soft);border-radius:var(--r);padding:10px 12px 12px}
+.set-g.rel>h3{color:var(--accent)}
+.set-row{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.set-row.on{border-color:var(--line-strong)}
+.set-main{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:28px}
+.set-main .check{flex:1 1 auto;align-items:center}
+.set-main .set-t{font-weight:600}
+.set-main>.set-t{flex:1 1 auto}
+.set-sc{font-size:.74rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px;white-space:nowrap}
+.set-hint{margin:-4px 0 0 30px;font-size:.8rem;color:var(--muted)}
+.set-more{margin-left:30px;padding:10px 12px;border-left:3px solid var(--accent);background:var(--surface-2);border-radius:0 8px 8px 0;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.set-more .field{min-width:120px}
+.set-more .muted{font-size:.82rem}
+.set-row.pick .set-hint{margin-left:0}
+@media (max-width:560px){.set-more{margin-left:0}.set-hint{margin-left:0}.set-btn .set-lb{display:none}.set-btn{padding:0 9px}}
+@media (max-width:400px){.top-right{gap:6px}}
 </style>
 
 <header class="topbar"><div class="wrap topbar-in">
@@ -828,6 +883,7 @@ body::before{background:var(--glass)}
   <div class="top-right">
     <button type="button" class="btn mode-btn find-btn" id="find-btn" data-act="find-open" title="절차·칸·쓴 내용 찾기 (단축키 /)" hidden><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>찾기</button>
     <button type="button" class="btn mode-btn notice-btn" id="notice-btn" data-act="notice-open" title="바뀐 점 보기">공지<span class="notice-dot" id="notice-dot" hidden></span></button>
+    <button type="button" class="btn mode-btn set-btn" id="set-btn" data-act="set-open" title="설정" aria-label="설정"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="set-lb">설정</span></button>
     <button type="button" class="btn mode-btn" id="input-mode" data-act="input-mode" title="손글씨 모드와 키보드 모드를 바꿉니다"></button>
     <div class="rec-mini" id="rec-mini" hidden><span class="mono" id="rec-mini-time">00:00</span><button class="btn small danger-solid" data-act="rec-stop" type="button">녹음 정지</button></div>
     <span class="sync-state" id="sync-state" aria-live="polite" hidden></span>
@@ -1386,6 +1442,7 @@ function pbsBack(){
   try{
     if(cover.on){if(mini.on)miniOff();else coverSet(false);return true;}
     if(Sync.dlg){syncDlgClose();return true;}
+    if(vis('set-dlg')){setClose();return true;}
     if(vis('notice-dlg')){noticeClose();return true;}
     if(vis('ai-dlg')){aiDlgClose();return true;}
     if(vis('kw-dlg')){kwDlgClose();return true;}
@@ -3781,9 +3838,9 @@ document.addEventListener('input',e=>{const el=e.target.closest('[data-f]');if(e
 document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.matches&&d.matches('details[data-dur-box]')){if(d.open)durOpen.add(d.dataset.durBox);else durOpen.delete(d.dataset.durBox);}if(d&&d.matches&&d.matches('details[data-nat-chk]'))nat.chkOpen=d.open;if(d&&d.matches&&d.matches('details[data-nat-btn]'))nat.btnOpen=d.open;if(d&&d.matches&&d.matches('details[data-nat-timer]'))nat.timerOpen=d.open;if(d&&d.matches&&d.matches('details[data-hy-memo]'))ui.hyMemoOpen=d.open;if(d&&d.matches&&d.matches('details[data-sheet]')){if(d.open)ui.openSheets.add(d.dataset.sheet);else ui.openSheets.delete(d.dataset.sheet);}},true);
 document.addEventListener('change',async e=>{
   const el=e.target;
-  if(el.matches('[data-chk]')){natChkSet();return;}
-  if(el.matches('[data-btn3]')){natBtnSet();return;}
-  if(el.matches('[data-tmr]')){natTimerSet();return;}
+  if(el.matches('[data-chk]')){natChkSet(el.closest('[data-nat-chk]'));return;}
+  if(el.matches('[data-btn3]')){natBtnSet(el.closest('[data-nat-btn]'));return;}
+  if(el.matches('[data-tmr]')){natTimerSet(el.closest('[data-nat-timer]'));return;}
   if(el.matches('.t24-native')){/* 시계로 고른 값을 24시간 글자로 옮긴다 */
     const tx=el.parentNode.querySelector('.t24-in');if(!tx||!el.value)return;
     tx.value=el.value.length===5&&tx.dataset.t24==='s'?el.value+':00':el.value.slice(0,tx.dataset.t24==='s'?8:5);
@@ -5439,6 +5496,7 @@ function natRow(p,ph,s,i){
   return `<div class="bl-nat">${PCN?`<button type="button" class="btn small${on?' primary':''}" data-act="ses-nat" data-ph="${ph}" data-id="${s.id}" aria-pressed="${on}">${on?'알림창 버튼 끄기':'알림창 ＋1 켜기'}</button>`:''}<span class="muted" id="ses-${s.id}-nat">${esc(natLogText(p,ph,s))}</span></div>`;
 }
 function natUI(){
+  setRefresh();
   const p=curProject();if(!p)return;
   ['bl','iv'].forEach(ph=>sesList(p,ph).forEach(s=>{
     const on=nat.key===natKey(p,ph,s);
@@ -5870,8 +5928,8 @@ function natTimerBox(){
     <div class="dur-foot muted"><span>회기 시작부터 잼</span><span>0으로=새 회기</span><span>끄면 같은 회기</span></div>
   </details>`;
 }
-async function natTimerSet(){
-  const box=$('[data-nat-timer]');if(!box||!PCN)return;
+async function natTimerSet(b){
+  const box=b||$('[data-nat-timer]');if(!box||!PCN)return;
   const g=n=>box.querySelector(`[data-tmr="${n}"]`);
   try{
     const r=await PCN.setTimer({min:Number(g('min').value),renew:!!g('renew').checked,reset:!!g('reset').checked});
@@ -5900,8 +5958,8 @@ function natBtnBox(m,on){
     <pre class="btn3-log">${esc(b.log||'아직 누른 기록 없음')}</pre>`:''}
   </details>`;
 }
-async function natBtnSet(){
-  const box=$('[data-nat-btn]');if(!box||!PCN)return;
+async function natBtnSet(b){
+  const box=b||$('[data-nat-btn]');if(!box||!PCN)return;
   const g=n=>box.querySelector(`[data-btn3="${n}"]`);
   try{
     const r=await PCN.setButtons({on:!!g('on').checked,test:!!(g('test')&&g('test').checked),count:Number(g('count')?g('count').value:(nat.btn&&nat.btn.count))||1});
@@ -5910,8 +5968,8 @@ async function natBtnSet(){
   if(document.activeElement)document.activeElement.blur();
   natUI();
 }
-async function natChkSet(){
-  const box=$('[data-nat-chk]');if(!box||!PCN)return;
+async function natChkSet(b){
+  const box=b||$('[data-nat-chk]');if(!box||!PCN)return;
   const g=n=>box.querySelector(`[data-chk="${n}"]`);
   try{
     const r=await PCN.setCheck({sec:Number(g('sec').value),mode:g('mode').value,miss:Number(g('miss').value),adj:!!g('adj').checked});
@@ -6280,7 +6338,7 @@ function qkDown(e,fromPip){
   if(qk.taps.length>=o.n){qk.taps=[];e.preventDefault();qmHot();}
 }
 document.addEventListener('keydown',e=>qkDown(e,false),true);
-function qkRefresh(){const p=curProject();const q=$('#qm-card');if(p&&q)q.outerHTML=qmCard(p);}
+function qkRefresh(){const p=curProject();const q=$('#qm-card');if(p&&q)q.outerHTML=qmCard(p);setRefresh();}
 /* 간편 측정 카드(컴퓨터): 단축키 줄 */
 function qkRow(p){
   const o=qkGet();const tp=o.pid&&projById(o.pid);const other=tp&&tp.id!==p.id;const r=qmPcGet();const runHere=!!(r&&r.pid===p.id&&qmPcCur(p));
@@ -6324,6 +6382,128 @@ function webInit(){
   setTimeout(()=>webCheck(false),4000);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')webCheck(false);});
 }
+
+/* ---------- 설정: 켜고 끄는 옵션을 한 창에 모은다 ----------
+   값은 원래 자리(이 기기 localStorage·설치 앱·프로젝트 자료)에서 그대로 읽고 쓴다. 기본값·저장 위치·원래 화면의 옵션은 바꾸지 않는다.
+   새로 생긴 옵션은 2개(이 기기): 유리 효과(GLASS_KEY '0'=끔, 기본 켜짐), 고대비(HC_KEY '1'=켬, 기본 꺼짐, 켜면 유리도 끔). <html>에 .no-glass·.hc.
+   체크박스만 보이다가 켜면 그 아래 세부 설정이 열린다(set-more). 절차·카테고리 안에서 열면 rel에 그 절차가 든 옵션을 맨 위 묶음으로. */
+const GLASS_KEY='pbs-glass',HC_KEY='pbs-contrast';
+function glassOn(){try{return localStorage.getItem(GLASS_KEY)!=='0';}catch(e){return true;}}
+function hcOn(){try{return localStorage.getItem(HC_KEY)==='1';}catch(e){return false;}}
+function lookApply(){const r=document.documentElement;r.classList.toggle('no-glass',!glassOn());r.classList.toggle('hc',hcOn());}
+lookApply();
+const setUI={tmr:false};/* tmr: 측정 시간을 켰지만 아직 분을 안 고름 */
+function setCtx(){return ui.view==='proc'&&PROC[ui.proc]?ui.proc:(ui.view==='project'&&ui.cat?ui.cat:'');}
+function setCtxName(k){return PROC[k]?PROC[k].title:(CAT[k]?CAT[k].title:'');}
+function setNatChk(){return Object.assign({sec:30,mode:'vib',miss:3,adj:true},nat.chk||{});}
+function setNatTimer(){return Object.assign({min:0,renew:false,reset:true},nat.timer||{});}
+/* g: 묶음, sc: 저장 범위, rel: 관련 절차·카테고리, show: 보일 때, on: 체크 상태(null이면 고르기 줄), more: 켰을 때 세부 설정 */
+const SET_ROWS=[
+  {id:'glass',g:'화면',t:'유리 효과',sc:'이 기기',rel:[],on:()=>glassOn()&&!hcOn(),dis:()=>hcOn(),hint:()=>hcOn()?'고대비면 꺼져요':'막대·창 뒤가 흐리게 비침'},
+  {id:'hc',g:'화면',t:'고대비',sc:'이 기기',rel:[],on:()=>hcOn(),hint:()=>'진한 글자·굵은 테두리'},
+  {id:'pg',g:'화면',t:'절차 한 장씩 보기',sc:'이 기기',rel:['profile','define','qabf','rating','hypo','plan','evaluate'],on:()=>!pgAll(),hint:()=>pgAll()?'지금은 한 화면에 모두':''},
+  {id:'cover',g:'화면',t:'나갔다 오면 가리기',sc:'이 기기',rel:['baseline','intervene','abc'],on:()=>{try{return localStorage.getItem(COVER_KEY)==='1';}catch(e){return false;}},hint:()=>'돌아오면 시계 화면'},
+  {id:'ink',g:'입력',t:'손글씨 모드',sc:'이 기기',rel:['profile','define','rating','abc','hypo','plan','evaluate'],on:()=>inkUI.mode==='ink',
+    more:()=>`<label class="check"><input type="checkbox" data-set="pen"${inkUI.penSeen?' checked':''}> <span>S펜만 쓰기</span></label><span class="muted">손바닥·손가락은 무시 · 숫자 칸은 키보드</span>`},
+  {id:'qk',g:'측정',t:'간편 측정 단축키',sc:'이 기기',rel:['baseline','intervene','abc','measure'],show:()=>!PCN,on:()=>qkGet().on,ck:'data-qk="on"',more:()=>{
+    const o=qkGet();const ns=[2,3,4,5].map(n=>`<option value="${n}"${n===o.n?' selected':''}>${n}번</option>`).join('');
+    return `<span class="trig-seg" role="group" aria-label="단축키 방식"><button type="button" class="seg-btn" data-act="qk-mode" data-v="tap" aria-pressed="${o.mode!=='combo'}">연타</button><button type="button" class="seg-btn" data-act="qk-mode" data-v="combo" aria-pressed="${o.mode==='combo'}">조합</button></span>
+      ${o.mode==='combo'?'':`<label class="field qm-key-n"><span class="sr-only">연타 횟수</span><select data-qk="n">${ns}</select></label>`}
+      <button type="button" class="btn small${qk.cap?' primary':''}" data-act="qk-cap">${qk.cap?(o.mode==='combo'?'조합키를 누르세요':'키를 누르세요'):'커맨드 입력'}</button>
+      <span class="mono">${esc(qkLabel(o))}</span><span class="muted">누르면 대기 창 + ＋1</span>`;}},
+  {id:'mini',g:'측정',t:'작게 띄워 세기',sc:'이 기기',rel:['baseline','intervene'],on:null,ctl:()=>trigSeg('mini-trig',miniTrig()),hint:()=>'＋1을 누를지 그을지'},
+  {id:'live',g:'측정',t:'＋1 창 자동 띄우기',sc:'이 기기',rel:['baseline','intervene'],on:()=>liveAuto(),ck:'data-live-auto',hint:()=>'공유 프로젝트 회기 때'},
+  {id:'btn3',g:'측정',t:'음량 버튼으로 기록',sc:'설치 앱',rel:['baseline','intervene','abc','measure'],show:()=>!!PCN&&nat.ver>=4,on:()=>!!(nat.btn&&nat.btn.on),box:'data-nat-btn',ck:'data-btn3="on"',more:()=>{
+    const b=nat.btn||{};const k=Number(b.count)||1;const p=curProject();const lv=!!(p&&natMode(p,'bl')==='lvl');
+    const cnt=[1,2,3].map(x=>`<option value="${x}"${x===k?' selected':''}>${x}번${x===1?'(기본)':''}</option>`).join('');
+    return `${lv?'<span class="muted">누른 수=강도</span>':`<label class="field"><span>누를 횟수</span><select data-btn3="count">${cnt}</select></label>`}
+      <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}> <span>누를 때마다 진동(시험)</span></label><span class="muted">회기 중·화면 꺼졌을 때만</span>`;}},
+  {id:'tmr',g:'측정',t:'측정 시간 정하기',sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN&&nat.ver>=5,on:()=>setNatTimer().min>0||setUI.tmr,box:'data-nat-timer',more:()=>{
+    const t=setNatTimer();const mins=[5,10,15,20,30,40,45,60];if(t.min&&!mins.includes(Number(t.min)))mins.push(Number(t.min));
+    return `<label class="field"><span>측정 시간</span><select data-tmr="min">${t.min?'':'<option value="0" selected>고르세요</option>'}${mins.map(x=>`<option value="${x}"${x===Number(t.min)?' selected':''}>${x}분</option>`).join('')}</select></label>
+      <label class="check"><input type="checkbox" data-tmr="renew"${t.renew?' checked':''}${t.min?'':' disabled'}> <span>끝나면 자동 갱신</span></label>
+      <label class="check"><input type="checkbox" data-tmr="reset"${t.reset?' checked':''}${t.min&&t.renew?'':' disabled'}> <span>갱신 때 횟수 0으로</span></label>`;}},
+  {id:'chk',g:'측정',t:'지속시간 끝 확인',sc:'설치 앱',rel:['baseline','intervene'],show:()=>!!PCN&&nat.ver>=2,on:()=>setNatChk().mode!=='off',box:'data-nat-chk',more:()=>{
+    const k=setNatChk();const opt=(arr,v)=>arr.map(([x,l])=>`<option value="${x}"${String(x)===String(v)?' selected':''}>${l}</option>`).join('');
+    const secs=[[15,'15초'],[30,'30초(기본)'],[60,'1분'],[120,'2분'],[300,'5분']];if(!secs.some(x=>x[0]===Number(k.sec)))secs.push([Number(k.sec),`${k.sec}초`]);
+    const misses=[[0,'계속 재기'],[2,'2번 뒤 자동 끝'],[3,'3번 뒤 자동 끝(기본)'],[5,'5번 뒤 자동 끝'],[10,'10번 뒤 자동 끝']];if(!misses.some(x=>x[0]===Number(k.miss)))misses.push([Number(k.miss),`${k.miss}번 뒤 자동 끝`]);
+    return `<label class="field"><span>확인 간격</span><select data-chk="sec">${opt(secs,k.sec)}</select></label>
+      <label class="field"><span>알림 방식</span><select data-chk="mode">${opt(CHK_MODES.filter(x=>x[0]!=='off'),k.mode)}</select></label>
+      <label class="field"><span>응답 없을 때</span><select data-chk="miss">${opt(misses,k.miss)}</select></label>
+      <label class="check"><input type="checkbox" data-chk="adj"${k.adj?' checked':''}> <span>늦은 시작 보정 버튼</span></label>`;}},
+  {id:'abcauto',g:'이 학생',t:'ABC 저절로 시작',sc:'이 학생',rel:['abc','measure'],show:()=>!!curProject(),on:()=>{const p=curProject();return !!(p&&abcData(p).plan.auto);},ck:'data-plan-auto',
+    hint:()=>'시작 시간이 되면 관찰 시작',more:()=>{const a=abcData(curProject()).plan;const here=ui.view==='proc'&&ui.proc==='abc';
+      return `<span>${a.start?`시작 <b class="mono">${esc(a.start)}</b>${a.end?` · 끝 <b class="mono">${esc(a.end)}</b>`:''}`:'<span class="muted">시작 시간이 없어요</span>'}</span>${here?'<span class="muted">ABC 화면에서 시간 정함</span>':'<button type="button" class="btn small" data-act="set-go" data-key="abc">시간 정하러 가기</button>'}`;}},
+  {id:'ai',g:'AI',t:'AI 도우미',sc:'이 기기',rel:['plan','intervene','evaluate'],on:null,ctl:()=>`<button type="button" class="btn small" data-act="set-ai">모델·생각 수준</button>`},
+];
+function setRow(o){
+  const on=o.on?!!o.on():null;const dis=o.dis&&o.dis();const hint=o.hint?o.hint():'';
+  const ck=o.ck||`data-set="${o.id}"`;
+  const head=on===null?`<span class="set-t">${esc(o.t)}</span>${o.ctl()}`
+    :`<label class="check"><input type="checkbox" ${ck}${on?' checked':''}${dis?' disabled':''}> <span class="set-t">${esc(o.t)}</span></label>`;
+  const more=on&&o.more?`<div class="set-more">${o.more()}</div>`:(o.id==='btn3'&&nat.btn&&nat.btn.test?'<input type="checkbox" data-btn3="test" checked hidden>':'');/* 꺼 있어도 시험 진동 값은 그대로 보낸다 */
+  return `<div class="set-row${on?' on':''}${on===null?' pick':''}" data-row="${o.id}"${o.box?` ${o.box}`:''}><div class="set-main">${head}<span class="set-sc">${esc(o.sc)}</span></div>${hint?`<p class="set-hint">${esc(hint)}</p>`:''}${more}</div>`;
+}
+function setInner(){
+  const ctx=setCtx();const rows=SET_ROWS.filter(o=>!o.show||o.show());
+  const top=ctx?rows.filter(o=>o.rel.includes(ctx)):[];const rest=rows.filter(o=>!top.includes(o));
+  const groups=[];rest.forEach(o=>{let g=groups.find(x=>x.g===o.g);if(!g)groups.push(g={g:o.g,rows:[]});g.rows.push(o);});
+  return `<div class="sync-box set-box" role="dialog" aria-modal="true" aria-labelledby="set-h">
+    <div class="sec-head"><h2 class="h3" id="set-h">설정</h2><button type="button" class="btn small primary" data-act="set-close">닫기</button></div>
+    <p class="set-ctx">켜면 세부 설정이 열려요</p>
+    ${top.length?`<section class="set-g rel"><h3>${esc(setCtxName(ctx))} 관련</h3>${top.map(setRow).join('')}</section>`:''}
+    ${groups.map(g=>`<section class="set-g"><h3>${esc(g.g)}</h3>${g.rows.map(setRow).join('')}</section>`).join('')}
+    ${PCN?'':'<p class="hint">음량 버튼·측정 시간은 설치 앱에서</p>'}
+  </div>`;
+}
+function setOpen(){
+  let d=$('#set-dlg');
+  if(!d){d=document.createElement('div');d.id='set-dlg';d.className='sync-dlg';document.body.appendChild(d);
+    d.addEventListener('click',e=>{if(e.target===d)setClose();});}
+  setUI.tmr=false;d.innerHTML=setInner();d.hidden=false;
+  const h=d.querySelector('h2');if(h){h.tabIndex=-1;h.focus();}
+}
+function setClose(){const d=$('#set-dlg');if(d){d.hidden=true;d.innerHTML='';}if(qk.cap){qk.cap=false;qkRefresh();}}
+/* 값이 바뀐 뒤 다시 그린다. 고르는 중인 목록이 있으면 두고, 누른 칸에 다시 초점 */
+function setRefresh(){
+  const d=$('#set-dlg');if(!d||d.hidden)return;
+  const ae=document.activeElement;if(ae&&d.contains(ae)&&ae.matches('select'))return;
+  let sel='';if(ae&&d.contains(ae)){const a=Array.from(ae.attributes).find(x=>/^data-(set|btn3|tmr|chk|qk|act|plan-auto|live-auto)$/.test(x.name));if(a){const r=ae.closest('[data-row]');sel=`${r?`[data-row="${r.dataset.row}"] `:''}[${a.name}${a.value?`="${a.value}"`:''}]${ae.dataset.v?`[data-v="${ae.dataset.v}"]`:''}`;}}
+  const y=d.scrollTop;d.innerHTML=setInner();d.scrollTop=y;
+  if(sel){try{const n=d.querySelector(sel);if(n)n.focus({preventScroll:true});}catch(e){}}
+}
+async function setNatTimerOff(){
+  const t=setNatTimer();setUI.tmr=false;
+  try{const r=await PCN.setTimer({min:0,renew:!!t.renew,reset:t.reset!==false});nat.timer=r.timer||nat.timer;toast('측정 시간 없음');}catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
+  natUI();
+}
+async function setNatChkOn(on){
+  const k=setNatChk();
+  try{const r=await PCN.setCheck({sec:Number(k.sec)||30,mode:on?(k.mode==='off'?'vib':k.mode):'off',miss:Number(k.miss),adj:!!k.adj});nat.chk=r.chk||nat.chk;toast(on?'끝 확인을 켰습니다':'끝 확인을 껐습니다');}
+  catch(e){toast('새 앱을 설치해야 바꿀 수 있습니다');}
+  natUI();
+}
+document.addEventListener('change',e=>{
+  const el=e.target;const d=$('#set-dlg');if(!d||d.hidden||!d.contains(el))return;
+  const k=el.dataset.set;const v=el.checked;
+  if(k==='glass'){try{localStorage.setItem(GLASS_KEY,v?'1':'0');}catch(x){}lookApply();toast(v?'유리 효과를 켰습니다':'유리 효과를 껐습니다');}
+  else if(k==='hc'){try{if(v)localStorage.setItem(HC_KEY,'1');else localStorage.removeItem(HC_KEY);}catch(x){}lookApply();toast(v?'고대비를 켰습니다':'고대비를 껐습니다');}
+  else if(k==='pg'){if(v===pgAll()){if(ui.view==='proc')actions['pg-all']();else{pgAllSet(!v);toast(v?'한 장씩 보기':'전체 보기: 한 화면에 모두');}}}
+  else if(k==='cover'){try{localStorage.setItem(COVER_KEY,v?'1':'0');}catch(x){}const c=$('#cover-auto');if(c)c.checked=v;toast(v?'나갔다 오면 화면을 가립니다':'나갔다 와도 가리지 않습니다');}
+  else if(k==='ink'){inputModeSet(v?'ink':'kb');toast(v?'손글씨 모드':'키보드 모드');}
+  else if(k==='pen'){inkUI.penSeen=v;inkModeSet(v?'pen':'finger');toast(v?'S펜만 씁니다':'손가락도 씁니다');}
+  else if(k==='tmr'){if(v){setUI.tmr=true;}else{setNatTimerOff();return;}}
+  else if(k==='chk'){setNatChkOn(v);return;}
+  else if(el.matches('[data-btn3],[data-tmr],[data-chk]'))return;/* 원래 처리(natBtnSet 등)가 앱에 보낸 뒤 natUI로 다시 그린다 */
+  /* data-qk·data-live-auto·data-plan-auto는 원래 처리가 값을 바꾼 뒤에 다시 그린다 */
+  setTimeout(setRefresh,0);
+});
+Object.assign(actions,{
+  'set-open':()=>setOpen(),'set-close':()=>setClose(),
+  'set-ai':()=>{setClose();aiDlgOpen();},
+  'set-go':el=>{setClose();go('proc',{proc:el.dataset.key});},
+});
+document.addEventListener('keydown',e=>{const d=$('#set-dlg');if(e.key==='Escape'&&d&&!d.hidden&&!qk.cap)setClose();});
 
 /* ---------- 앱 안 공지: 바뀐 점과 '새 apk 필요 / 앱 재시작만' ----------
    새 기능을 main에 올릴 때마다 NOTICES 맨 앞에 항목을 하나 넣는다(id는 겹치지 않게, 날짜-번호).
@@ -6582,6 +6762,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-21-3',d:'2026-11-21',k:'web',t:'설정 창',items:['위 막대 톱니 = 설정','켜면 세부 설정이 열림','절차 관련 설정이 맨 위','유리 효과 끄기·고대비']},
   {id:'2026-11-21-2',d:'2026-11-21',k:'web',t:'유리 질감',items:['위·아래 막대, 창이 비침','기록 칸·그래프는 그대로']},
   {id:'2026-11-21-1',d:'2026-11-21',k:'web',t:'화면 색 민트 청록',items:['배치는 그대로, 색만 바꿈','그래프 기초선·중재 색 나눔']},
   {id:'2026-11-20-10',d:'2026-11-20',k:'web',t:'AI 중재 제안',items:['다시 받아도 지난 제안 1개 남김','지난 제안에서도 넣기']},
