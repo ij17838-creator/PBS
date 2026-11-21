@@ -73,7 +73,7 @@ main{display:flex;flex-direction:column;gap:18px;padding-block:22px 28px}
 .topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line)}
 .topbar-in{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:54px;padding-block:6px}
 .crumbs{display:flex;align-items:center;flex-wrap:wrap;gap:2px 4px;min-width:0;font-size:.92rem}
-.crumbs button{background:none;border:0;padding:6px 6px;border-radius:8px;color:var(--accent);font:inherit;font-weight:600;cursor:pointer}
+.crumbs button{background:none;border:0;padding:6px 6px;border-radius:8px;color:var(--accent-tx,var(--accent));font:inherit;font-weight:600;cursor:pointer}
 .crumbs button:hover{background:var(--accent-soft)}
 .crumbs .sep{color:var(--line-strong)}
 .crumbs .here{padding:6px;font-weight:700;overflow-wrap:anywhere}
@@ -115,7 +115,7 @@ section{min-width:0}
 .btn.ghost:hover{background:var(--sunk)}
 .btn.danger{color:var(--rec)}
 .btn.danger-solid{background:var(--rec);border-color:var(--rec);color:var(--tag-ink)}
-.link{background:none;border:0;padding:4px 0;color:var(--accent);font:inherit;font-size:.85rem;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px;align-self:flex-start}
+.link{background:none;border:0;padding:4px 0;color:var(--accent-tx,var(--accent));font:inherit;font-size:.85rem;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px;align-self:flex-start}
 .field{display:flex;flex-direction:column;gap:6px;min-width:0;border:0;padding:0;margin:0}
 .field > span,.field legend{font-weight:600;font-size:.9rem}
 .field legend{margin-bottom:6px;padding:0}
@@ -137,13 +137,13 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .chip:hover{border-color:var(--ink)}
 .chip.on{font-weight:700}
 .chip.c-a.on{background:var(--a-soft);border-color:var(--a);color:var(--a)}
-.chip.c-b.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.chip.c-b.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-tx,var(--accent))}
 .chip.c-c.on{background:var(--c-soft);border-color:var(--c);color:var(--c)}
 .seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:var(--surface)}
 .seg-btn{min-width:44px;min-height:44px;padding:0 12px;border:0;border-left:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
 .seg-btn:first-child{border-left:0}
 .seg-btn.on{background:var(--accent);color:var(--accent-ink)}
-.pill{display:inline-flex;align-items:center;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.pill{display:inline-flex;align-items:center;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent-tx,var(--accent));white-space:nowrap}
 .pill.muted{background:var(--sunk);color:var(--muted)}
 .pill.warn{background:var(--warn-soft);color:var(--warn)}
 .pill.ok{background:var(--ok-soft);color:var(--ok)}
@@ -209,7 +209,7 @@ details.card[open]{gap:14px}
 .proc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .target-banner{display:flex;gap:14px;align-items:flex-start;background:var(--accent-soft);border-radius:var(--r);padding:12px 16px;flex-wrap:wrap}
 .target-banner.empty{background:var(--warn-soft);color:var(--warn);align-items:center;justify-content:space-between}
-.tb-label{font-size:.75rem;font-weight:700;letter-spacing:.05em;color:var(--accent);padding-top:2px;white-space:nowrap}
+.tb-label{font-size:.75rem;font-weight:700;letter-spacing:.05em;color:var(--accent-tx,var(--accent));padding-top:2px;white-space:nowrap}
 .target-banner p{font-size:.88rem;color:var(--ink);margin-top:2px;white-space:pre-wrap}
 .done-bar{flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--surface-2)}
 .done-bar p{font-size:.9rem;color:var(--muted);flex:1 1 260px}
@@ -311,7 +311,7 @@ details.card.later summary small{font-weight:400;color:var(--muted);margin-left:
 .tab small{font-size:.74rem}
 .tab.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 .tab.on small{color:inherit;opacity:.8}
-.tab.add{border-style:dashed;color:var(--accent);justify-content:center}
+.tab.add{border-style:dashed;color:var(--accent-tx,var(--accent));justify-content:center}
 .grid-4{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
 .scale-legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.84rem;color:var(--muted)}
 .scale-legend b{color:var(--ink)}
@@ -332,7 +332,7 @@ details.card.later summary small{font-weight:400;color:var(--muted);margin-left:
 .bar-track{grid-area:t;height:14px;border-radius:7px;background:var(--sunk);overflow:hidden;position:relative;background-image:repeating-linear-gradient(90deg,transparent 0 calc(20% - 1px),var(--line) calc(20% - 1px) 20%)}
 .bar-fill{height:100%;background:var(--line-strong);border-radius:7px}
 .bar-row.top .bar-fill{background:var(--accent)}
-.bar-row.top .bar-label{color:var(--accent)}
+.bar-row.top .bar-label{color:var(--accent-tx,var(--accent))}
 .bar-val{grid-area:v;font-family:var(--font-mono);font-weight:600;text-align:right}
 .bar-val small{font-size:.75em}
 .bar-sub{grid-area:s;font-size:.76rem;color:var(--muted)}
@@ -343,7 +343,7 @@ details.card.later summary small{font-weight:400;color:var(--muted);margin-left:
 table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:.9rem}
 th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
 td.num{font-family:var(--font-mono);text-align:right}
-td.top{color:var(--accent);font-weight:700}
+td.top{color:var(--accent-tx,var(--accent));font-weight:700}
 
 /* 간편 측정 */
 .qm-card{gap:12px}
@@ -428,7 +428,7 @@ td.top{color:var(--accent);font-weight:700}
 .tally.ta .tfill{background:var(--a)} .tally.tb .tfill{background:var(--accent)} .tally.tc .tfill{background:var(--c)}
 .tally3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}.tally3 .tally li{grid-template-columns:minmax(0,1fr) 64px 50px}
 @media (max-width:900px){.tally3{grid-template-columns:1fr}}
-.tally .tlink{border:0;background:none;padding:2px 0;font:inherit;color:inherit;text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:3px}.tally .tlink:hover{color:var(--accent)}
+.tally .tlink{border:0;background:none;padding:2px 0;font:inherit;color:inherit;text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:3px}.tally .tlink:hover{color:var(--accent-tx,var(--accent))}
 .kw-ex{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:6px;overflow:auto;font-size:.92rem}
 #kw-ex[hidden]{display:none}
 .kw-win{position:fixed;z-index:58;display:flex;flex-direction:column;min-width:200px;min-height:120px;max-width:calc(100vw - 8px);max-height:calc(100dvh - 8px);background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.22);overflow:hidden}
@@ -582,7 +582,7 @@ textarea.kw-drop-on,input.kw-drop-on{outline:3px dashed var(--accent);outline-of
 /* 손글씨(S펜) 입력: 글자를 입력하는 모든 칸 */
 .ink{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 .ink-btn{align-self:flex-start;min-height:32px;padding:4px 10px;border:1px dashed var(--line-strong);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:.8rem;cursor:pointer}
-.ink-btn:hover{color:var(--accent);border-color:var(--accent)}
+.ink-btn:hover{color:var(--accent-tx,var(--accent));border-color:var(--accent)}
 .ink-view{display:block;width:100%;padding:0;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);cursor:pointer}
 .ink-view svg{display:block;width:100%;height:auto}
 .ink-pad{display:flex;flex-direction:column;gap:6px}
@@ -603,11 +603,11 @@ html.ink-lock .ink-hint{display:block}
 .ink-grip:hover::before,.ink-grip.on::before{background:var(--accent)}
 /* 입력 방식: 버튼 하나로 손글씨 ↔ 키보드 */
 .mode-btn{min-height:36px;padding:0 12px;font-size:.86rem}
-.mode-btn .mode-k{font-weight:700;color:var(--accent)}
+.mode-btn .mode-k{font-weight:700;color:var(--accent-tx,var(--accent))}
 .ink:empty{display:none}
 .ink-empty{display:flex;align-items:center;width:100%;min-height:44px;padding:8px 12px;border:1px dashed var(--line-strong);border-radius:10px;background:var(--surface-2);color:var(--muted);font:inherit;font-size:.85rem;cursor:pointer;text-align:left}
 .ink-empty.tall{min-height:96px;align-items:flex-start}
-.ink-empty:hover{border-color:var(--accent);color:var(--accent)}
+.ink-empty:hover{border-color:var(--accent);color:var(--accent-tx,var(--accent))}
 html.in-ink .ink-host.ink-blank{display:none}
 html.in-ink .ink-host{caret-color:transparent}
 .ink-view.kb-src{outline:3px solid var(--accent);outline-offset:2px}
@@ -724,7 +724,7 @@ html.in-ink .ink-host{caret-color:transparent}
 .live-bar span{font-weight:700;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* AI 도우미·자동 문장·최종 보고서 */
 .ai-bar{display:flex;flex-direction:column;gap:6px;margin:4px 0 10px;padding:10px 12px;border:1px dashed var(--accent);border-radius:10px;background:var(--surface-2)}
-.ai-go .ai-mark{color:var(--accent);font-size:.95rem}.ai-go.busy{opacity:.75}
+.ai-go .ai-mark{color:var(--accent-tx,var(--accent));font-size:.95rem}.ai-go.busy{opacity:.75}
 .ai-err{margin:0;color:var(--rec);font-size:.88rem;font-weight:600}
 .ai-send summary{cursor:pointer;font-size:.82rem;color:var(--muted)}
 .ai-send pre{white-space:pre-wrap;font-family:var(--font-body);font-size:.8rem;max-height:220px;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px;margin:6px 0 0}
@@ -765,7 +765,7 @@ body.rep-open{overflow:hidden}
 .pg-pill.has .n::after{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-left:5px;vertical-align:1px}
 .pg-pill.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
 .pg-pill.on .n{color:var(--accent-soft)}.pg-pill.on.has .n::after{background:var(--accent-soft)}
-.pg-pill.pg-one{border-style:dashed;color:var(--accent);font-weight:600}
+.pg-pill.pg-one{border-style:dashed;color:var(--accent-tx,var(--accent));font-weight:600}
 .pg-nav{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:8;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px;box-shadow:0 -4px 18px rgba(21,36,38,.08),var(--shadow)}
 .pg-nav .btn{flex:1 1 0;min-width:0;min-height:48px}
 .pg-nav .btn .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
@@ -864,7 +864,7 @@ body::before{background:var(--glass)}
 .set-g{display:flex;flex-direction:column;gap:8px}
 .set-g>h3{margin:4px 0 0;font-size:.82rem;font-weight:700;color:var(--muted);letter-spacing:.02em}
 .set-g.rel{background:var(--accent-soft);border-radius:var(--r);padding:10px 12px 12px}
-.set-g.rel>h3{color:var(--accent)}
+.set-g.rel>h3{color:var(--accent-tx,var(--accent))}
 .set-row{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .set-row.on{border-color:var(--line-strong)}
 .set-main{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:28px}
@@ -882,7 +882,7 @@ body::before{background:var(--glass)}
 .top-right .save-state,.top-right .sync-state{position:absolute!important;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .top-right .mode-btn svg{flex:0 0 auto}
 .sig-btn{gap:7px;padding:0 11px}
-.sig-ink{display:inline-flex;color:var(--accent)}
+.sig-ink{display:inline-flex;color:var(--accent-tx,var(--accent))}
 .sig-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--muted);flex:0 0 auto}
 .sig-dot.ok{background:var(--ok)}
 .sig-dot.busy,.sig-dot.warn{background:var(--warn)}
@@ -896,7 +896,7 @@ body::before{background:var(--glass)}
 .sig-line{display:flex;align-items:center;gap:10px}
 .sig-line>div{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;line-height:1.35}
 .sig-line small{color:var(--muted);font-size:.8rem}
-.sig-ic{width:24px;display:inline-flex;justify-content:center;color:var(--accent)}
+.sig-ic{width:24px;display:inline-flex;justify-content:center;color:var(--accent-tx,var(--accent))}
 .sig-key{margin:0;display:flex;gap:12px;font-size:.76rem;color:var(--muted)}
 .sig-key>span{display:inline-flex;align-items:center;gap:5px}
 @media (max-width:560px){.top-right .tb-lb{display:none}.top-right .mode-btn:not(.sig-btn){padding:0 10px}.sig-pop{top:calc(env(safe-area-inset-top,0px) + 50px)}}
@@ -906,6 +906,10 @@ body::before{background:var(--glass)}
 .hue-sl{-webkit-appearance:none;appearance:none;width:100%;height:28px;border-radius:999px;border:1px solid var(--line-strong);
   background:linear-gradient(90deg,hsl(0,70%,45%),hsl(30,75%,42%),hsl(60,70%,38%),hsl(100,60%,36%),hsl(150,65%,32%),hsl(180,70%,30%),hsl(210,65%,42%),hsl(250,55%,50%),hsl(290,50%,45%),hsl(330,60%,45%),hsl(360,70%,45%))}
 .hue-sl::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.3)}
+.lum-row{display:flex;align-items:center;gap:8px}.lum-end{font-size:.78rem;color:var(--muted);flex:none}
+.lum-sl{-webkit-appearance:none;appearance:none;flex:1;min-width:0;height:22px;border-radius:999px;border:1px solid var(--line-strong);
+  background:linear-gradient(90deg,#fff,hsl(var(--h),72%,72%) 22%,hsl(var(--h),72%,34%) 62%,hsl(var(--h),60%,14%) 88%,#0b0b0b)}
+.lum-sl::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.3)}
 .hue-pre{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .hue-dot{width:30px;height:30px;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line-strong);background:var(--sw);cursor:pointer}
 .hue-dot[aria-pressed="true"]{box-shadow:0 0 0 3px var(--ink)}
@@ -4752,7 +4756,7 @@ function syncOnAuth(u){
   Sync.user=u;Sync.authKnown=true;
   acctOnAuth(u);
   if(!u&&mini.on)miniOff();
-  if(u)setTimeout(hueAcctLoad,0);else if(before)hueLocal(null);/* 앱 색은 계정마다: 로그인하면 계정 색, 로그아웃하면 기본색 */
+  if(u)setTimeout(hueAcctLoad,0);else if(before)hueLocal(null,null);/* 앱 색은 계정마다: 로그인하면 계정 색, 로그아웃하면 기본색 */
   if(u)setTimeout(syncAutoPull,0);/* 다른 기기에서 받은 공유 프로젝트도 내려받기 */
   if(!u&&PCN)setTimeout(natDrain,0);/* 설치형 앱: 숨긴 프로젝트의 앱 밖 측정도 끈다(natLockHidden) *//* 로그아웃: 세기 대기 창(작은 창·화면 안 ＋1)도 닫는다 */
   if(acctUid()!==before)setTimeout(render,0);/* 계정이 바뀌면 보이는 프로젝트가 달라진다 */
@@ -6436,6 +6440,9 @@ lookApply();
 
 /* 앱 색: 색상(hue) 하나로 강조·배경·선·유리 색을 만든다. 상태 색(진행·완료·경고)·그래프 색은 그대로. 고대비면 기본색 */
 const HUE_KEY='pbs-hue',HUE_DEF=173;
+const HUE_L_KEY='pbs-hue-l';/* 밝기: 버튼 색 명도 15~85, 없으면 자동 */
+function hueLGet(){try{const v=localStorage.getItem(HUE_L_KEY);return v===null?null:Number(v);}catch(e){return null;}}
+function hueAutoL(h){let l=34;while(l>12&&cr(hexL(h,72,l),[1,1,1])<4.8)l--;return l;}
 function hueGet(){try{const v=localStorage.getItem(HUE_KEY);return v===null?null:Number(v);}catch(e){return null;}}
 function hexL(h,s,l){s/=100;l/=100;const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,9-k(n),1));return [f(0),f(8),f(4)];}
 function hx(c){return '#'+c.map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('');}
@@ -6443,45 +6450,63 @@ function lum(c){const t=c.map(x=>x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4))
 function cr(a,b){const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);}
 function rgba(h,s,l,a){const c=hexL(h,s,l).map(x=>Math.round(x*255));return `rgba(${c.join(',')},${a})`;}
 function isDark(){const t=document.documentElement.dataset.theme;return t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);}
-function huePal(h,dark){
-  const W=[1,1,1];
-  if(!dark){let l=34;while(l>12&&cr(hexL(h,72,l),W)<4.8)l--;/* 흰 글자가 읽히도록 진하게 */
-    return {'--accent':hx(hexL(h,72,l)),'--accent-hover':hx(hexL(h,74,l-6)),'--accent-ink':'#FFFFFF','--accent-soft':hx(hexL(h,70,91)),
+function huePal(h,dark,uL){
+  const W=[1,1,1];const INK=hexL(h,35,12);
+  const inkOn=c=>cr(c,W)>=4.5?'#FFFFFF':hx(INK);/* 버튼 글자: 흰색이 안 읽히면 진한 글자 */
+  const txOn=(s,l,bg)=>{while(l>10&&cr(hexL(h,s,l),bg)<4.6)l--;return hx(hexL(h,s,l));};/* 글자로 쓰는 강조색은 배경 위에서 읽히게 */
+  if(!dark){let l=hueAutoL(h);if(uL!=null&&!isNaN(uL))l=Math.max(15,Math.min(85,uL));const A=hexL(h,72,l);const bgc=hexL(h,55,98);
+    const P=huePalBase(h,l);P['--accent-ink']=inkOn(A);P['--accent-tx']=txOn(72,l,bgc);P['--accent-hover']=hx(hexL(h,74,l>50?l-8:l-6));P['--pri-top']=hx(hexL(h,62,Math.min(94,l+7)));return P;}
+  return huePalDark(h,uL);
+}
+function huePalBase(h,l){
+  return {'--accent':hx(hexL(h,72,l)),'--accent-hover':hx(hexL(h,74,l-6)),'--accent-ink':'#FFFFFF','--accent-soft':hx(hexL(h,70,91)),
       '--pri-top':hx(hexL(h,62,l+7)),'--bg':hx(hexL(h,55,98)),'--surface-2':hx(hexL(h,55,98.6)),'--sunk':hx(hexL(h,48,93)),
       '--line':hx(hexL(h,42,89)),'--line-strong':hx(hexL(h,38,77)),'--ink':hx(hexL(h,35,12)),'--muted':hx(hexL(h,12,37)),'--qc0':hx(hexL(h,72,l)),
       '--glow1':rgba(h,60,56,.22),'--glow3':rgba(h,60,56,.16),'--tint-sh':rgba(h,72,l,.25),
       '--glass-shadow':`0 1px 0 rgba(255,255,255,.6) inset,0 8px 28px ${rgba(h,72,l,.14)}`};}
+function huePalDark(h,uL){
   let l=55;const D=hexL(h,30,8);while(l<85&&cr(hexL(h,45,l),D)<6)l++;
-  return {'--accent':hx(hexL(h,45,l)),'--accent-hover':hx(hexL(h,50,l+7)),'--accent-ink':hx(hexL(h,40,7)),'--accent-soft':hx(hexL(h,35,17)),
+  if(uL!=null&&!isNaN(uL)){l=Math.max(38,Math.min(88,Math.round(l+(uL-hueAutoL(h))*0.55)));}/* 다크: 밝기 막대를 덜 세게 따라감 */
+  const A=hexL(h,45,l);const ink=cr(A,D)>=4.5?hx(hexL(h,40,7)):'#FFFFFF';const tx=(()=>{let t=l;while(t<92&&cr(hexL(h,45,t),D)<4.6)t++;return hx(hexL(h,45,t));})();
+  return {'--accent':hx(hexL(h,45,l)),'--accent-hover':hx(hexL(h,50,l+7)),'--accent-ink':ink,'--accent-tx':tx,'--accent-soft':hx(hexL(h,35,17)),
     '--pri-top':hx(hexL(h,50,l+7)),'--bg':hx(hexL(h,25,8)),'--surface':hx(hexL(h,23,12)),'--surface-2':hx(hexL(h,22,14)),'--sunk':hx(hexL(h,25,6)),
     '--line':hx(hexL(h,18,21)),'--line-strong':hx(hexL(h,16,30)),'--ink':hx(hexL(h,15,91)),'--muted':hx(hexL(h,9,64)),'--qc0':hx(hexL(h,45,l)),
     '--glow1':rgba(h,45,55,.12),'--glow3':rgba(h,45,55,.08),'--glass':rgba(h,23,12,.62),'--glass-strong':rgba(h,23,12,.88),'--tint-sh':'rgba(0,0,0,.3)'};
 }
 const HUE_VARS=Object.keys(Object.assign({},huePal(0,false),huePal(0,true)));
 function hueApply(h){const r=document.documentElement;HUE_VARS.forEach(k=>r.style.removeProperty(k));
-  if(h===undefined)h=hueGet();if(h===null||isNaN(h)||hcOn())return;Object.entries(huePal(h,isDark())).forEach(([k,v])=>r.style.setProperty(k,v));}
+  if(h===undefined)h=hueGet();const L=hueLGet();if(h===null&&L!==null)h=HUE_DEF;if(h===null||isNaN(h)||hcOn())return;Object.entries(huePal(h,isDark(),L)).forEach(([k,v])=>r.style.setProperty(k,v));}
 hueApply();try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>hueApply());}catch(e){}
-function hueLocal(v){try{if(v===null||v===undefined)localStorage.removeItem(HUE_KEY);else localStorage.setItem(HUE_KEY,String(v));}catch(e){}hueApply();setRefresh();}
+function hueLocal(v,l){/* l을 안 주면 밝기는 그대로 */
+  const put=(k,x)=>{try{if(x===null||x===undefined||isNaN(Number(x)))localStorage.removeItem(k);else localStorage.setItem(k,String(x));}catch(e){}};
+  put(HUE_KEY,v);if(l!==undefined)put(HUE_L_KEY,l);hueApply();setRefresh();}
 /* 고른 색을 기기(바로 보이게)와 계정에 저장. 로그아웃이면 이 기기에만 */
-function hueSave(v){hueLocal(v);const me=syncMe();if(me&&Sync.ad&&Sync.ad.lookSet)Sync.ad.lookSet(me,{hue:v===null?null:Number(v)}).catch(e=>console.warn('lookSet',e&&e.code));}
+function hueSave(v,l){hueLocal(v,l);const me=syncMe();const L=hueLGet();
+  if(me&&Sync.ad&&Sync.ad.lookSet)Sync.ad.lookSet(me,{hue:v===null?null:Number(v),l:L}).catch(e=>console.warn('lookSet',e&&e.code));}
 /* 로그인하면 계정에 저장된 색을 받는다. 계정에 없고 이 기기에서 고른 색이 있으면 그 색을 계정에 올린다 */
 async function hueAcctLoad(){
   const ad=Sync.ad||await syncAdapter().catch(()=>null);const me=syncMe();if(!ad||!ad.lookGet||!me)return;
   let d;try{d=await ad.lookGet(me);}catch(e){console.warn('lookGet',e&&e.code);return;}
   if((syncMe()||{}).uid!==me.uid)return;
-  if(d&&'hue' in d){const v=d.hue===null||isNaN(Number(d.hue))?null:Number(d.hue);if(v!==hueGet())hueLocal(v);}
-  else{const v=hueGet();if(v!==null&&ad.lookSet)ad.lookSet(me,{hue:v}).catch(e=>console.warn('lookSet',e&&e.code));}
+  const num=x=>x===null||x===undefined||isNaN(Number(x))?null:Number(x);
+  if(d&&'hue' in d){const v=num(d.hue),l=num(d.l);if(v!==hueGet()||l!==hueLGet())hueLocal(v,l);}
+  else{const v=hueGet(),l=hueLGet();if((v!==null||l!==null)&&ad.lookSet)ad.lookSet(me,{hue:v,l}).catch(e=>console.warn('lookSet',e&&e.code));}
 }
 const HUE_PRE=[[173,'민트'],[205,'바다'],[228,'파랑'],[262,'보라'],[330,'분홍'],[18,'노을'],[40,'호박'],[135,'풀잎']];
 function hueMore(){const h=hueGet();const cur=h===null?HUE_DEF:h;
   return `<div class="hue-wrap"><input type="range" class="hue-sl" min="0" max="359" step="1" value="${cur}" data-hue="sl" aria-label="앱 색 고르기"${hcOn()?' disabled':''}>
+    <div class="lum-row"><span class="lum-end" aria-hidden="true">밝게</span><input type="range" class="lum-sl" min="15" max="85" step="1" value="${100-(hueLGet()??hueAutoL(cur))}" style="--h:${cur}" data-hue="lum" aria-label="밝기"${hcOn()?' disabled':''}><span class="lum-end" aria-hidden="true">어둡게</span></div>
     <div class="hue-pre" role="group" aria-label="자주 쓰는 색">${HUE_PRE.map(([v,n])=>`<button type="button" class="hue-dot" style="--sw:${hx(hexL(v,72,30))}" data-act="hue-pre" data-v="${v}" title="${n}" aria-label="${n}" aria-pressed="${v===cur}"></button>`).join('')}</div>
     <div class="hue-prev" aria-label="미리보기"><button type="button" class="btn small primary" tabindex="-1">저장</button><button type="button" class="btn small" tabindex="-1">취소</button><span class="pill-s">선택됨</span><span class="card-s">기록 칸</span><span class="sunk-s">빈 칸</span></div>
     <div class="hue-fixed"><span>그대로:</span><span><i style="background:var(--rec)"></i>진행 중</span><span><i style="background:var(--ok)"></i>완료</span><span><i style="background:var(--warn)"></i>경고</span><span><i style="background:var(--ser-a)"></i>기초선</span><span><i style="background:var(--ser-b)"></i>중재</span></div></div>`;}
-document.addEventListener('input',e=>{const el=e.target;if(!el.matches||!el.matches('[data-hue="sl"]'))return;const v=Number(el.value);hueApply(v);
+document.addEventListener('input',e=>{const el=e.target;if(!el.matches||!el.matches('[data-hue="lum"]'))return;
+  try{localStorage.setItem(HUE_L_KEY,String(100-Number(el.value)));}catch(x){}hueApply();});
+document.addEventListener('input',e=>{const el=e.target;if(!el.matches||!el.matches('[data-hue="sl"]'))return;const lm=document.querySelector('[data-hue="lum"]');if(lm)lm.style.setProperty('--h',el.value);const v=Number(el.value);hueApply(v);
   try{localStorage.setItem(HUE_KEY,String(v));}catch(x){}});
 /* 손을 떼면(change) 계정에도 저장 */
-document.addEventListener('change',e=>{const el=e.target;if(el.matches&&el.matches('[data-hue="sl"]'))hueSave(Number(el.value));});
+document.addEventListener('change',e=>{const el=e.target;if(!el.matches)return;
+  if(el.matches('[data-hue="sl"]'))hueSave(Number(el.value));
+  else if(el.matches('[data-hue="lum"]'))hueSave(hueGet(),100-Number(el.value));});
 const setUI={tmr:false};/* tmr: 측정 시간을 켰지만 아직 분을 안 고름 */
 function setCtx(){return ui.view==='proc'&&PROC[ui.proc]?ui.proc:(ui.view==='project'&&ui.cat?ui.cat:'');}
 function setCtxName(k){return PROC[k]?PROC[k].title:(CAT[k]?CAT[k].title:'');}
@@ -6491,7 +6516,7 @@ function setNatTimer(){return Object.assign({min:0,renew:false,reset:true},nat.t
 const SET_ROWS=[
   {id:'glass',g:'화면',t:'유리 효과',sc:'이 기기',rel:[],on:()=>glassOn()&&!hcOn(),dis:()=>hcOn(),hint:()=>hcOn()?'고대비면 꺼져요':'막대·창 뒤가 흐리게 비침'},
   {id:'hc',g:'화면',t:'고대비',sc:'이 기기',rel:[],on:()=>hcOn(),hint:()=>'진한 글자·굵은 테두리'},
-  {id:'hue',g:'화면',t:'앱 색',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:null,ctl:()=>`<button type="button" class="btn small" data-act="hue-reset"${hueGet()===null?' disabled':''}>기본색으로</button>`,hint:()=>hcOn()?'고대비면 기본색':syncMe()?'버튼·배경 색이 함께 바뀜':'로그인하면 계정에 저장',more:()=>hueMore()},
+  {id:'hue',g:'화면',t:'앱 색',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:null,ctl:()=>`<button type="button" class="btn small" data-act="hue-reset"${hueGet()===null&&hueLGet()===null?' disabled':''}>기본색으로</button>`,hint:()=>hcOn()?'고대비면 기본색':syncMe()?'버튼·배경 색이 함께 바뀜':'로그인하면 계정에 저장',more:()=>hueMore()},
   {id:'pg',g:'화면',t:'절차 한 장씩 보기',sc:'이 기기',rel:['profile','define','qabf','rating','hypo','plan','evaluate'],on:()=>!pgAll(),hint:()=>pgAll()?'지금은 한 화면에 모두':''},
   {id:'cover',g:'화면',t:'나갔다 오면 가리기',sc:'이 기기',rel:['baseline','intervene','abc'],on:()=>{try{return localStorage.getItem(COVER_KEY)==='1';}catch(e){return false;}},hint:()=>'돌아오면 시계 화면'},
   {id:'ink',g:'입력',t:'손글씨 모드',sc:'이 기기',rel:['profile','define','rating','abc','hypo','plan','evaluate'],on:()=>inkUI.mode==='ink',
@@ -6592,7 +6617,7 @@ document.addEventListener('change',e=>{
 });
 Object.assign(actions,{
   'set-open':()=>setOpen(),
-  'set-open-qm':()=>{setOpen();const r=$('#set-dlg [data-row="qm"]');if(r)r.scrollIntoView({block:'center'});},'set-close':()=>setClose(),'hue-pre':el=>hueSave(Number(el.dataset.v)),'hue-reset':()=>{hueSave(null);toast('기본색으로 되돌렸습니다');},
+  'set-open-qm':()=>{setOpen();const r=$('#set-dlg [data-row="qm"]');if(r)r.scrollIntoView({block:'center'});},'set-close':()=>setClose(),'hue-pre':el=>hueSave(Number(el.dataset.v)),'hue-reset':()=>{hueSave(null,null);toast('기본색으로 되돌렸습니다');},
   'set-ai':()=>{setClose();aiDlgOpen();},
   'set-go':el=>{setClose();go('proc',{proc:el.dataset.key});},
 });
@@ -6908,6 +6933,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-21-9',d:'2026-11-21',k:'web',t:'앱 색 밝기',items:['색 막대 아래 밝게~어둡게','밝으면 버튼 글자는 진하게','밝기도 계정에 저장']},
   {id:'2026-11-21-8',d:'2026-11-21',k:'web',t:'앱 색은 계정마다',items:['로그인하면 내 계정 색','다른 기기도 같은 색','로그아웃하면 기본색']},
   {id:'2026-11-21-7',d:'2026-11-21',k:'web',t:'앱 색 고르기',items:['설정 > 앱 색: 색 막대로 고름','버튼·배경 색이 함께 바뀜','기본색으로 버튼으로 되돌림']},
   {id:'2026-11-21-6',d:'2026-11-21',k:'web',t:'AI 요청 취소',items:['쓰는 중에 버튼 다시 누르면 취소','취소해도 지금·지난 제안 그대로']},
