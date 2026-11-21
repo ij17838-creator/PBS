@@ -6588,7 +6588,7 @@ const APPCHECK_SITE_KEY='6LfIIikuAAAAAP_Ne2drq1rA6aGdCNR1EdbdwDlr';
 const AI_BACKEND='vertex';
 const AI_LEVELS=[['HIGH','높음'],['MEDIUM','보통']];/* Gemini 4 Neon은 높음만 받는다(보통이면 모델 기본값으로 다시 부름). xhigh는 쓰지 않는다 */
 const AI_SYS='너는 특수교육과 긍정적 행동지원(PBS)을 돕는 조력자다. 교사가 입력한 자료만 근거로 삼고, 자료에 없는 사실을 지어내지 않는다. 학생을 진단하거나 낙인찍는 말을 쓰지 않는다. 한국어로, 교사가 바로 쓸 수 있는 쉬운 문장으로 쓴다.';
-const ai={busy:'',err:{},sdk:null};
+const ai={busy:'',err:{},sdk:null,run:null};
 function aiCfg(){let o={};try{o=JSON.parse(localStorage.getItem(AI_CFG_KEY)||'{}')||{};}catch(e){}return {model:String(o.model||'').trim()||AI_MODEL_DEF,level:o.level==='MEDIUM'?'MEDIUM':'HIGH'};}
 function aiCfgSet(o){try{localStorage.setItem(AI_CFG_KEY,JSON.stringify(Object.assign(aiCfg(),o)));}catch(e){toast('이 기기에 저장하지 못했습니다');}}
 function aiAvail(){return !!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey);}
@@ -6621,14 +6621,17 @@ function aiErrMsg(e){
 async function aiCall(prompt,json){
   if(!aiAvail())throw new Error('이 앱에는 Firebase 설정이 없습니다');
   if(!aiReady())throw new Error('로그인하면 AI를 쓸 수 있습니다');
-  const c=aiCfg();const S=await aiSdk();
+  const run=ai.run;/* aiRun 중이면 취소(aiStop)되는 순간 기다림을 끊는다 */
+  const wait=x=>run?Promise.race([x,run.stop]):x;
+  const c=aiCfg();const S=await wait(aiSdk());
   const gen={thinkingConfig:{thinkingLevel:c.level}};if(json)gen.responseMimeType='application/json';
-  const ask=async g=>{const r=await S.model(c.model,{generationConfig:g,systemInstruction:AI_SYS}).generateContent(prompt);return r.response.text();};
+  const ask=async g=>{const r=await wait(S.model(c.model,{generationConfig:g,systemInstruction:AI_SYS}).generateContent(prompt,run?{signal:run.ac.signal}:undefined));return r.response.text();};
   let text;
   try{
     try{text=await ask(gen);}
-    catch(e){if(/thinking/i.test(String(e&&e.message))){delete gen.thinkingConfig;text=await ask(gen);}else throw e;}
-  }catch(e){throw new Error(aiErrMsg(e));}
+    catch(e){if(!(run&&run.off)&&/thinking/i.test(String(e&&e.message))){delete gen.thinkingConfig;text=await ask(gen);}else throw e;}
+  }catch(e){if(run&&run.off)throw e;throw new Error(aiErrMsg(e));}
+  if(run&&run.off)throw new Error('취소됨');
   text=String(text||'').trim();if(!text)throw new Error('빈 응답을 받았습니다');
   return text;
 }
@@ -6660,16 +6663,23 @@ function aiFacts(p,withIv){
   return out.filter(([,v])=>aiT(v)).map(([k,v])=>`[${k}]\n${v}`).join('\n\n');
 }
 function aiSendBox(text){return `<details class="ai-send"><summary>보낼 내용 보기</summary><pre>${esc(text)}</pre><p class="hint">학생 코드·민감 정보 제외</p></details>`;}
-function aiBtn(act,label,extra){const on=ai.busy===act;return `<button type="button" class="btn small ai-go${on?' busy':''}" data-act="${act}"${on?' disabled':''}${extra||''}><span class="ai-mark" aria-hidden="true">✦</span>${on?'AI가 쓰는 중…':esc(label)}</button>`;}
+const AI_BUSY_HTML='<span class="ai-mark" aria-hidden="true">✦</span>쓰는 중… 누르면 취소';
+function aiBtn(act,label,extra){const on=ai.busy===act;return `<button type="button" class="btn small ai-go${on?' busy':''}" data-act="${act}"${ai.busy&&!on?' disabled':''}${extra||''}>${on?AI_BUSY_HTML:`<span class="ai-mark" aria-hidden="true">✦</span>${esc(label)}`}</button>`;}
 function aiErrLine(k){return ai.err[k]?`<p class="ai-err" role="alert">${esc(ai.err[k])}</p>`:'';}
 async function aiRun(k,fn){
   if(!aiReady()){aiDlgOpen();return;}
-  if(ai.busy)return;
-  ai.busy=k;ai.err[k]='';aiRefresh();
-  try{await fn();}catch(e){ai.err[k]=e&&e.message||'실패했습니다';}
-  ai.busy='';const y=window.scrollY;render();window.scrollTo(0,y);if(rep.on)repPaint();
+  if(ai.busy){if(ai.busy===k)aiStop();return;}/* 쓰는 중에 같은 버튼을 다시 누르면 취소 */
+  let stop;const r={k,t0:Date.now(),off:false,ac:new AbortController(),stop:new Promise((_,j)=>{stop=j;})};r.stop.catch(()=>{});
+  r.cancel=()=>{r.off=true;try{r.ac.abort();}catch(e){}stop(new Error('취소됨'));};
+  ai.run=r;ai.busy=k;ai.err[k]='';aiRefresh();
+  try{await fn();}catch(e){if(!r.off)ai.err[k]=e&&e.message||'실패했습니다';}
+  if(ai.run!==r)return;/* 취소됨: aiStop이 이미 화면을 되돌림 */
+  ai.run=null;ai.busy='';aiRepaint();
 }
-function aiRefresh(){$$('.ai-go').forEach(b=>{const on=b.dataset.act===ai.busy;b.disabled=!!ai.busy;b.classList.toggle('busy',on);if(on)b.innerHTML='<span class="ai-mark" aria-hidden="true">✦</span>AI가 쓰는 중…';});}
+function aiRepaint(){const y=window.scrollY;render();window.scrollTo(0,y);if(rep.on)repPaint();}
+/* 취소: 결과를 버리고(지금 제안·지난 제안 그대로) 버튼을 되돌린다. 0.6초 안 두 번 눌림은 무시 */
+function aiStop(){const r=ai.run;if(!r||Date.now()-r.t0<600)return;r.cancel();ai.run=null;ai.busy='';aiRepaint();toast('AI 요청을 취소했습니다');}
+function aiRefresh(){$$('.ai-go').forEach(b=>{const on=b.dataset.act===ai.busy;b.disabled=!!ai.busy&&!on;b.classList.toggle('busy',on);if(on)b.innerHTML=AI_BUSY_HTML;});}
 
 /* 중재 계획: 칸마다 2~3개 제안 → 골라서 넣기 */
 const AI_PLAN_KEYS=[['antecedent',3],['replacement',3],['consequence',3],['crisis',2]];
@@ -6828,6 +6838,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-21-6',d:'2026-11-21',k:'web',t:'AI 요청 취소',items:['쓰는 중에 버튼 다시 누르면 취소','취소해도 지금·지난 제안 그대로']},
   {id:'2026-11-21-5',d:'2026-11-21',k:'web',t:'간편 측정 옵션은 설정에',items:['동시에 몇 개·측정·색은 설정','측정 화면엔 요약·켜기만','단축키도 설정에서']},
   {id:'2026-11-21-4',d:'2026-11-21',k:'web',t:'위 막대 정리',items:['맨 위로·한 단계 위 뺌','입력·저장은 작은 신호로','신호 누르면 지금 상태','설정 톱니는 늘 맨 오른쪽']},
   {id:'2026-11-21-3',d:'2026-11-21',k:'web',t:'설정 창',items:['위 막대 톱니 = 설정','켜면 세부 설정이 열림','절차 관련 설정이 맨 위','유리 효과 끄기·고대비']},
