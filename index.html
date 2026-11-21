@@ -13,14 +13,15 @@
 <style>
 /* Layout: field-notebook tool — sticky crumb bar, one 980px column, procedure cards in a wrapping grid, A/B/C colour-coded throughout */
 :root{
-  --bg:#EDF1F0; --surface:#FFFFFF; --surface-2:#F5F8F7; --sunk:#E2E9E7;
-  --ink:#152426; --muted:#566868; --line:#CAD6D3; --line-strong:#A9BAB7;
-  --accent:#1B6862; --accent-hover:#14534E; --accent-ink:#FFFFFF; --accent-soft:#D2E9E5;
-  --a:#2C52A0; --a-soft:#DFE7F7; --c:#93520F; --c-soft:#F5E6D1;
-  --rec:#BF3628; --rec-soft:#F9DEDA; --ok:#27744A; --ok-soft:#D8EEE0; --warn:#866000; --warn-soft:#F4E9C6;
-  --shadow:0 1px 2px rgba(21,36,38,.06),0 6px 18px rgba(21,36,38,.05);
+  --bg:#F6FCFB; --surface:#FFFFFF; --surface-2:#F8FDFC; --sunk:#E6F6F2;
+  --ink:#14272A; --muted:#52676A; --line:#D9EFEA; --line-strong:#AEDBD1;
+  --accent:#0E7C70; --accent-hover:#0A6359; --accent-ink:#FFFFFF; --accent-soft:#D3F5EE;
+  --a:#3A5BA8; --a-soft:#E3E9F8; --c:#7A6200; --c-soft:#F0F7BE;
+  --rec:#C0392B; --rec-soft:#FDE4E0; --ok:#17704A; --ok-soft:#D8F4E3; --warn:#6E5C00; --warn-soft:#EDF5AE;
+  --shadow:0 1px 2px rgba(20,39,42,.05),0 6px 18px rgba(20,39,42,.05);
   --tag-ink:#FFFFFF;
-  --qc0:#1B6862; --qc1:#2C52A0; --qc2:#C2540A; --qc3:#8B3FA0; --qc4:#B0305E; --qc5:#5F7414;
+  --qc0:#0E7C70; --qc1:#3A5BA8; --qc2:#C2700A; --qc3:#8B3FA0; --qc4:#B0305E; --qc5:#5F8A14;
+  --ser-a:#6B7A8F; --ser-b:#12B39A;
   --font-display:"Gowun Batang","Nanum Myeongjo","AppleMyungjo",serif;
   --font-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
   --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
@@ -35,6 +36,7 @@
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
   --tag-ink:#0F191A;
   --qc0:#5DB6AB; --qc1:#91AAEA; --qc2:#F0A060; --qc3:#C99BE0; --qc4:#F08CB0; --qc5:#B5CC5E;
+  --ser-a:#9DAABB; --ser-b:#4FD1B5;
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
@@ -46,6 +48,7 @@
   --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
   --tag-ink:#0F191A;
   --qc0:#5DB6AB; --qc1:#91AAEA; --qc2:#F0A060; --qc3:#C99BE0; --qc4:#F08CB0; --qc5:#B5CC5E;
+  --ser-a:#9DAABB; --ser-b:#4FD1B5;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -280,9 +283,9 @@ details.card.later summary small{font-weight:400;color:var(--muted);margin-left:
 .bl-mean{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:6 4}
 .bl-goal{stroke:var(--ink);stroke-width:1.5;stroke-dasharray:2 4}
 .bl-phase{stroke:var(--line-strong);stroke-width:2;stroke-dasharray:5 3}
-.bl-line{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round}
-.bl-dot{fill:var(--accent);stroke:var(--surface-2);stroke-width:2}
-.bl-dot.b{fill:var(--surface-2);stroke:var(--accent);stroke-width:2.5}
+.bl-line{fill:none;stroke:var(--ser-a);stroke-width:2;stroke-linejoin:round}.bl-line.b{stroke:var(--ser-b)}
+.bl-dot{fill:var(--ser-a);stroke:var(--surface-2);stroke-width:2}
+.bl-dot.b{fill:var(--surface-2);stroke:var(--ser-b);stroke-width:2.5}
 .bl-hit{fill:transparent}
 .bl-pt:hover .bl-dot{r:6}
 .bl-stats{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.88rem;margin-top:10px}
@@ -6539,7 +6542,7 @@ function repOpen(){
 }
 function repClose(){const d=$('#report');rep.on=false;d.hidden=true;d.innerHTML='';document.body.classList.remove('rep-open');}
 document.addEventListener('input',e=>{if(e.target&&e.target.id==='rep-opinion'){const p=curProject();if(p)aiOutSet(p,'rep',{at:(aiOut(p,'rep')||{}).at||nowISO(),text:e.target.innerText.trim()});}});
-const REP_CSS='body{font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;color:#152426;max-width:820px;margin:24px auto;padding:0 16px;line-height:1.6}h1{margin:.2em 0}h2{font-size:1.1rem;border-bottom:2px solid #1B6862;padding-bottom:4px;margin-top:1.6em}h3{font-size:.95rem;margin:1em 0 .3em}.eyebrow{color:#566868;font-size:.85rem;margin:0}.rep-status{color:#566868;font-size:.8rem}table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:.9rem}th,td{border:1px solid #CAD6D3;padding:6px 8px;text-align:left;vertical-align:top}th{width:26%;background:#F5F8F7;font-weight:600}.muted{color:#566868}.rep-chart svg{width:100%;height:auto;max-height:320px}.no-print{display:none}small{color:#566868}.bl-grid{stroke:#CAD6D3}.bl-tick,.bl-lab{fill:#566868;font-size:11px}.bl-band{fill:#D2E9E5;opacity:.7}.bl-mean{stroke:#566868;stroke-width:1.5;stroke-dasharray:6 4}.bl-goal{stroke:#152426;stroke-width:1.5;stroke-dasharray:2 4}.bl-phase{stroke:#A9BAB7;stroke-width:2;stroke-dasharray:5 3}.bl-line{fill:none;stroke:#1B6862;stroke-width:2}.bl-dot{fill:#1B6862;stroke:#fff;stroke-width:2}.bl-dot.b{fill:#fff;stroke:#1B6862}.bl-hit{fill:transparent}';
+const REP_CSS='body{font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;color:#14272A;max-width:820px;margin:24px auto;padding:0 16px;line-height:1.6}h1{margin:.2em 0}h2{font-size:1.1rem;border-bottom:2px solid #0E7C70;padding-bottom:4px;margin-top:1.6em}h3{font-size:.95rem;margin:1em 0 .3em}.eyebrow{color:#52676A;font-size:.85rem;margin:0}.rep-status{color:#52676A;font-size:.8rem}table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:.9rem}th,td{border:1px solid #D9EFEA;padding:6px 8px;text-align:left;vertical-align:top}th{width:26%;background:#F8FDFC;font-weight:600}.muted{color:#52676A}.rep-chart svg{width:100%;height:auto;max-height:320px}.no-print{display:none}small{color:#52676A}.bl-grid{stroke:#D9EFEA}.bl-tick,.bl-lab{fill:#52676A;font-size:11px}.bl-band{fill:#D3F5EE;opacity:.7}.bl-mean{stroke:#52676A;stroke-width:1.5;stroke-dasharray:6 4}.bl-goal{stroke:#14272A;stroke-width:1.5;stroke-dasharray:2 4}.bl-phase{stroke:#AEDBD1;stroke-width:2;stroke-dasharray:5 3}.bl-line{fill:none;stroke:#6B7A8F;stroke-width:2}.bl-line.b{stroke:#12B39A}.bl-dot{fill:#6B7A8F;stroke:#fff;stroke-width:2}.bl-dot.b{fill:#fff;stroke:#12B39A}.bl-hit{fill:transparent}';
 async function repSave(){
   const p=curProject();if(!p)return;const b=$('#rep-body');if(!b)return;
   const c=b.cloneNode(true);c.querySelectorAll('.no-print,.ai-err').forEach(x=>x.remove());const op=c.querySelector('#rep-opinion');if(op)op.removeAttribute('contenteditable');
@@ -6549,6 +6552,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-21-1',d:'2026-11-21',k:'web',t:'화면 색 민트 청록',items:['배치는 그대로, 색만 바꿈','그래프 기초선·중재 색 나눔']},
   {id:'2026-11-20-10',d:'2026-11-20',k:'web',t:'AI 중재 제안',items:['다시 받아도 지난 제안 1개 남김','지난 제안에서도 넣기']},
   {id:'2026-11-20-9',d:'2026-11-20',k:'web',t:'ABC 관찰 시작',items:['시간만 정하면 시작 안 함','저절로 시작은 체크로 켬','간편 측정 뒤 설정 되돌림']},
   {id:'2026-11-20-8',d:'2026-11-20',k:'web',t:'낱말 창 비교',items:['고정 없이 3개까지 띄움','같은 기록 행은 같은 색','창을 더 작게']},
