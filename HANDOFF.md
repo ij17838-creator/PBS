@@ -6,7 +6,7 @@
 
 ## 2026-11-21 · 프로젝트 만들 때 측정 방법 고르기
 ### 한 일
-- 새 프로젝트 칸에 '어떤 방법을 사용하시겠어요?'(여러 개): 기초선 측정·QABF·행동평정척도·ABC 관찰. 아래에 '절차 순서: …'를 누른 순서와 상관없이 절차 순서로 보여 줌. 안 고르면 나중에 추가.
+- 새 프로젝트 칸에 '어떤 방법을 사용하시겠어요?' + '전체 사용' 체크(기본 켜짐, 네 방법 모두 선택된 상태에서 안 쓸 것만 해제): 기초선 측정·QABF·행동평정척도·ABC 관찰. 아래에 '절차 순서: …'를 누른 순서와 상관없이 절차 순서로 보여 줌. 안 고르면 나중에 추가.
 - 고른 방법만 측정 카테고리·홈 카드 점·완료 수·찾기·보고서 상태줄에 보임. 절차 번호는 프로젝트에 있는 절차 기준으로 다시 매김(1,2,3…). '자료 종합·가설'은 늘 있음.
 - 측정 카테고리 절차 아래 '＋ 측정 방법 추가': 빠진 방법을 골라 추가하면 알맞은 순서 자리에 들어감. 빠진 게 없으면 버튼 없음.
 ### 데이터
@@ -19,7 +19,7 @@
 - 방법을 빼는 기능은 없음(추가만). 간편 측정 카드의 '기초선 측정·ABC' 표시는 고른 방법과 상관없이 그대로.
 - 다른 화면 안의 'QABF 열기' 같은 바로가기로 빠진 절차를 열 수는 있음(적기 시작하면 목록에 나타남).
 ### 코드 위치 (index.html)
-- MPROCS·procOn·activeProcs·catProcs·procNo·mprocsMissing·mprocsSort, newProject(code,memo,mprocs), newMOrder·newMPicked·actions['new-m'], mAddBox·actions['m-add-*'], CSS .new-m·.m-add
+- #new-m-all·newMSync, MPROCS·procOn·activeProcs·catProcs·procNo·mprocsMissing·mprocsSort, newProject(code,memo,mprocs), newMOrder·newMPicked·actions['new-m'], mAddBox·actions['m-add-*'], CSS .new-m·.m-add
 ### 다음에 할 일
 - 사용자: 앱 재시작 후 새 프로젝트 만들기·측정 방법 추가 확인(탭·폰).
 

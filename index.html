@@ -155,6 +155,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .new-form .grow{flex:2 1 240px}
 .new-form .new-m{flex:1 1 100%;margin:0}
 .new-m-order{margin:8px 0 0}
+.new-m legend{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}.new-m-all{font-weight:400;font-size:.9rem}
 .m-add{margin-top:12px}.m-add.card{display:grid;gap:10px}.m-add-h{margin:0;font-weight:600}.m-add-h small{color:var(--muted);font-weight:400}
 .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
 .proj-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -1765,9 +1766,9 @@ function viewHome(){
     <form id="new-form" class="new-form" novalidate>
       <label class="field"><span>학생 코드</span><input id="new-code" autocomplete="off" maxlength="40" placeholder="예: 3-2-A"></label>
       <label class="field grow"><span>메모 <small>(선택)</small></span><input id="new-memo" autocomplete="off" maxlength="120" placeholder="예: 3학년, 2학기 국어 시간 관찰"></label>
-      <fieldset class="field new-m"><legend>어떤 방법을 사용하시겠어요? <small>여러 개 가능</small></legend>
-        <div class="chips">${MPROCS.map(k=>`<button type="button" class="chip c-b" data-act="new-m" data-v="${k}" aria-pressed="false">${esc(PROC[k].title)}</button>`).join('')}</div>
-        <p class="hint new-m-order" id="new-m-order">${newMOrder([])}</p></fieldset>
+      <fieldset class="field new-m"><legend>어떤 방법을 사용하시겠어요? <label class="check new-m-all"><input type="checkbox" id="new-m-all" checked> 전체 사용</label></legend>
+        <div class="chips">${MPROCS.map(k=>`<button type="button" class="chip c-b on" data-act="new-m" data-v="${k}" aria-pressed="true">${esc(PROC[k].title)}</button>`).join('')}</div>
+        <p class="hint new-m-order" id="new-m-order">${newMOrder(MPROCS)}</p></fieldset>
       <button class="btn primary" type="submit">만들기</button>
     </form>
     <p class="hint">실명 대신 코드 사용</p>
@@ -3787,10 +3788,15 @@ const actions={
   'dictate':el=>toggleDictation(el.dataset.sid)
 };
 /* 새 프로젝트 측정 방법 고르기·측정 방법 추가 */
+function newMSync(){const ks=newMPicked();const o=$('#new-m-order');if(o)o.innerHTML=newMOrder(ks);const a=$('#new-m-all');if(a)a.checked=ks.length===MPROCS.length;}
 actions['new-m']=el=>{
-  const on=!el.classList.contains('on');el.classList.toggle('on',on);el.setAttribute('aria-pressed',String(on));
-  const o=$('#new-m-order');if(o)o.innerHTML=newMOrder(newMPicked());
+  const on=!el.classList.contains('on');el.classList.toggle('on',on);el.setAttribute('aria-pressed',String(on));newMSync();
 };
+/* '전체 사용' 체크: 켜면 모두 고름, 끄면 모두 해제 */
+document.addEventListener('change',e=>{
+  if(!e.target||e.target.id!=='new-m-all')return;
+  const on=e.target.checked;$$('#new-form [data-act="new-m"]').forEach(b=>{b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));});newMSync();
+});
 actions['m-add-open']=()=>{ui.mAdd=true;render();const b=$('#m-add');if(b)b.scrollIntoView({block:'nearest'});};
 actions['m-add-close']=()=>{ui.mAdd=false;render();};
 actions['m-add-pick']=el=>{const on=!el.classList.contains('on');el.classList.toggle('on',on);el.setAttribute('aria-pressed',String(on));};
@@ -6981,7 +6987,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
-  {id:'2026-11-21-10',d:'2026-11-21',k:'web',t:'측정 방법 고르기',items:['새 프로젝트에서 측정 방법 고름','고른 방법만 절차 순서대로','측정 화면에서 방법 추가']},
+  {id:'2026-11-21-10',d:'2026-11-21',k:'web',t:'측정 방법 고르기',items:['새 프로젝트: 처음엔 전체 선택','안 쓸 방법만 눌러 해제','측정 화면에서 방법 추가']},
   {id:'2026-11-21-9',d:'2026-11-21',k:'web',t:'앱 색 밝기',items:['색 막대 아래 밝게~어둡게','밝으면 버튼 글자는 진하게','밝기도 계정에 저장']},
   {id:'2026-11-21-8',d:'2026-11-21',k:'web',t:'앱 색은 계정마다',items:['로그인하면 내 계정 색','다른 기기도 같은 색','로그아웃하면 기본색']},
   {id:'2026-11-21-7',d:'2026-11-21',k:'web',t:'앱 색 고르기',items:['설정 > 앱 색: 색 막대로 고름','버튼·배경 색이 함께 바뀜','기본색으로 버튼으로 되돌림']},
