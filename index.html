@@ -900,6 +900,22 @@ body::before{background:var(--glass)}
 .sig-key{margin:0;display:flex;gap:12px;font-size:.76rem;color:var(--muted)}
 .sig-key>span{display:inline-flex;align-items:center;gap:5px}
 @media (max-width:560px){.top-right .tb-lb{display:none}.top-right .mode-btn:not(.sig-btn){padding:0 10px}.sig-pop{top:calc(env(safe-area-inset-top,0px) + 50px)}}
+
+/* 앱 색 스펙트럼 */
+.hue-wrap{flex:1 1 100%;display:flex;flex-direction:column;gap:10px}
+.hue-sl{-webkit-appearance:none;appearance:none;width:100%;height:28px;border-radius:999px;border:1px solid var(--line-strong);
+  background:linear-gradient(90deg,hsl(0,70%,45%),hsl(30,75%,42%),hsl(60,70%,38%),hsl(100,60%,36%),hsl(150,65%,32%),hsl(180,70%,30%),hsl(210,65%,42%),hsl(250,55%,50%),hsl(290,50%,45%),hsl(330,60%,45%),hsl(360,70%,45%))}
+.hue-sl::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.3)}
+.hue-pre{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hue-dot{width:30px;height:30px;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line-strong);background:var(--sw);cursor:pointer}
+.hue-dot[aria-pressed="true"]{box-shadow:0 0 0 3px var(--ink)}
+.hue-prev{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px;border-radius:10px;background:var(--bg);border:1px solid var(--line)}
+.hue-prev .pill-s{background:var(--accent-soft);color:var(--ink);border-radius:999px;padding:4px 10px;font-size:.82rem}
+.hue-prev .card-s{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:.82rem}
+.hue-prev .sunk-s{background:var(--sunk);border-radius:8px;padding:4px 10px;font-size:.82rem}
+.hue-fixed{font-size:.8rem;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hue-fixed i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.btn.primary{box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 4px 12px var(--tint-sh,rgba(14,124,112,.25))}
 </style>
 
 <header class="topbar"><div class="wrap topbar-in">
@@ -6411,8 +6427,44 @@ function webInit(){
 const GLASS_KEY='pbs-glass',HC_KEY='pbs-contrast';
 function glassOn(){try{return localStorage.getItem(GLASS_KEY)!=='0';}catch(e){return true;}}
 function hcOn(){try{return localStorage.getItem(HC_KEY)==='1';}catch(e){return false;}}
-function lookApply(){const r=document.documentElement;r.classList.toggle('no-glass',!glassOn());r.classList.toggle('hc',hcOn());}
+function lookApply(){const r=document.documentElement;if(typeof hueApply==='function')setTimeout(()=>hueApply(),0);r.classList.toggle('no-glass',!glassOn());r.classList.toggle('hc',hcOn());}
 lookApply();
+
+/* 앱 색: 색상(hue) 하나로 강조·배경·선·유리 색을 만든다. 상태 색(진행·완료·경고)·그래프 색은 그대로. 고대비면 기본색 */
+const HUE_KEY='pbs-hue',HUE_DEF=173;
+function hueGet(){try{const v=localStorage.getItem(HUE_KEY);return v===null?null:Number(v);}catch(e){return null;}}
+function hexL(h,s,l){s/=100;l/=100;const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,9-k(n),1));return [f(0),f(8),f(4)];}
+function hx(c){return '#'+c.map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('');}
+function lum(c){const t=c.map(x=>x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4));return .2126*t[0]+.7152*t[1]+.0722*t[2];}
+function cr(a,b){const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);}
+function rgba(h,s,l,a){const c=hexL(h,s,l).map(x=>Math.round(x*255));return `rgba(${c.join(',')},${a})`;}
+function isDark(){const t=document.documentElement.dataset.theme;return t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);}
+function huePal(h,dark){
+  const W=[1,1,1];
+  if(!dark){let l=34;while(l>12&&cr(hexL(h,72,l),W)<4.8)l--;/* 흰 글자가 읽히도록 진하게 */
+    return {'--accent':hx(hexL(h,72,l)),'--accent-hover':hx(hexL(h,74,l-6)),'--accent-ink':'#FFFFFF','--accent-soft':hx(hexL(h,70,91)),
+      '--pri-top':hx(hexL(h,62,l+7)),'--bg':hx(hexL(h,55,98)),'--surface-2':hx(hexL(h,55,98.6)),'--sunk':hx(hexL(h,48,93)),
+      '--line':hx(hexL(h,42,89)),'--line-strong':hx(hexL(h,38,77)),'--ink':hx(hexL(h,35,12)),'--muted':hx(hexL(h,12,37)),'--qc0':hx(hexL(h,72,l)),
+      '--glow1':rgba(h,60,56,.22),'--glow3':rgba(h,60,56,.16),'--tint-sh':rgba(h,72,l,.25),
+      '--glass-shadow':`0 1px 0 rgba(255,255,255,.6) inset,0 8px 28px ${rgba(h,72,l,.14)}`};}
+  let l=55;const D=hexL(h,30,8);while(l<85&&cr(hexL(h,45,l),D)<6)l++;
+  return {'--accent':hx(hexL(h,45,l)),'--accent-hover':hx(hexL(h,50,l+7)),'--accent-ink':hx(hexL(h,40,7)),'--accent-soft':hx(hexL(h,35,17)),
+    '--pri-top':hx(hexL(h,50,l+7)),'--bg':hx(hexL(h,25,8)),'--surface':hx(hexL(h,23,12)),'--surface-2':hx(hexL(h,22,14)),'--sunk':hx(hexL(h,25,6)),
+    '--line':hx(hexL(h,18,21)),'--line-strong':hx(hexL(h,16,30)),'--ink':hx(hexL(h,15,91)),'--muted':hx(hexL(h,9,64)),'--qc0':hx(hexL(h,45,l)),
+    '--glow1':rgba(h,45,55,.12),'--glow3':rgba(h,45,55,.08),'--glass':rgba(h,23,12,.62),'--glass-strong':rgba(h,23,12,.88),'--tint-sh':'rgba(0,0,0,.3)'};
+}
+const HUE_VARS=Object.keys(Object.assign({},huePal(0,false),huePal(0,true)));
+function hueApply(h){const r=document.documentElement;HUE_VARS.forEach(k=>r.style.removeProperty(k));
+  if(h===undefined)h=hueGet();if(h===null||isNaN(h)||hcOn())return;Object.entries(huePal(h,isDark())).forEach(([k,v])=>r.style.setProperty(k,v));}
+hueApply();try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>hueApply());}catch(e){}
+const HUE_PRE=[[173,'민트'],[205,'바다'],[228,'파랑'],[262,'보라'],[330,'분홍'],[18,'노을'],[40,'호박'],[135,'풀잎']];
+function hueMore(){const h=hueGet();const cur=h===null?HUE_DEF:h;
+  return `<div class="hue-wrap"><input type="range" class="hue-sl" min="0" max="359" step="1" value="${cur}" data-hue="sl" aria-label="앱 색 고르기"${hcOn()?' disabled':''}>
+    <div class="hue-pre" role="group" aria-label="자주 쓰는 색">${HUE_PRE.map(([v,n])=>`<button type="button" class="hue-dot" style="--sw:${hx(hexL(v,72,30))}" data-act="hue-pre" data-v="${v}" title="${n}" aria-label="${n}" aria-pressed="${v===cur}"></button>`).join('')}</div>
+    <div class="hue-prev" aria-label="미리보기"><button type="button" class="btn small primary" tabindex="-1">저장</button><button type="button" class="btn small" tabindex="-1">취소</button><span class="pill-s">선택됨</span><span class="card-s">기록 칸</span><span class="sunk-s">빈 칸</span></div>
+    <div class="hue-fixed"><span>그대로:</span><span><i style="background:var(--rec)"></i>진행 중</span><span><i style="background:var(--ok)"></i>완료</span><span><i style="background:var(--warn)"></i>경고</span><span><i style="background:var(--ser-a)"></i>기초선</span><span><i style="background:var(--ser-b)"></i>중재</span></div></div>`;}
+document.addEventListener('input',e=>{const el=e.target;if(!el.matches||!el.matches('[data-hue="sl"]'))return;const v=Number(el.value);hueApply(v);
+  try{localStorage.setItem(HUE_KEY,String(v));}catch(x){}});
 const setUI={tmr:false};/* tmr: 측정 시간을 켰지만 아직 분을 안 고름 */
 function setCtx(){return ui.view==='proc'&&PROC[ui.proc]?ui.proc:(ui.view==='project'&&ui.cat?ui.cat:'');}
 function setCtxName(k){return PROC[k]?PROC[k].title:(CAT[k]?CAT[k].title:'');}
@@ -6422,6 +6474,7 @@ function setNatTimer(){return Object.assign({min:0,renew:false,reset:true},nat.t
 const SET_ROWS=[
   {id:'glass',g:'화면',t:'유리 효과',sc:'이 기기',rel:[],on:()=>glassOn()&&!hcOn(),dis:()=>hcOn(),hint:()=>hcOn()?'고대비면 꺼져요':'막대·창 뒤가 흐리게 비침'},
   {id:'hc',g:'화면',t:'고대비',sc:'이 기기',rel:[],on:()=>hcOn(),hint:()=>'진한 글자·굵은 테두리'},
+  {id:'hue',g:'화면',t:'앱 색',sc:'이 기기',rel:[],on:null,ctl:()=>`<button type="button" class="btn small" data-act="hue-reset"${hueGet()===null?' disabled':''}>기본색으로</button>`,hint:()=>hcOn()?'고대비면 기본색':'버튼·배경 색이 함께 바뀜',more:()=>hueMore()},
   {id:'pg',g:'화면',t:'절차 한 장씩 보기',sc:'이 기기',rel:['profile','define','qabf','rating','hypo','plan','evaluate'],on:()=>!pgAll(),hint:()=>pgAll()?'지금은 한 화면에 모두':''},
   {id:'cover',g:'화면',t:'나갔다 오면 가리기',sc:'이 기기',rel:['baseline','intervene','abc'],on:()=>{try{return localStorage.getItem(COVER_KEY)==='1';}catch(e){return false;}},hint:()=>'돌아오면 시계 화면'},
   {id:'ink',g:'입력',t:'손글씨 모드',sc:'이 기기',rel:['profile','define','rating','abc','hypo','plan','evaluate'],on:()=>inkUI.mode==='ink',
@@ -6522,7 +6575,7 @@ document.addEventListener('change',e=>{
 });
 Object.assign(actions,{
   'set-open':()=>setOpen(),
-  'set-open-qm':()=>{setOpen();const r=$('#set-dlg [data-row="qm"]');if(r)r.scrollIntoView({block:'center'});},'set-close':()=>setClose(),
+  'set-open-qm':()=>{setOpen();const r=$('#set-dlg [data-row="qm"]');if(r)r.scrollIntoView({block:'center'});},'set-close':()=>setClose(),'hue-pre':el=>{try{localStorage.setItem(HUE_KEY,el.dataset.v);}catch(e){}hueApply();setRefresh();},'hue-reset':()=>{try{localStorage.removeItem(HUE_KEY);}catch(e){}hueApply();setRefresh();toast('기본색으로 되돌렸습니다');},
   'set-ai':()=>{setClose();aiDlgOpen();},
   'set-go':el=>{setClose();go('proc',{proc:el.dataset.key});},
 });
@@ -6838,6 +6891,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-21-7',d:'2026-11-21',k:'web',t:'앱 색 고르기',items:['설정 > 앱 색: 색 막대로 고름','버튼·배경 색이 함께 바뀜','기본색으로 버튼으로 되돌림']},
   {id:'2026-11-21-6',d:'2026-11-21',k:'web',t:'AI 요청 취소',items:['쓰는 중에 버튼 다시 누르면 취소','취소해도 지금·지난 제안 그대로']},
   {id:'2026-11-21-5',d:'2026-11-21',k:'web',t:'간편 측정 옵션은 설정에',items:['동시에 몇 개·측정·색은 설정','측정 화면엔 요약·켜기만','단축키도 설정에서']},
   {id:'2026-11-21-4',d:'2026-11-21',k:'web',t:'위 막대 정리',items:['맨 위로·한 단계 위 뺌','입력·저장은 작은 신호로','신호 누르면 지금 상태','설정 톱니는 늘 맨 오른쪽']},
