@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-11-21 · ABC 흐름을 AI로 읽기('그 뒤 학생은?' 버튼 뺌)
+### 한 일
+- 사용자 의견(학생 반응이 다양해 버튼은 불명확)으로 ABC 행의 '그 뒤 학생은?' 버튼 뺌(bb4a17d). CSV 열도 되돌림.
+- 자료 요약 'ABC 전체 맥락' 위에 '✦ AI로 흐름 읽기'(누를 때만). 모든 관찰지·행을 시간 순서 R1…로 보내 학생 입장 기능 제안: 기능·뚜렷/기울어짐/약함·반복된 흐름·이유·근거 행(펼치면 A→B→C)·더 볼 것·QABF와 같음 표시. '근거 칸에 넣기'로 가설 1 근거 끝에 붙임.
+- 기존 규칙 집계는 '낱말로 센 참고'로 이름 바꿔 아래에 그대로 둠(QABF 일치·불일치 판정도 규칙 기준 그대로).
+### 데이터
+- AI 결과는 이 기기 localStorage(AI_OUT_KEY) 프로젝트별 'flow'={at,n,sig,fns,unclear,summary}. 공유 안 됨. 기록이 바뀌면 '그 뒤 기록 바뀜' 표시.
+- 이미 눌러 둔 r.out은 지우지 않고 규칙 집계에서만 읽음.
+### 확인한 것
+- Playwright 가짜 AI(__pbsAi): 보낸 글(R 번호·상황·일화 기술·해석 구분) 확인, 결과 표시·근거 행·근거 칸 넣기 정상(탭·휴대폰). 그림: screens/ABC-전체맥락/*-4-AI흐름읽기.png.
+- 시험 못 함: 실제 제미나이 응답 품질, 실기기.
+### 알려진 한계
+- 인터넷·로그인 필요. 행이 아주 많으면 보내는 글이 길어짐(자르지 않음).
+### 코드 위치 (index.html)
+- flowRows·flowFacts·flowRun·flowSig·flowAiView·flowText, actions['ai-flow']·['flow-put'], ctxView, CSS .flow-ai·.flow-rows·.flow-q
+### 다음에 할 일
+- 사용자: 앱 재시작 후 실제 기록으로 'AI로 흐름 읽기' 눌러 보고, 해석이 맞는지·프롬프트 고칠 점 알려 주기.
+
+---
+
 ## 2026-11-21 · ABC 전체 맥락으로 기능 판단
 ### 한 일
 - ABC 관찰지 행마다 후속결과 아래 '그 뒤 학생은?' 버튼(과제 멈춤·관심 받음·물건·활동 얻음·감각·변화 없음·모름). 여럿 고를 수 있고 안 골라도 됨. 모름은 다른 것과 함께 안 고름.
@@ -43,26 +63,6 @@
 - #new-m-all·newMSync, MPROCS·procOn·activeProcs·catProcs·procNo·mprocsMissing·mprocsSort, newProject(code,memo,mprocs), newMOrder·newMPicked·actions['new-m'], mAddBox·actions['m-add-*'], CSS .new-m·.m-add
 ### 다음에 할 일
 - 사용자: 앱 재시작 후 새 프로젝트 만들기·측정 방법 추가 확인(탭·폰).
-
----
-
-## 2026-11-21 · 앱 색 밝기 막대
-### 한 일
-- 설정 '앱 색'의 색 막대 아래에 '밝게~어둡게' 막대(흰색→고른 색→검정 바탕). 버튼·강조색 명도를 바꿈.
-- 밝으면 버튼 글자를 진한 색으로, 어두우면 흰색으로 자동. 길 안내 등 글자로 쓰는 강조색은 배경 위에서 읽히게 따로 진하게.
-- 다크 모드는 밝기를 0.55배로 따라감(어두운 판에 버튼이 묻히지 않게). '기본색으로'는 색·밝기 함께 되돌림. 고대비면 기본색.
-### 데이터
-- localStorage 'pbs-hue-l'(버튼 명도 15~85, 없으면 자동). 계정 문서 users/{uid}/prefs/look에 l 추가({hue,l}). 예전 문서(l 없음)는 자동 밝기.
-### 확인한 것
-- Playwright 가짜 어댑터: 밝기만 바꿈(기본 민트 기준)·색 바꿔도 밝기 유지·계정 저장·로그아웃 기본색·재로그인 복원·되돌리기 모두 정상, 오류 없음.
-- 시안 그림: screens/앱색-밝기-시안/(탭 8·휴대폰 3).
-- 시험 못 함: 실기기 막대 끌기, 실제 Firestore.
-### 알려진 한계
-- 글자색 강조는 CSS 'color:var(--accent)' 17곳만 --accent-tx로 바꿈. 테두리·배경 강조는 밝은 색이면 옅게 보일 수 있음.
-### 코드 위치 (index.html)
-- HUE_L_KEY·hueLGet·hueAutoL, huePal(uL)·huePalBase·huePalDark, hueLocal(v,l)·hueSave(v,l)·hueAcctLoad, hueMore(.lum-row·.lum-sl), --accent-tx
-### 다음에 할 일
-- 사용자: 앱 재시작 후 설정 > 앱 색에서 밝기 막대 확인(탭·폰, 다크 모드).
 
 ---
 

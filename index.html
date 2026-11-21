@@ -752,7 +752,12 @@ html.in-ink .ink-host{caret-color:transparent}
 .ai-opt{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:8px 10px;background:var(--surface)}
 .ai-opt.used{opacity:.6;border-left-color:var(--line-strong)}
 .ai-opt-t{display:flex;align-items:center;gap:8px;justify-content:space-between}.ai-opt-t b{font-size:.9rem}
-.ai-opt p{margin:4px 0 0;font-size:.88rem}.ai-why{color:var(--muted);font-size:.8rem!important}
+.ai-opt p{margin:4px 0 0;font-size:.88rem}
+.flow-ai{display:flex;flex-direction:column;gap:6px}
+.flow-ai .ai-opt-t{display:flex;align-items:center;justify-content:flex-start;gap:8px;flex-wrap:wrap}
+.flow-rows{margin:4px 0 0;padding-left:0;list-style:none;font-size:.82rem;display:flex;flex-direction:column;gap:3px}
+.flow-rows b{font-family:var(--font-mono);color:var(--muted);font-weight:600;margin-right:4px}
+.flow-q{font-size:.84rem;margin:0}.ai-why{color:var(--muted);font-size:.8rem!important}
 .plan-ref{margin-bottom:8px}.plan-ref p{margin:2px 0;font-size:.88rem}
 .iv-auto,.ev-auto{margin-bottom:12px}.iv-auto h3,.ev-auto h3{font-size:.95rem;margin:0}
 .iv-auto ol{margin:6px 0 0;padding-left:1.4em;font-size:.9rem}.iv-auto li{margin:2px 0}
@@ -2633,6 +2638,8 @@ function ctxView(p){
   const rowLine=x=>{const r=x.r;const t=r.time?fmtTime(r.time):'';const o=outText(r);
     return `<li class="${x.both?'both':''}">${t?`<small class="mono">${t}</small> `:''}${esc(r.a||'-')} → ${esc(r.b||'-')} → ${esc(r.c||'-')}${o?` <small>· 그 뒤: ${esc(o)}</small>`:''}</li>`;};
   return `<div class="ctx-box" id="ctx-box"><h3>ABC 전체 맥락 <small class="muted">${c.n}행을 이어 봄</small></h3>
+  ${flowAiView(p)}
+  <h3>낱말로 센 참고 <small class="muted">규칙</small></h3>
   <p class="meta">그 뒤를 읽은 행 ${c.src.pick+c.src.word} · 못 읽은 행 ${c.src.unk+c.src.none}</p>
   <ul class="ctx-list">${c.fns.map(x=>{const [cls,lb]=CTX_LV[x.level];const ev=x.ev.slice().sort((a,b)=>b.both-a.both||(Date.parse(a.r.time)||0)-(Date.parse(b.r.time)||0));
     return `<li><details><summary><b>${x.n}</b><span class="pill ${cls}">${lb}</span><span class="ctx-why">${x.why}</span>
@@ -6972,6 +6979,42 @@ async function aiEvRun(p){
   const t=(await aiCall(prompt,false)).replace(/^\s*[-*]\s+/gm,'').trim();
   aiOutSet(p,'ev',{at:nowISO(),text:t});
 }
+/* ABC 흐름 읽기: 모든 관찰지·행을 시간 순서로(R1, R2…) 보내 학생 입장에서 무엇이 바뀌었는지, 여러 행에 반복된 흐름으로 기능을 제안받는다. 판단은 교사 */
+function flowRows(p){const out=[];abcData(p).sheets.slice().sort((a,b)=>Date.parse(a.start)-Date.parse(b.start)).forEach(sh=>sortedRows(sh).filter(rowFilled).forEach(r=>out.push({sh,r})));return out.map((x,i)=>({...x,no:'R'+(i+1)}));}
+function flowFacts(p){
+  const df=p.procs.define.data,pf=p.procs.profile.data;const rows=flowRows(p);const parts=[];
+  const head=aiLines([['표적행동',df.name],['조작적 정의',df.definition],['알려진 촉발 요인',pf.triggers],['싫어하는 것',pf.dislikes],['좋아하는 활동',pf.likes],['감각 특성',pf.sensory]]);
+  if(head)parts.push('[학생·행동]\n'+head);
+  let cur=null;const lines=[];
+  rows.forEach(x=>{if(x.sh!==cur){cur=x.sh;const sh=x.sh;lines.push(`\n<관찰지 ${dayKey(sh.start)} ${fmtTime(sh.start)}~${fmtTime(sh.endedAt||sh.end)}${aiT(sh.situation)?' · 상황: '+aiT(sh.situation).replace(/\s*\n\s*/g,' / '):''}${aiT(sh.place)?' · 장소: '+aiT(sh.place):''}>`);
+      if(aiT(sh.note))lines.push('일화 기술: '+aiT(sh.note).replace(/\s*\n\s*/g,' / '));if(aiT(sh.interp))lines.push('관찰자 해석(사실 아님): '+aiT(sh.interp).replace(/\s*\n\s*/g,' / '));}
+    const r=x.r;lines.push(`${x.no} ${r.time?fmtTime(r.time,true):'시각 없음'} | A: ${aiT(r.a)||'-'} | B: ${aiT(r.b)||'-'} | C: ${aiT(r.c)||'-'}`.replace(/\s*\n\s*/g,' / '));});
+  parts.push('[ABC 기록, 시간 순서]'+lines.join('\n'));
+  return parts.join('\n\n');
+}
+async function flowRun(p){
+  const rows=flowRows(p);if(!rows.length)throw new Error('ABC 기록이 없습니다');
+  const prompt=`아래는 한 학생의 ABC 관찰 기록이다. 행 번호(R1…)는 시간 순서다.\n\n${flowFacts(p)}\n\n이 학생의 행동 기능을 추정하라. 지켜야 할 것:\n- 한 행이 아니라 전체 흐름을 본다. 같은 종류의 상황 뒤에 행동이 반복되는지, 행동 뒤 학생에게 무엇이 바뀌었는지(과제가 멈췄는지 이어졌는지, 관심을 받았는지, 원하던 것을 얻었는지, 아무것도 바뀌지 않았는지), 그 뒤 행동이 다시 나왔는지·줄었는지를 이어서 본다.\n- 교사의 반응 낱말(예: 제지, 잡음)은 교사 입장이다. 그 반응으로 학생에게 무엇이 바뀌었는지로 해석하고, 드러나지 않으면 모른다고 한다.\n- 표현이 달라도 같은 뜻이면 같은 흐름으로 묶는다(예: 학습지 제시·문제 풀자고 제안·쓰기 지시).\n- 관찰자 해석은 사실이 아니므로 근거로 쓰지 않는다.\n- 기록에 없는 것은 지어내지 않는다.\n다음 JSON만 출력하라:\n{"functions":[{"f":"관심 얻기|과제·요구 피하기|물건·활동 얻기|감각 자극 얻기|신체적 불편 줄이기 중 하나","level":"뚜렷|기울어짐|약함","flow":"반복된 흐름을 '상황 → 행동 → 학생에게 바뀐 것'으로 한 문장","rows":["근거 행 번호"],"why":"학생 입장에서 그렇게 본 이유 1~2문장"}],"unclear":["판단이 어려운 점이나 더 관찰할 것, 0~3개"],"summary":"전체를 한 문장으로"}\nfunctions는 근거가 있는 것만 강한 순서로 넣는다.`;
+  const j=aiJson(await aiCall(prompt,true));
+  const ok=new Set(FUNCS);const nos=new Set(rows.map(x=>x.no));
+  const fns=(Array.isArray(j.functions)?j.functions:[]).filter(x=>x&&ok.has(aiT(x.f))).slice(0,5).map(x=>({f:aiT(x.f),level:['뚜렷','기울어짐','약함'].includes(aiT(x.level))?aiT(x.level):'약함',flow:aiT(x.flow),why:aiT(x.why),rows:(Array.isArray(x.rows)?x.rows:[]).map(v=>aiT(v).toUpperCase().replace(/^(\d+)$/,'R$1')).filter(v=>nos.has(v)).slice(0,20)}));
+  if(!fns.length&&!aiT(j.summary))throw new Error('결과를 읽지 못했습니다. 다시 시도하세요');
+  aiOutSet(p,'flow',{at:nowISO(),n:rows.length,sig:flowSig(p),fns,unclear:(Array.isArray(j.unclear)?j.unclear:[]).map(aiT).filter(Boolean).slice(0,3),summary:aiT(j.summary)});
+}
+function flowSig(p){let h=0;const t=flowRows(p).map(x=>[x.r.id,x.r.time,x.r.a,x.r.b,x.r.c].join('|')).join('\n');for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0;return h;}
+function flowAiView(p){
+  const o=aiOut(p,'flow');const rows=flowRows(p);const by=new Map(rows.map(x=>[x.no,x.r]));
+  const stale=o&&o.sig!==flowSig(p);
+  const qF=hyAnalysis(p).qF;
+  const card=x=>{const cls=x.level==='뚜렷'?'ok':x.level==='약함'?'muted':'';
+    return `<div class="ai-opt"><div class="ai-opt-t"><b>${esc(x.f)}</b><span class="pill ${cls}">${esc(x.level)}</span>${qF.includes(x.f)?'<span class="pill ok">QABF와 같음</span>':''}</div>
+    ${x.flow?`<p>${esc(x.flow)}</p>`:''}${x.why?`<p class="ai-why">학생 입장 · ${esc(x.why)}</p>`:''}
+    ${x.rows.length?`<details><summary class="ai-why">근거 행 ${x.rows.length}개</summary><ul class="flow-rows">${x.rows.map(n=>{const r=by.get(n);return r?`<li><b>${n}</b>${r.time?`<small class="mono">${fmtTime(r.time)}</small> `:''}${esc(r.a||'-')} → ${esc(r.b||'-')} → ${esc(r.c||'-')}</li>`:'';}).join('')}</ul></details>`:''}</div>`;};
+  return `<div class="ai-bar flow-ai"><div class="row">${aiBtn('ai-flow',o?'AI로 흐름 다시 읽기':'AI로 흐름 읽기')}<button type="button" class="btn small ghost" data-act="ai-set">AI 설정</button><small class="muted">${o?`${fmtShort(o.at)} · ${o.n}행 읽음${stale?' · 그 뒤 기록 바뀜':''}`:'판단은 교사가'}</small></div>${aiErrLine('ai-flow')}
+    ${o?`${o.summary?`<p class="flow-q">${esc(o.summary)}</p>`:''}${o.fns.map(card).join('')}${o.unclear.length?`<p class="ai-why">더 볼 것 · ${o.unclear.map(esc).join(' / ')}</p>`:''}${o.fns.length?`<div class="row"><button type="button" class="btn small" data-act="flow-put">근거 칸에 넣기</button><small class="muted">가설 1 근거 끝에</small></div>`:''}`:''}
+    ${aiSendBox(flowFacts(p))}</div>`;
+}
+function flowText(o){return 'ABC 흐름(AI 읽기, '+fmtShort(o.at)+'): '+o.fns.map(x=>`${x.f} ${x.level}${x.flow?` — ${x.flow}`:''}${x.rows.length?` (${x.rows.join(', ')})`:''}`).join('; ');}
 function evAutoView(p){
   const s=evSentence(p);if(!s)return '';const o=aiOut(p,'ev');
   return `<div class="ev-auto"><div class="sec-head"><h3>자동으로 쓴 변화 문장</h3><button type="button" class="btn small primary" data-act="ev-fill">아래 칸에 넣기</button></div>
@@ -7052,7 +7095,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
-  {id:'2026-11-21-11',d:'2026-11-21',k:'web',t:'ABC 전체 맥락으로 기능',items:['여러 행 묶어 네 기능 근거','자료 요약에서 QABF와 비교']},
+  {id:'2026-11-21-11',d:'2026-11-21',k:'web',t:'ABC 전체 맥락으로 기능',items:['자료 요약: AI로 흐름 읽기','학생 입장 기능·근거 행','낱말로 센 참고도 함께']},
   {id:'2026-11-21-10',d:'2026-11-21',k:'web',t:'측정 방법 고르기',items:['새 프로젝트: 처음엔 전체 선택','안 쓸 방법만 눌러 해제','측정 화면에서 방법 추가']},
   {id:'2026-11-21-9',d:'2026-11-21',k:'web',t:'앱 색 밝기',items:['색 막대 아래 밝게~어둡게','밝으면 버튼 글자는 진하게','밝기도 계정에 저장']},
   {id:'2026-11-21-8',d:'2026-11-21',k:'web',t:'앱 색은 계정마다',items:['로그인하면 내 계정 색','다른 기기도 같은 색','로그아웃하면 기본색']},
@@ -7172,6 +7215,10 @@ Object.assign(actions,{
   'ai-ev':()=>{const p=curProject();aiRun('ai-ev',()=>aiEvRun(p));},
   'ai-ev-put':()=>{const p=curProject();const o=aiOut(p,'ev');if(o&&o.text)evPut(p,o.text);},
   'ai-rep':()=>{const p=curProject();aiRun('ai-rep',()=>aiRepRun(p));},
+  'ai-flow':()=>{const p=curProject();aiRun('ai-flow',()=>flowRun(p));},
+  'flow-put':()=>{const p=curProject();const o=aiOut(p,'flow');if(!o||!o.fns.length)return;const t=flowText(o);const d=p.procs.hypo.data;const cur=String(d.evidence||'');
+    if(cur.includes(t)){toast('이미 근거 칸에 들어 있습니다');return;}
+    d.evidence=cur.trim()?cur.replace(/\s+$/,'')+'\n'+t:t;touch(p,'hypo');saveNow();const y=window.scrollY;render();window.scrollTo(0,y);toast('흐름 읽기를 근거에 넣었습니다');},
   'rep-open':()=>repOpen(),'rep-close':()=>repClose(),'rep-save':()=>repSave(),
   'rep-print':()=>{if(NATIVE_APP){toast('앱에서는 HTML로 저장해 인쇄하세요');repSave();return;}window.print();},
   'find-open':()=>findOpen(),'find-close':()=>findClose(),'find-go':el=>findGo(Number(el.dataset.i))
