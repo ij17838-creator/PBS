@@ -1,0 +1,39 @@
+# 웹앱(index.html)을 Firebase Hosting 새 주소(○○.web.app)에 자동으로 올린다.
+# - main에 index.html이 바뀌어 올라가면 실행된다(Actions 탭에서 손으로도 실행 가능).
+# - 저장소 Settings → Secrets에 FIREBASE_SERVICE_ACCOUNT(서비스 계정 키 JSON)가 있어야 한다. 없으면 건너뛴다.
+# - 옛 주소(GitHub Pages)도 그대로 둔다. 예전 설치형 앱이 거기서 화면을 받기 때문이다.
+name: 웹 주소(Firebase) 배포
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'firebase.json'
+      - '.github/workflows/firebase-hosting.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: firebase-hosting
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 키 없음 → 건너뜀
+        if: env.HAS_KEY != 'true'
+        run: echo "FIREBASE_SERVICE_ACCOUNT 비밀 값이 없어 배포를 건너뜁니다."
+      - name: 올릴 파일 준비
+        if: env.HAS_KEY == 'true'
+        run: node scripts/build-web.mjs
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        if: env.HAS_KEY == 'true'
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: pbs-project-10874
+          channelId: live
