@@ -6812,7 +6812,7 @@ const AI_LEVELS=[['HIGH','높음'],['MEDIUM','보통']];/* Gemini 4 Neon·Hydrog
 const AI_MODELS=[['gemini-4-neon','Neon'],['gemini-4-hydrogen','Hydrogen']];
 const AI_SYS='너는 특수교육과 긍정적 행동지원(PBS)을 돕는 조력자다. 교사가 입력한 자료만 근거로 삼고, 자료에 없는 사실을 지어내지 않는다. 학생을 진단하거나 낙인찍는 말을 쓰지 않는다. 한국어로, 교사가 바로 쓸 수 있는 쉬운 문장으로 쓴다.';
 const ai={busy:'',err:{},sdk:null,run:null};
-function aiCfg(){let o={};try{o=JSON.parse(localStorage.getItem(AI_CFG_KEY)||'{}')||{};}catch(e){}return {model:String(o.model||'').trim()||AI_MODEL_DEF,level:o.level==='MEDIUM'?'MEDIUM':'HIGH'};}
+function aiCfg(){let o={};try{o=JSON.parse(localStorage.getItem(AI_CFG_KEY)||'{}')||{};}catch(e){}return {model:String(o.model||'').trim()||AI_MODEL_DEF,level:'HIGH'};}/* 사고 수준 고르기는 뺌(4.x는 높음만 받음). 예전에 저장된 MEDIUM도 높음으로 */
 function aiCfgSet(o){try{localStorage.setItem(AI_CFG_KEY,JSON.stringify(Object.assign(aiCfg(),o)));}catch(e){toast('이 기기에 저장하지 못했습니다');}}
 function aiAvail(){return !!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey);}
 function aiReady(){return aiAvail()&&(!!Sync.user||!!window.__pbsAi);}/* __pbsAi: 시험용 가짜 */
@@ -7037,9 +7037,9 @@ function aiDlgOpen(){
   d.innerHTML=`<div class="find-box ai-box" role="dialog" aria-modal="true" aria-label="AI 설정">
     <div class="sec-head"><h2 class="h3">AI 설정 <small class="muted">제미나이</small></h2><button type="button" class="btn small ghost" data-act="ai-dlg-close">닫기</button></div>
     ${!aiAvail()?'<p class="ai-err">Firebase 설정 없음</p>':!Sync.user?'<p class="ai-err">로그인하면 사용</p>':'<p class="hint">로그인 계정으로 사용</p>'}
-    <fieldset class="field"><legend>사고 수준</legend><div class="chips">${AI_LEVELS.map(([v,l])=>`<button type="button" class="chip c-b${c.level===v?' on':''}" data-act="ai-level" data-v="${v}" aria-pressed="${c.level===v}">${l}</button>`).join('')}</div><p class="hint">Neon·Hydrogen은 보통도 높음으로</p></fieldset>
-    <fieldset class="field"><legend>모델</legend><div class="chips">${AI_MODELS.map(([v,l])=>`<button type="button" class="chip c-b${c.model===v?' on':''}" data-act="ai-model-pick" data-v="${v}" aria-pressed="${c.model===v}">${l}</button>`).join('')}</div></fieldset>
+        <fieldset class="field"><legend>모델</legend><div class="chips">${AI_MODELS.map(([v,l])=>`<button type="button" class="chip c-b${c.model===v?' on':''}" data-act="ai-model-pick" data-v="${v}" aria-pressed="${c.model===v}">${l}</button>`).join('')}</div></fieldset>
     <label class="field"><span>모델 이름</span><input id="ai-model" autocomplete="off" spellcheck="false" value="${esc(c.model)}" placeholder="${AI_MODEL_DEF}"></label>
+    <p class="hint">사고 수준: 높음(늘 높음으로 생각)</p>
     <p class="ai-test" id="ai-test" role="status"></p>
     <div class="row"><button type="button" class="btn primary" data-act="ai-save">저장</button><button type="button" class="btn" data-act="ai-test"${aiReady()?'':' disabled'}>연결 시험</button></div>
   </div>`;
@@ -7098,7 +7098,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
-  {id:'2026-11-23-1',d:'2026-11-23',k:'web',t:'AI 모델 Hydrogen',items:['AI 설정: Neon·Hydrogen 고르기','사고 수준 높음·보통 그대로','고른 모델로 연결 시험']},
+  {id:'2026-11-23-1',d:'2026-11-23',k:'web',t:'AI 모델 Hydrogen',items:['AI 설정: Neon·Hydrogen 고르기','사고 수준은 늘 높음','고른 모델로 연결 시험']},
   {id:'2026-11-21-11',d:'2026-11-21',k:'web',t:'ABC 전체 맥락으로 기능',items:['자료 요약: AI로 흐름 읽기','학생 입장 기능·근거 행','낱말로 센 참고도 함께']},
   {id:'2026-11-21-10',d:'2026-11-21',k:'web',t:'측정 방법 고르기',items:['새 프로젝트: 처음엔 전체 선택','안 쓸 방법만 눌러 해제','측정 화면에서 방법 추가']},
   {id:'2026-11-21-9',d:'2026-11-21',k:'web',t:'앱 색 밝기',items:['색 막대 아래 밝게~어둡게','밝으면 버튼 글자는 진하게','밝기도 계정에 저장']},
