@@ -757,7 +757,7 @@ html.in-ink .ink-host{caret-color:transparent}
 .flow-ai .ai-opt-t{display:flex;align-items:center;justify-content:flex-start;gap:8px;flex-wrap:wrap}
 .flow-rows{margin:4px 0 0;padding-left:0;list-style:none;font-size:.82rem;display:flex;flex-direction:column;gap:3px}
 .flow-rows b{font-family:var(--font-mono);color:var(--muted);font-weight:600;margin-right:4px}
-.flow-q{font-size:.84rem;margin:0}.ai-why{color:var(--muted);font-size:.8rem!important}
+.flow-q{font-size:.84rem;margin:0}.ai-warn{margin:0}.ai-why{color:var(--muted);font-size:.8rem!important}
 .plan-ref{margin-bottom:8px}.plan-ref p{margin:2px 0;font-size:.88rem}
 .iv-auto,.ev-auto{margin-bottom:12px}.iv-auto h3,.ev-auto h3{font-size:.95rem;margin:0}
 .iv-auto ol{margin:6px 0 0;padding-left:1.4em;font-size:.9rem}.iv-auto li{margin:2px 0}
@@ -6922,9 +6922,11 @@ function aiPlanOpts(p,k){
   if((!list||!list.length)&&(!pl||!pl.length))return '';
   return `${list&&list.length?`<div class="ai-opts" aria-label="AI 제안">${aiPlanList(list,k)}</div>`:''}${pl&&pl.length?`<details class="ai-prev"><summary>지난 제안 <small class="muted">${fmtShort(q.at)}</small></summary><div class="ai-opts" aria-label="지난 AI 제안">${aiPlanList(pl,k,true)}</div></details>`:''}`;
 }
+const AI_WARN='AI 생성 결과에는 오류나 편향이 포함될 수 있으므로 중요한 의사결정에는 참고용으로만 활용하세요.';
+function aiWarn(x){return `<p class="hint ai-warn${x?' '+x:''}">${AI_WARN}</p>`;}
 function aiPlanBar(p){
   const o=aiOut(p,'plan');
-  return `<div class="ai-bar"><div class="row">${aiBtn('ai-plan',o?'AI 제안 다시 받기':'AI 중재 제안 받기')}<button type="button" class="btn small ghost" data-act="ai-set">AI 설정</button>${o?`<small class="muted">${fmtShort(o.at)} 제안 · 고르면 칸에 들어감</small>`:'<small class="muted">고르면 칸에 들어감</small>'}</div>${aiErrLine('ai-plan')}${aiSendBox(aiFacts(p))}</div>`;
+  return `<div class="ai-bar"><div class="row">${aiBtn('ai-plan',o?'AI 제안 다시 받기':'AI 중재 제안 받기')}<button type="button" class="btn small ghost" data-act="ai-set">AI 설정</button>${o?`<small class="muted">${fmtShort(o.at)} 제안 · 고르면 칸에 들어감</small>`:'<small class="muted">고르면 칸에 들어감</small>'}</div>${aiErrLine('ai-plan')}${aiWarn()}${aiSendBox(aiFacts(p))}</div>`;
 }
 function planGoalLine(p){
   const hs=hyAll(p);const bd=p.procs.baseline.data;const st=blStats(blVals(bd.sessions));const u=p.procs.define.data.unit||'';
@@ -7012,7 +7014,7 @@ function flowAiView(p){
     return `<div class="ai-opt"><div class="ai-opt-t"><b>${esc(x.f)}</b><span class="pill ${cls}">${esc(x.level)}</span>${qF.includes(x.f)?'<span class="pill ok">QABF와 같음</span>':''}</div>
     ${x.flow?`<p>${esc(x.flow)}</p>`:''}${x.why?`<p class="ai-why">학생 입장 · ${esc(x.why)}</p>`:''}
     ${x.rows.length?`<details><summary class="ai-why">근거 행 ${x.rows.length}개</summary><ul class="flow-rows">${x.rows.map(n=>{const r=by.get(n);return r?`<li><b>${n}</b>${r.time?`<small class="mono">${fmtTime(r.time)}</small> `:''}${esc(r.a||'-')} → ${esc(r.b||'-')} → ${esc(r.c||'-')}</li>`:'';}).join('')}</ul></details>`:''}</div>`;};
-  return `<div class="ai-bar flow-ai"><div class="row">${aiBtn('ai-flow',o?'AI로 흐름 다시 읽기':'AI로 흐름 읽기')}<button type="button" class="btn small ghost" data-act="ai-set">AI 설정</button><small class="muted">${o?`${fmtShort(o.at)} · ${o.n}행 읽음${stale?' · 그 뒤 기록 바뀜':''}`:'판단은 교사가'}</small></div>${aiErrLine('ai-flow')}
+  return `<div class="ai-bar flow-ai"><div class="row">${aiBtn('ai-flow',o?'AI로 흐름 다시 읽기':'AI로 흐름 읽기')}<button type="button" class="btn small ghost" data-act="ai-set">AI 설정</button><small class="muted">${o?`${fmtShort(o.at)} · ${o.n}행 읽음${stale?' · 그 뒤 기록 바뀜':''}`:'판단은 교사가'}</small></div>${aiErrLine('ai-flow')}${aiWarn()}
     ${o?`${o.summary?`<p class="flow-q">${esc(o.summary)}</p>`:''}${o.fns.map(card).join('')}${o.unclear.length?`<p class="ai-why">더 볼 것 · ${o.unclear.map(esc).join(' / ')}</p>`:''}${o.fns.length?`<div class="row"><button type="button" class="btn small" data-act="flow-put">근거 칸에 넣기</button><small class="muted">가설 1 근거 끝에</small></div>`:''}`:''}
     ${aiSendBox(flowFacts(p))}</div>`;
 }
@@ -7021,7 +7023,7 @@ function evAutoView(p){
   const s=evSentence(p);if(!s)return '';const o=aiOut(p,'ev');
   return `<div class="ev-auto"><div class="sec-head"><h3>자동으로 쓴 변화 문장</h3><button type="button" class="btn small primary" data-act="ev-fill">아래 칸에 넣기</button></div>
     <p class="ev-text">${esc(s)}</p>
-    <div class="ai-bar"><div class="row">${aiBtn('ai-ev',o?'AI 문단 다시 쓰기':'AI로 문단 쓰기')}<button type="button" class="btn small ghost" data-act="ai-set">AI 설정</button></div>${aiErrLine('ai-ev')}
+    <div class="ai-bar"><div class="row">${aiBtn('ai-ev',o?'AI 문단 다시 쓰기':'AI로 문단 쓰기')}<button type="button" class="btn small ghost" data-act="ai-set">AI 설정</button></div>${aiErrLine('ai-ev')}${aiWarn()}
     ${o?`<div class="ai-opt"><div class="ai-opt-t"><b>AI 문단</b><small class="muted">${fmtShort(o.at)}</small><button type="button" class="btn small" data-act="ai-ev-put">아래 칸에 넣기</button></div><p>${esc(o.text)}</p></div>`:''}
     ${aiSendBox(aiFacts(p,true))}</div></div>`;
 }
@@ -7073,7 +7075,7 @@ function repHTML(p){
   ${sec(8,'평가',`<div class="rep-chart">${blChart(p,true)}</div>${evSentence(p)?`<p>${esc(evSentence(p))}</p>`:''}${repTable([repRow('결정',ev.decPick),...MEMO_FIELDS.evaluate.map(([k,l])=>repRow(l,ev[k]))])}`)}
   <section class="rep-sec rep-ai"><h2>종합 의견 <small class="no-print">AI 초안 · 고쳐 쓰기</small></h2>
     <div class="no-print row">${aiBtn('ai-rep',ai1?'AI 종합 의견 다시 쓰기':'AI 종합 의견 쓰기')}<button type="button" class="btn small ghost" data-act="ai-set">AI 설정</button></div>${aiErrLine('ai-rep')}
-    <div class="rep-opinion" id="rep-opinion" contenteditable="true" aria-label="종합 의견" data-ph="여기에 종합 의견을 쓰세요">${esc(ai1&&ai1.text||'').replace(/\n/g,'<br>')}</div></section>`;
+    <div class="rep-opinion" id="rep-opinion" contenteditable="true" aria-label="종합 의견" data-ph="여기에 종합 의견을 쓰세요">${esc(ai1&&ai1.text||'').replace(/\n/g,'<br>')}</div>${aiWarn('no-print')}</section>`;
 }
 async function aiRepRun(p){
   const prompt=`아래는 한 학생의 긍정적 행동지원 전 과정 자료다.\n\n${aiFacts(p,true)}\n\n상담·협의회에서 보호자와 동료 교사에게 줄 보고서의 '종합 의견'을 써라. 3개 문단: (1) 학생과 표적행동, 기능평가로 세운 가설 (2) 실행한 중재와 수치로 본 변화 (3) 앞으로의 지원 방향과 가정 협력 제안. 각 문단 3~4문장, 위 자료와 수치만 근거로 쓰고 학생의 강점을 함께 드러내라. 머리말·목록 기호 없이 문단만, 문단 사이는 빈 줄 하나.`;
@@ -7098,6 +7100,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-23-2',d:'2026-11-23',k:'web',t:'AI 결과 경고 문장',items:['AI 칸마다 경고 한 줄','오류·편향 가능, 참고용','보고서 인쇄엔 안 나옴']},
   {id:'2026-11-23-1',d:'2026-11-23',k:'web',t:'AI 모델 Hydrogen',items:['AI 설정: Neon·Hydrogen 고르기','사고 수준은 늘 높음','고른 모델로 연결 시험']},
   {id:'2026-11-21-11',d:'2026-11-21',k:'web',t:'ABC 전체 맥락으로 기능',items:['자료 요약: AI로 흐름 읽기','학생 입장 기능·근거 행','낱말로 센 참고도 함께']},
   {id:'2026-11-21-10',d:'2026-11-21',k:'web',t:'측정 방법 고르기',items:['새 프로젝트: 처음엔 전체 선택','안 쓸 방법만 눌러 해제','측정 화면에서 방법 추가']},
