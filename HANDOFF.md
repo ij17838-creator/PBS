@@ -4,6 +4,23 @@
 
 ---
 
+## 2026-11-23 · AI 모델에 Hydrogen 추가
+### 한 일
+- AI 설정 창에 '모델' 칩 Neon·Hydrogen 추가. 누르면 모델 이름 칸이 gemini-4-neon / gemini-4-hydrogen으로 바뀌고 바로 저장. 사고 수준 높음·보통은 어느 모델과도 함께 고름. 모델 이름 칸 직접 입력도 그대로.
+- 사고 수준 아래 안내를 'Neon·Hydrogen은 보통도 높음으로'로 바꿈. 공지 2026-11-23-1(web).
+### 확인한 것
+- Firebase AI Logic 문서: gemini-4-hydrogen은 thinkingLevel HIGH만 받음(MEDIUM은 400). aiCall이 400이면 사고 수준 빼고 다시 불러 모델 기본값(높음)으로 답함.
+- Playwright 가짜 AI(__pbsAi): Hydrogen+보통 고르면 localStorage pbs-ai {model:'gemini-4-hydrogen',level:'MEDIUM'}, 연결 시험 호출 모델·사고 수준 확인, 오류 없음. 그림: screens/AI-도우미/07-탭-AI설정-Hydrogen.png.
+- 시험 못 함: 실제 Hydrogen 호출(Vertex 콘솔에서 쓸 수 있는지), 실기기.
+### 알려진 한계
+- Hydrogen·Neon에서 '보통'은 실제로는 높음으로 동작(모델 제한). 기본 모델은 여전히 Neon.
+### 코드 위치 (index.html)
+- AI_MODELS, aiDlgOpen, actions['ai-model-pick']
+### 다음에 할 일
+- 사용자: 앱 재시작 → AI 설정에서 Hydrogen 누르고 '연결 시험'. 안 되면 오류 문구 알려 주기.
+
+---
+
 ## 2026-11-21 · ABC 흐름을 AI로 읽기('그 뒤 학생은?' 버튼 뺌)
 ### 한 일
 - 사용자 의견(학생 반응이 다양해 버튼은 불명확)으로 ABC 행의 '그 뒤 학생은?' 버튼 뺌(bb4a17d). CSV 열도 되돌림.
