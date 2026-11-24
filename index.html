@@ -4578,7 +4578,7 @@ function syncFlat(p){
       if(isItem&&k==='id')continue;
       const v=o[k];if(v===undefined||typeof v==='function')continue;
       const pa=path?path+'/'+k:k;
-      if(k==='ink')continue;/* 손글씨는 이 기기에만 둔다(서버로 보내지 않음) */
+      /* 손글씨(.ink)도 칸으로 보낸다(2026-11-24 사용자 결정: 다른 기기에서도 보이게). 수정 기록·충돌로는 남기지 않음(NO_HIST) */
       if(isObj(v)){if(Object.keys(v).length)walk(v,pa,false);else cells.set(pa,{});continue;}
       if(Array.isArray(v)&&v.length&&isIdArr(v)){v.forEach((x,i)=>{const ip=pa+'['+x.id+']';items.set(ip,{parent:pa,order:i});walk(x,ip,true);});continue;}
       cells.set(pa,v);
@@ -4634,7 +4634,7 @@ function syncDiff(base,mine){
   base.items.forEach((it,pa)=>{if(!mine.items.has(pa)&&syncItemsLive(pa,mine.items))items.push({path:pa,parent:it.parent,order:it.order,deleted:true});});
   return {cells,items};
 }
-function syncBaseOf(p){const c=clone(p);SYNC_SKIP_TOP.forEach(k=>delete c[k]);inkStrip(c);return c;}
+function syncBaseOf(p){const c=clone(p);SYNC_SKIP_TOP.forEach(k=>delete c[k]);return c;}
 /* 손글씨(.ink) 칸을 모두 뺀다 */
 const INK_PATH=/(^|\/)ink(\/|$)/;
 function inkStrip(o){
@@ -5138,10 +5138,10 @@ function syncAbsorb(S){
   if(!S.cells.size&&!S.items.size)return;/* 아직 서버 자료를 못 받음 (오프라인 첫 접속 등) */
   const st=syncState(S.pid);
   const tc=new Map(),ti=new Map();
-  S.cells.forEach((c,pa)=>{if(!c.deleted&&!INK_PATH.test(pa)&&!LIVE_RE.test(pa))tc.set(pa,c.v);});
+  S.cells.forEach((c,pa)=>{if(!c.deleted&&!LIVE_RE.test(pa))tc.set(pa,c.v);});
   S.items.forEach((it,pa)=>{if(!it.deleted)ti.set(pa,{parent:it.parent,order:it.order});});
   let theirs=ensureProject(syncUnflat(tc,ti));
-  const base=inkStrip(st.base?clone(st.base):{});
+  const base=st.base?clone(st.base):{};
   /* 입력 중인 칸은 바로 덮지 않는다: 그 칸만 base 값으로 두고, 칸을 벗어나면 다시 합친다 */
   const fp=syncFocusPath(p);S.deferred=false;
   if(fp&&st.base){
@@ -5151,13 +5151,10 @@ function syncAbsorb(S){
       theirs=ensureProject(syncUnflat(tf.cells,tf.items));S.deferred=true;
     }
   }
-  const noInk=(k,v)=>k==='ink'?undefined:v;
-  const before=JSON.stringify(p,noInk);
-  const inks=inkDetach(p);
-  merge3(base,p,clone(theirs));
-  inks.forEach(([o,v])=>{o.ink=v;});/* ensureProject가 객체를 새로 만들기 전에 다시 붙인다 */
+  const before=JSON.stringify(p);
+  merge3(base,p,clone(theirs));/* 손글씨(.ink)도 다른 칸처럼 합친다(2026-11-24부터 서버로 보냄) */
   ensureProject(p);
-  const changed=before!==JSON.stringify(p,noInk);
+  const changed=before!==JSON.stringify(p);
   const mf=syncFlat(p);
   S.cells.forEach((c,pa)=>{
     if(S.deferred&&pa===fp)return;
@@ -5177,8 +5174,6 @@ function syncPending(S){
   const p=projById(S.localId);const st=syncState(S.pid);
   if(!p||!st.base)return {cells:[],items:[]};
   const d=syncDiff(syncFlat(st.base),syncFlat(p));
-  /* 예전 판이 서버에 올린 손글씨는 지운다(손글씨는 이 기기에만) */
-  S.cells.forEach((c,pa)=>{if(!c.deleted&&INK_PATH.test(pa)&&!Sync.inkGone.has(pa)&&!d.cells.some(w=>w.path===pa))d.cells.push({path:pa,deleted:true});});
   /* 완료했던 절차를 다시 고쳐도 붙잡아 두지 않고 바로 보낸다(2026-11-24: '완료'를 눌러야 공유되던 방식 없앰) */
   if(S.forceAll)return d;/* '서버를 이 기기 내용으로 맞추기': 상태 칸까지 모두 보낸다 */
   /* 고쳤다가 원래대로 되돌린 경우 내용 칸은 diff에 안 나온다. 그때 남는 수정 시각·진행 상태 칸만으로는 보내지 않는다(다음에 내용이 바뀔 때 함께 감) */
@@ -5397,7 +5392,7 @@ function syncProjectCard(p){
 function syncProjectCardInner(p){
   const sh=p.shared;
   if(!sh)return `<h2 class="h3">여러 기기에서 함께 쓰기</h2>
-    <p class="hint">실명 없이 글자만 공유</p>
+    <p class="hint">실명 없이 글·손글씨 공유</p>
     ${syncLoginLine()}
     <div class="new-form"><label class="field"><span>공유 코드 <small>6자 이상, 멤버에게만</small></span><input id="sync-code-new" autocomplete="off" maxlength="60"></label><button type="button" class="btn primary" data-act="sync-start">공유 시작</button></div>`;
   const S=Sync.cur&&Sync.cur.localId===p.id?Sync.cur:null;const me=Sync.user;
@@ -5406,7 +5401,7 @@ function syncProjectCardInner(p){
   return `<div class="sec-head"><h2 class="h3">여러 기기에서 함께 쓰기</h2><span class="pill">${owner?'소유자':'멤버'}</span></div>
     <div class="sync-id"><span class="meta">공유 ID</span><code class="mono" id="sync-pid">${esc(sh.projectId)}</code><button type="button" class="btn small" data-act="sync-copy">복사</button></div>
     ${sh.code?`<p class="meta">공유 코드: <span class="mono">${esc(sh.code)}</span> · ${fmtShort(sh.since)}부터 공유</p>`:''}
-    <p class="hint">녹음·손글씨는 기기에만</p>
+    <p class="hint">녹음은 기기에만</p>
     ${syncLoginLine()}
     ${S&&(S.error==='removed'||S.error==='denied')?`<p class="banner warn">이 프로젝트의 공유 멤버가 아니어서 동기화를 멈췄습니다. 이 기기의 사본은 그대로 남아 있습니다.</p>`:''}
     ${mem.length?`<div><h3 class="sub-label">멤버 ${mem.length}명</h3><ul class="sync-members">${mem.map(m=>`<li><span>${esc(m.name||'이름 없음')}${m.role==='owner'?' <small>소유자</small>':''}${me&&m.uid===me.uid?' <small>(나)</small>':''}</span><span class="meta">${m.joinedAt?fmtShort(m.joinedAt):''}</span>${owner&&me&&m.uid!==me.uid?`<button type="button" class="btn small ghost danger" data-act="ask" data-key="sync-kick:${esc(m.uid)}">내보내기</button>`:''}
@@ -7117,6 +7112,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-24-3',d:'2026-11-24',k:'web',t:'손글씨도 공유',items:['공유 프로젝트 손글씨도 서버로','앱·브라우저 어디서나 보임','녹음은 지금처럼 기기에만']},
   {id:'2026-11-24-2',d:'2026-11-24',k:'apk',need:13,t:'음량 버튼·대기 알림',items:['화면 켜져 있어도 음량으로 기록','회기 없으면 음량으로 회기 시작','지운 대기 알림은 다시 안 뜸']},
   {id:'2026-11-24-1',d:'2026-11-24',k:'web',t:'묶음마다 저장 버튼',items:['묶음 끝마다 저장 버튼','이 절차 완료 → 저장','완료 뒤 고친 것도 바로 공유','지운 관찰지도 다른 기기 반영']},
   {id:'2026-11-23-2',d:'2026-11-23',k:'web',t:'AI 결과 경고 문장',items:['AI 칸마다 경고 한 줄','오류·편향 가능, 참고용','보고서 인쇄엔 안 나옴']},
