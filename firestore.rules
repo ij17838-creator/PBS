@@ -17,6 +17,10 @@ service cloud.firestore {
     function onlyChanges(keys) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
+    // 소유자가 '삭제됨'으로 표시한 프로젝트인지 (2026-11-24: 이때만 서버 자료를 완전히 지울 수 있다)
+    function ownerPurging(pid) {
+      return isOwner(pid) && get(projectPath(pid)).data.get('deleted', false) == true;
+    }
 
     // 공유 코드 확인용 문서: 문서 이름 = SHA-256(projectId + ':' + 공유코드)
     // 코드를 아는 사람만 이름을 알 수 있으므로 get만 허용하고 목록 보기(list)는 막는다.
@@ -36,7 +40,8 @@ service cloud.firestore {
       allow list: if false;
       allow create: if signedIn() && request.resource.data.owner == me();
       allow update: if isOwner(pid) && request.resource.data.owner == resource.data.owner;
-      allow delete: if false;
+      // 소유자가 먼저 '삭제됨'으로 표시한 뒤에만 지울 수 있다(실수로 바로 지우지 않게)
+      allow delete: if isOwner(pid) && resource.data.get('deleted', false) == true;
 
       match /members/{uid} {
         allow get: if signedIn() && (uid == me() || isMember(pid));
@@ -60,21 +65,22 @@ service cloud.firestore {
       match /cells/{key} {
         allow read: if isMember(pid);
         allow create, update: if isMember(pid) && request.resource.data.by == me();
-        allow delete: if false;
+        allow delete: if ownerPurging(pid);
       }
 
       // id가 있는 목록 항목(관찰지·행·응답자 등): 추가·순서·삭제(deleted:true)
       match /items/{key} {
         allow read: if isMember(pid);
         allow create, update: if isMember(pid) && request.resource.data.by == me();
-        allow delete: if false;
+        allow delete: if ownerPurging(pid);
       }
 
-      // 수정 기록: 추가만, 고치거나 지울 수 없다
+      // 수정 기록: 추가만, 고칠 수 없다. 프로젝트를 완전히 지울 때만 소유자가 지운다
       match /history/{id} {
         allow read: if isMember(pid);
         allow create: if isMember(pid) && request.resource.data.by == me();
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if ownerPurging(pid);
       }
 
       // 충돌 기록: 쓴 사람(mine)이 만들고, 멤버 누구나 '확인함'으로 표시만 할 수 있다
@@ -83,7 +89,7 @@ service cloud.firestore {
         allow create: if isMember(pid) && request.resource.data.mineBy == me();
         allow update: if isMember(pid) && onlyChanges(['resolved', 'resolvedBy', 'resolvedAt'])
           && request.resource.data.resolvedBy == me();
-        allow delete: if false;
+        allow delete: if ownerPurging(pid);
       }
     }
     // 내 정보: projects(내가 받은·만든 공유 프로젝트 목록, 다른 기기 자동 받기), links(합친 다른 계정). 본인만 읽고 쓴다.

@@ -916,6 +916,19 @@ body::before{background:var(--glass)}
 .sig-dot.busy,.sig-dot.warn{background:var(--warn)}
 .sig-dot.bad{background:var(--rec)}
 .sig-dot.sync{border-radius:2px;transform:rotate(45deg) scale(.9)}
+.sig-dot.loc{background:transparent;box-shadow:inset 0 0 0 2px var(--muted)}
+.sig-note{margin:0;font-size:.78rem;color:var(--muted)}
+.sig-list{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.sig-list li{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.85rem}
+.sv-chip{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:999px;font-size:.72rem;font-weight:600;vertical-align:middle;background:var(--sunk);color:var(--muted)}
+.sv-chip.ok{background:var(--ok-soft);color:var(--ok)}
+.sv-chip.warn{background:var(--warn-soft);color:var(--warn)}
+.linkish{font:inherit;font-size:inherit;color:var(--accent-tx,var(--accent));background:none;border:0;padding:0;margin:0 0 0 4px;min-height:0;text-decoration:underline;cursor:pointer}
+.hint.warn-t{color:var(--warn);font-weight:600}
+.priv-box section{margin-top:12px}
+.priv-list{margin:4px 0 0;padding-left:1.2em;display:flex;flex-direction:column;gap:3px;font-size:.92rem}
+.priv-consent{margin:6px 0;padding:10px 12px;border-radius:10px;background:var(--sunk);font-size:.9rem;line-height:1.6}
+.em-mask{font:inherit;color:inherit;background:none;border:0;border-bottom:1px dashed currentColor;padding:0 1px;margin:0;min-height:0;cursor:pointer;border-radius:0}
 .sig-btn .sig-dot.busy{animation:sigp 1s ease-in-out infinite alternate}
 @keyframes sigp{to{opacity:.35}}
 .sig-btn.alert{border-color:var(--rec);box-shadow:0 0 0 2px var(--rec-soft)}
@@ -1808,7 +1821,7 @@ function viewHome(){
         <p class="hint new-m-order" id="new-m-order">${newMOrder(MPROCS)}</p></fieldset>
       <button class="btn primary" type="submit">만들기</button>
     </form>
-    <p class="hint">실명 대신 코드 사용</p>
+    <p class="hint" id="new-code-hint">실명 대신 코드 사용 <button type="button" class="linkish" data-act="priv-open">개인정보 안내</button></p>
   </section>
   ${syncJoinCard()}
   <section>
@@ -1853,7 +1866,7 @@ function projCard(p){
       <button type="button" class="btn small" data-act="dup-proj" data-id="${p.id}">복제</button>
       <button type="button" class="btn small ghost danger" data-act="ask" data-key="del-proj:${p.id}">삭제</button>
     </div>
-    ${ui.confirm==='del-proj:'+p.id?confirmBox(p.shared&&p.shared.role==='owner'?`<b>${esc(p.code)}</b> 공유 프로젝트를 삭제합니다. 함께 쓰는 사람들의 기기에서도 이 프로젝트가 지워집니다. 되돌릴 수 없습니다.`:p.shared?`<b>${esc(p.code)}</b> 프로젝트를 이 기기에서만 지웁니다. 다른 사람의 기기와 서버 자료는 그대로입니다.`:`<b>${esc(p.code)}</b> 프로젝트의 기록과 녹음을 모두 삭제합니다. 되돌릴 수 없습니다.`,'del-proj',p.id):''}
+    ${ui.confirm==='del-proj:'+p.id?confirmBox(p.shared&&p.shared.role==='owner'?`<b>${esc(p.code)}</b> 공유 프로젝트를 삭제합니다. 서버 자료와 함께 쓰는 사람들의 기기에서도 지워집니다. 되돌릴 수 없으니 먼저 백업을 내보내세요.`:p.shared?`<b>${esc(p.code)}</b> 프로젝트를 이 기기에서만 지웁니다. 다른 사람의 기기와 서버 자료는 그대로입니다.`:`<b>${esc(p.code)}</b> 프로젝트의 기록과 녹음을 모두 삭제합니다. 되돌릴 수 없습니다.`,'del-proj',p.id):''}
   </article>`;
 }
 
@@ -2358,7 +2371,7 @@ function obsStateText(p){
 }
 function sheetHead(p,sh){
   const act=isActive(p,sh);const n=sh.rows.filter(rowFilled).length;
-  return `<div class="sh-left"><span class="sheet-title">A-B-C 관찰지 ${sheetNo(p,sh)}</span>${qmTag(sh.qco)}<span class="sheet-range mono">${rangeText(sh)}</span></div>
+  return `<div class="sh-left"><span class="sheet-title">A-B-C 관찰지 ${sheetNo(p,sh)}</span>${qmTag(sh.qco)}<span class="sheet-range mono">${rangeText(sh)}</span><span class="sv-chip" data-sv="procs/abc/data/sheets[${esc(sh.id)}]" hidden></span></div>
   <div class="sh-right">${act?`<span class="status progress">기록 중</span><span class="mono meta" id="left-${sh.id}">${fmtDur(msLeft(sh)/1000)} 남음</span>`:`<span class="status none">종료</span>`}<span class="meta">${n}행 · 녹음 ${sh.audioIds.length}</span></div>`;
 }
 function rowsEmpty(){return `<p class="rows-empty">'지금 시각 찍기'로 기록</p>`;}
@@ -2848,7 +2861,7 @@ function blChart(p,withB){
 function sesRow(p,ph,s,i){
   const k=`${ph}:${s.id}`;const freq=p.procs.define.data.measure==='빈도';
   return `<div class="r-row bl-row${s.qco?' qm-co':''}" id="ses-${s.id}"${qmStyle(s.qco)}>
-    <div class="r-row-head"><b>${ph==='iv'?'중재':'기초선'} ${i+1}회기${qmTag(s.qco)}</b><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-ses:${k}">삭제</button></div>
+    <div class="r-row-head"><b>${ph==='iv'?'중재':'기초선'} ${i+1}회기${qmTag(s.qco)}<span class="sv-chip" data-sv="procs/${sesProc(ph)}/data/sessions[${esc(s.id)}]" hidden></span></b><button type="button" class="btn small ghost danger" data-act="ask" data-key="del-ses:${k}">삭제</button></div>
     <div class="r-grid score">
       <label class="field"><span>날짜</span><input type="date" id="ses-${s.id}-date" data-f="ses:${k}:date" value="${esc(s.date)}"></label>
       <label class="field"><span>시작 시각</span><input type="time" id="ses-${s.id}-time" data-f="ses:${k}:time" value="${esc(s.time)}"></label>
@@ -3319,7 +3332,7 @@ async function deleteProject(p,fromServer){
   /* 공유 프로젝트 소유자가 지우면 서버에 '삭제됨'으로 표시해 다른 멤버 기기에서도 지워지게 한다 */
   if(!fromServer&&p.shared&&p.shared.role==='owner'&&(SYNC_ON||window.__pbsSyncAdapter)){
     Sync.deleting.add(p.id);
-    try{const ad=await syncEnsureUser();await ad.deleteProject(p.shared.projectId,syncMe());}
+    try{const ad=await syncEnsureUser();const r=await ad.deleteProject(p.shared.projectId,syncMe());if(r&&r.purged===false)setTimeout(()=>toast('서버 자료는 \'삭제됨\' 표시만 남았어요. 새 서버 규칙을 게시하면 다음부터 완전히 지워져요.'),1600);}
     catch(e){Sync.deleting.delete(p.id);console.error(e);ui.confirm=null;rerenderForConfirm();toast('서버에 연결하지 못해 삭제하지 않았습니다. 인터넷 연결과 로그인을 확인한 뒤 다시 지우세요.');return;}
   }
   if(rec.seg&&rec.seg.target.projectId===p.id)stopRecording();
@@ -4876,6 +4889,21 @@ async function makeFirestoreAdapter(){
       const m=await F.getDoc(sub(pid,'members',me.uid));const k=m.exists()?m.data().inviteKey:'';
       await F.updateDoc(pd(pid),{deleted:true,deletedAt:ts(),deletedBy:me.uid,updatedAt:ts()});count(1);
       if(k){try{await F.deleteDoc(F.doc(db,'invites',k));count(1);}catch(e){}}
+      /* 2026-11-24 개인정보: 서버 자료도 지운다. 새 firestore.rules(삭제 표시 뒤 소유자만 지우기)를 게시해야 되고, 예전 규칙이면 '삭제됨' 표시만 남는다 */
+      try{
+        for(const name of ['cells','items','history','conflicts']){
+          for(;;){const q=await F.getDocs(F.query(sub(pid,name),F.limit(400)));if(q.empty)break;
+            const b=F.writeBatch(db);q.docs.forEach(d=>b.delete(d.ref));await b.commit();count(q.size);if(q.size<400)break;}
+        }
+        const ms=await F.getDocs(sub(pid,'members'));
+        for(const d of ms.docs)if(d.id!==me.uid){await F.deleteDoc(d.ref);count(1);}
+        /* 지우는 동안 들어온 접속 표시(~pres) 등을 한 번 더 쓸어 낸다(이제 다른 멤버는 쓸 수 없음) */
+        await new Promise(r=>setTimeout(r,1500));
+        {const q=await F.getDocs(sub(pid,'cells'));if(!q.empty){const b=F.writeBatch(db);q.docs.slice(0,450).forEach(d=>b.delete(d.ref));await b.commit();count(q.size);}}
+        await F.deleteDoc(pd(pid));count(1);
+        try{await F.deleteDoc(sub(pid,'members',me.uid));count(1);}catch(e){}
+        return {purged:true};
+      }catch(e){console.warn('purge',e&&e.code);return {purged:false};}
     },
     /* 실시간 함께 세기: 칸 문서 하나를 덮어쓴다(수정 기록·충돌 없음) */
     async liveSet(pid,path,val,me){await F.setDoc(sub(pid,'cells',key(path)),{path,value:JSON.stringify(val),deleted:false,rev:0,baseRev:0,by:me.uid,byName:me.name,at:ts()});count(1);},
@@ -4963,7 +4991,7 @@ async function syncAutoPull(){
 function acctMergeDlg(msg){
   Sync.dlg={kind:'merge'};
   syncDlgShow(`<h2 class="h3" id="sync-dlg-h">계정 합치기</h2>
-    <p class="hint">지금: ${esc((Sync.user&&(Sync.user.email||Sync.user.name))||'')}</p>
+    <p class="hint">지금: ${acctWho()}</p>
     <p class="hint">다른 로그인도 이 계정으로</p>
     <div class="row"><button type="button" class="btn" data-act="acct-merge-google">구글 계정 합치기</button></div>
     <form class="lg-form" data-merge="1" novalidate>
@@ -4994,7 +5022,7 @@ async function acctMerge(kind,email,pw){
     }finally{await r.done();}
     acctLinksSet(me.uid,[...acctLinks(me.uid),o.uid]);
     Sync.pulling=false;await syncAutoPull();render();
-    let t=`두 계정을 합쳤습니다(${o.email||o.name}). 이제 어느 쪽으로 로그인해도 같은 프로젝트가 보입니다.`;
+    let t=`두 계정을 합쳤습니다(${o.email?emMask(o.email):o.name}). 이제 어느 쪽으로 로그인해도 같은 프로젝트가 보입니다.`;
     if(moved)t+=` 공유 프로젝트 ${moved}개를 옮겼습니다.`;
     if(fail.length)t+=` ${fail.length}개는 공유 코드가 바뀌어 못 옮겼습니다. 공유 ID·코드로 받으세요.`;
     if(ownedThere)t+=' 그 계정이 만든 공유 프로젝트의 삭제·코드 바꾸기는 그 계정으로 로그인해서 하세요.';
@@ -5206,7 +5234,7 @@ async function syncFlush(force){
   if(!force&&syncEditing()){syncStatusUI();return;}
   syncNet();
   if(!Sync.online||document.visibilityState==='hidden'){syncStatusUI();return;}/* 오프라인이면 모아 두었다가 다시 연결되면 보낸다 */
-  S.flushing=true;syncStatusUI();
+  S.flushing=true;S.flushAt=Date.now();syncStatusUI();
   const me=syncMe();let conflicts=0;
   try{
     const writes=d.cells.map(w=>Object.assign(w,{baseRev:st.revs[w.path]||0,noHist:NO_HIST.test(w.path)}));
@@ -5220,7 +5248,7 @@ async function syncFlush(force){
       st.base=syncBaseOf(syncUnflat(bf.cells,bf.items));
       res.forEach(r=>{if(!((st.revs[r.path]||0)>r.rev))st.revs[r.path]=r.rev;if(r.conflict)conflicts++;});
     }
-    scheduleSave();
+    scheduleSave();S.lastOk=Date.now();
     if(conflicts)toast('다른 사람이 같은 칸을 고쳐 두었습니다. 내 내용이 들어가고, 상대 내용은 칸 옆 "다른 버전"에 남았습니다.');
   }catch(e){
     const c=(e&&e.code)||'';
@@ -5235,6 +5263,7 @@ async function syncFlush(force){
   }
 }
 /* 글 칸·손글씨는 완료(칸 벗어나기·손글씨 '완료'·키보드 '완료')를 누를 때 보내고, 선택·체크·버튼은 바로 */
+let svInT=null;document.addEventListener('input',()=>{if(!Sync.cur)return;clearTimeout(svInT);svInT=setTimeout(()=>{const S=Sync.cur;if(!S||S.flushing||!S.gotCells||!S.gotItems)return;const d=syncPending(S);S.pendingN=d.cells.length+d.items.length;syncStatusUI();},700);});
 document.addEventListener('input',e=>{if(!Sync.cur)return;const el=e.target;if(!(el.matches&&el.matches('textarea,input:not([type]),input[type=text]')))syncFlushSoon(0);});
 document.addEventListener('click',e=>{if(Sync.cur&&e.target.closest&&e.target.closest('[data-ink="done"]'))syncFlushSoon(50);});
 document.addEventListener('keydown',e=>{if(Sync.cur&&e.key==='Enter'&&e.target.matches&&e.target.matches('input:not([type]),input[type=text],textarea.one'))syncFlushSoon(50,true);});/* 한 줄 칸에서 키보드 '완료'(Enter) */
@@ -5255,12 +5284,47 @@ function syncStatusUI(){
   if(S.error==='removed'||S.error==='denied'){t='공유에서 빠짐 · 동기화 멈춤';cls='bad';}
   else if(S.error==='load'){t='공유 기능을 불러오지 못함';cls='bad';}
   else if(Sync.authKnown&&!Sync.user){t='로그인 필요 · 동기화 멈춤';cls='bad';}
-  else if(!S.unsub||!S.gotCells){t='연결 중…';}
-  else if(!Sync.online){t=`오프라인 (보낼 변경 ${S.pendingN}개 대기)`;cls='warn';}
-  else if(S.flushing){t='실시간 연결됨 · 보내는 중';cls='ok';}
-  else if(S.pendingN&&syncEditing()){t='실시간 연결됨 · 입력 완료 후 보냄';cls='ok';}
-  else{t='실시간 연결됨';cls='ok';}
+  else if(!S.unsub||!S.gotCells){t='서버 연결 중…';}
+  else{
+    /* 보낼 변경이 생긴 때부터 잰다. 입력 중이면 다시 잰다(입력을 마쳐야 보내므로). 45초 넘게 못 보내면 '보내지 못함' */
+    const n=S.pendingN||0;const ed=n&&syncEditing();
+    if(!n)S.pendSince=0;else if(ed||!S.pendSince)S.pendSince=Date.now();
+    /* 보내는 중인데 45초 넘게 답이 없어도(연결이 걸려 멈춤) '보내지 못함' */
+    const now=Date.now();
+    const stuck=n&&!ed&&Sync.online&&(S.flushing?now-(S.flushAt||now)>SV_STUCK:now-S.pendSince>SV_STUCK);S.stuck=!!stuck;
+    if(!Sync.online){t='오프라인';cls='warn';}
+    else if(stuck){t='보내지 못함';cls='bad';}
+    else if(S.flushing){t='보내는 중';}
+    else if(n&&ed){t='입력 마치면 보냄';}
+    else if(n){t='곧 보냄';}
+    else{t='서버에 저장됨';cls='ok';}
+  }
   el.hidden=false;el.className='sync-state '+cls;el.textContent=t;
+  svDecorateSoon();
+}
+var SV_STUCK=45000;
+/* ---- 회기·관찰지 머리의 작은 표시: 서버 저장 / 이 기기에만 (공유 프로젝트에서만) ---- */
+var svQ=false,svCache={t:0,S:null,list:null};
+function svDecorateSoon(){if(svQ)return;svQ=true;Promise.resolve().then(()=>{svQ=false;svDecorate();});}
+function svPendList(S){
+  const now=Date.now();
+  if(svCache.S===S&&now-svCache.t<800&&svCache.n===S.pendingN&&svCache.f===!!S.flushing)return svCache.list;
+  const d=syncPending(S);const list=d.cells.map(w=>w.path).concat(d.items.map(i=>i.path));
+  svCache={t:now,S,list,n:S.pendingN,f:!!S.flushing};return list;
+}
+function svDecorate(){
+  const els=$$('#main [data-sv]');if(!els.length)return;
+  const S=Sync.cur;const p=curProject();
+  const on=!!(S&&p&&S.localId===p.id&&S.gotCells&&S.gotItems&&!S.error);
+  const pend=on?svPendList(S):[];
+  els.forEach(el=>{
+    let t='',c='';
+    if(on){const k=el.dataset.sv;const mine=pend.some(x=>x===k||x.startsWith(k+'/'));
+      if(mine){t=S.flushing&&!S.stuck?'보내는 중':'이 기기에만';c=' warn';}else{t='서버 저장';c=' ok';}}
+    if(el.textContent!==t)el.textContent=t;
+    const cls='sv-chip'+c;if(el.className!==cls)el.className=cls;
+    if(el.hidden!==!t)el.hidden=!t;
+  });
 }
 
 /* ---- 화면: 칸 옆 "다른 버전 n개" (마지막 수정자는 표시하지 않음) ---- */
@@ -5272,6 +5336,7 @@ function syncOther(c,curJson){/* 충돌 기록에서 지금 칸 값과 다른 �
 }
 function syncConfFor(path){const S=Sync.cur;return S?S.conflicts.filter(c=>c.path===path):[];}
 function syncDecorate(){
+  svDecorate();
   const S=Sync.cur;const p=curProject();
   const ok=S&&p&&S.localId===p.id&&S.gotCells;
   if(!ok){$$('.sync-meta').forEach(x=>x.remove());return;}
@@ -5386,10 +5451,19 @@ async function syncHistView(path){
     <div class="row end"><button type="button" class="btn small" data-act="sync-close">닫기</button></div>`);
 }
 
+/* ---- 로그인 이메일 가리기(2026-11-24): 화면엔 ij1***@gmail.com처럼, 누르면 8초 동안 전체 ---- */
+function emMask(e){e=String(e||'');const i=e.indexOf('@');if(i<1)return e;const l=e.slice(0,i);const k=l.length<=3?1:3;return l.slice(0,k)+'***'+e.slice(i);}
+function acctWho(){
+  if(!Sync.user)return '';const e=Sync.user.email||'';
+  if(!e)return esc(Sync.user.name||'');
+  return `<button type="button" class="em-mask" data-act="em-show" aria-pressed="${Sync.emShow?'true':'false'}" title="${Sync.emShow?'가리기':'눌러서 전체 보기'}">${esc(Sync.emShow?e:emMask(e))}</button>`;
+}
+function emUI(){const e=Sync.user&&Sync.user.email||'';$$('.em-mask').forEach(b=>{b.textContent=Sync.emShow?e:emMask(e);b.setAttribute('aria-pressed',Sync.emShow?'true':'false');b.title=Sync.emShow?'가리기':'눌러서 전체 보기';});}
+Object.assign(actions,{'em-show':()=>{Sync.emShow=!Sync.emShow;clearTimeout(Sync.emT);if(Sync.emShow)Sync.emT=setTimeout(()=>{Sync.emShow=false;emUI();},8000);emUI();}});
 /* ---- 화면: 프로젝트·홈 카드 ---- */
 function syncLoginLine(){
   if(!Sync.user)return `<div class="row"><button type="button" class="btn small" data-act="sync-login">구글로 로그인</button><button type="button" class="btn small" data-act="sync-email">이메일로 로그인</button><span class="hint">공유하려면 로그인</span></div>`;
-  return `<div class="sync-login"><span class="meta">로그인: ${esc(Sync.user.email||Sync.user.name)}</span>
+  return `<div class="sync-login"><span class="meta">로그인: ${acctWho()}</span>
     <label class="field sync-name"><span>표시 이름 <small>다른 사람에게 보이는 이름</small></span><input id="sync-name" autocomplete="off" maxlength="30" value="${esc(syncMe().name)}"></label>
     <button type="button" class="btn small ghost" data-act="sync-logout">로그아웃</button></div>`;
 }
@@ -5401,6 +5475,7 @@ function syncProjectCardInner(p){
   const sh=p.shared;
   if(!sh)return `<h2 class="h3">여러 기기에서 함께 쓰기</h2>
     <p class="hint">실명 없이 글·손글씨 공유</p>
+    <p class="hint">공유하면 서버에 올라가요 <button type="button" class="linkish" data-act="priv-open">개인정보 안내</button></p>
     ${syncLoginLine()}
     <div class="new-form"><label class="field"><span>공유 코드 <small>6자 이상, 멤버에게만</small></span><input id="sync-code-new" autocomplete="off" maxlength="60"></label><button type="button" class="btn primary" data-act="sync-start">공유 시작</button></div>`;
   const S=Sync.cur&&Sync.cur.localId===p.id?Sync.cur:null;const me=Sync.user;
@@ -5434,7 +5509,7 @@ function syncAcctCard(){
   return `<section class="card acct-card" id="sync-acct">${syncAcctInner()}</section>`;
 }
 function syncAcctInner(){
-  if(Sync.user)return `<div class="acct-row"><h2 class="h3">계정</h2><span class="meta">로그인: ${esc(Sync.user.email||Sync.user.name)}</span><button type="button" class="btn small" data-act="acct-merge">계정 합치기</button><button type="button" class="btn small ghost" data-act="sync-logout">로그아웃</button></div>`;
+  if(Sync.user)return `<div class="acct-row"><h2 class="h3">계정</h2><span class="meta">로그인: ${acctWho()}</span><button type="button" class="btn small" data-act="acct-merge">계정 합치기</button><button type="button" class="btn small ghost" data-act="sync-logout">로그아웃</button></div>`;
   return `<div class="acct-row"><h2 class="h3">계정</h2><span class="hint">공유하려면 로그인</span></div>
     <div class="row acct-btns"><button type="button" class="btn small primary" data-act="sync-email" data-m="in">로그인</button><button type="button" class="btn small" data-act="sync-email" data-m="up">회원가입</button><button type="button" class="btn small" data-act="sync-login">구글로 로그인</button></div>`;
 }
@@ -5442,7 +5517,7 @@ function syncJoinCard(){
   if(!SYNC_ON&&!window.__pbsSyncAdapter)return '';
   return `<section class="card" id="sync-join"><h2 class="h3">공유 코드로 프로젝트 받기</h2>
     <p class="hint">공유 ID·코드로 받기</p>
-    <div id="sync-join-login">${Sync.user?`<p class="meta">로그인: ${esc(Sync.user.email||Sync.user.name)}</p>`:''}</div>
+    <div id="sync-join-login">${Sync.user?`<p class="meta">로그인: ${acctWho()}</p>`:''}</div>
     <div class="new-form">
       <label class="field"><span>공유 ID</span><input id="sync-join-id" autocomplete="off" maxlength="80"></label>
       <label class="field"><span>공유 코드</span><input id="sync-join-code" autocomplete="off" maxlength="60"></label>
@@ -5456,9 +5531,9 @@ function syncRefreshCards(){
     const k=$('#sync-conflicts');if(k)k.outerHTML=syncConflictCard(p);
   }
   if(ui.view==='home'){const a=$('#sync-acct');if(a)a.innerHTML=syncAcctInner();}
-  if(ui.view==='home'){const j=$('#sync-join-login');if(j)j.innerHTML=Sync.user?`<p class="meta">로그인: ${esc(Sync.user.email||Sync.user.name)}</p>`:'';}
+  if(ui.view==='home'){const j=$('#sync-join-login');if(j)j.innerHTML=Sync.user?`<p class="meta">로그인: ${acctWho()}</p>`:'';}
 }
-function syncAfterRender(){syncWatch();syncWatchDocs();syncDecorateSoon();syncStatusUI();presSoon();}
+function syncAfterRender(){syncWatch();syncWatchDocs();syncDecorateSoon();syncStatusUI();presSoon();svDecorateSoon();if(typeof sigUI==='function')sigUI();}
 
 /* ---- 협력자: 같은 공유 프로젝트를 지금 연 다른 사람과 하는 일 ----
    기기마다 서버 칸 '~pres/<기기>' {on, where:어느 화면, doing:하는 일, away:다른 창, dk:기기 종류, t}를 덮어쓴다(cells 규칙 그대로라 규칙 변경 없음).
@@ -5665,7 +5740,7 @@ document.addEventListener('input',e=>{
   store.settings.userName=e.target.value;scheduleSave();
   clearTimeout(Sync.nt);Sync.nt=setTimeout(()=>{const S=Sync.cur;const me=syncMe();if(S&&S.unsub&&me)Sync.ad.setName(S.pid,me).catch(()=>{});},1500);
 });
-if(window.__pbsEmu)window.__pbsSync={Sync,syncFlat,syncUnflat,syncDiff,syncPending,syncFlush,store:()=>store};
+if(window.__pbsEmu)window.__pbsSync={Sync,syncFlat,syncUnflat,syncDiff,syncPending,syncFlush,syncStatusUI,store:()=>store};
 
 /* ---------- 설치형 앱(안드로이드): 알림창 ＋1 버튼 · 앱 밖 측정(위젯·빠른 설정·알림창) ----------
    android/ 폴더의 PbsCounterPlugin이 알림창·홈 화면 위젯·빠른 설정 타일에 버튼을 띄운다. 버튼은 앱을 열지 않고(앱이 꺼져 있어도) 기기에 기록만 쌓고,
@@ -6832,6 +6907,7 @@ function setInner(){
     ${top.length?`<section class="set-g rel"><h3>${esc(setCtxName(ctx))} 관련</h3>${top.map(tree).join('')}</section>`:''}
     ${groups.map(g=>`<section class="set-g"><h3>${esc(g.g)}</h3>${g.rows.map(tree).join('')}</section>`).join('')}
     ${PCN?'':'<p class="hint">음량 버튼·측정 시간은 설치 앱에서</p>'}
+    <div class="row"><button type="button" class="btn small ghost" data-act="priv-open">개인정보 안내</button></div>
   </div>`;
 }
 function setOpen(){
@@ -6977,25 +7053,69 @@ document.addEventListener('keydown',e=>{const d=$('#set-dlg');if(e.key==='Escape
 function sigSave(){const el=$('#save-state');const t=el?el.textContent.trim():'';
   if(/안 됨/.test(t)||(typeof storageOK!=='undefined'&&!storageOK))return {c:'bad',t:t||'저장 안 됨',d:'이 기기에 저장하지 못했어요'};
   if(/중/.test(t))return {c:'busy',t,d:'곧 저장돼요'};
-  return {c:'ok',t:t||'저장됨',d:'자료는 이 기기에 저장'};}
-function sigSync(){const el=$('#sync-state');if(!el||el.hidden)return null;
-  const c=el.classList.contains('bad')?'bad':el.classList.contains('warn')?'warn':el.classList.contains('ok')?'ok':'busy';return {c,t:el.textContent.trim()};}
+  return {c:'ok',t:t||'저장됨',d:'앱을 닫아도 남아요'};}
+function SYNC_AVAIL(){try{return SYNC_ON||!!window.__pbsSyncAdapter;}catch(e){return false;}}/* 앞쪽(입력 모드 그림)에서 먼저 불릴 때 SYNC_ON이 아직 없음 */
+/* 열지 않은 공유 프로젝트에 아직 서버로 못 보낸 변경(그 프로젝트를 열어야 보냄) */
+var sigOthC={t:0,v:[]};
+function sigOthers(){
+  const now=Date.now();if(now-sigOthC.t<3000)return sigOthC.v;
+  const out=[];
+  try{(typeof visibleProjects==='function'?visibleProjects():store.projects).forEach(p=>{
+    if(!p.shared||(Sync.cur&&Sync.cur.localId===p.id))return;
+    const st=store.sync&&store.sync[p.shared.projectId];if(!st||!st.base)return;
+    const d=syncDiff(syncFlat(st.base),syncFlat(p));
+    const n=d.items.length+d.cells.filter(w=>!SYNC_META.test(w.path)).length;
+    if(n)out.push({p,n});
+  });}catch(e){}
+  sigOthC={t:now,v:out};return out;
+}
+/* 서버 쪽 상태: 공유 프로젝트면 #sync-state 글, 공유 안 한 프로젝트면 '이 기기에만', 목록 화면이면 못 보낸 프로젝트 */
+function sigSync(){
+  const el=$('#sync-state');
+  if(el&&!el.hidden){const c=el.classList.contains('bad')?'bad':el.classList.contains('warn')?'warn':el.classList.contains('ok')?'ok':'busy';return {c,t:el.textContent.trim(),kind:'shared'};}
+  if(!SYNC_AVAIL())return null;
+  const p=ui.view!=='home'&&curProject();
+  if(p&&!p.shared)return {c:'loc',t:'이 기기에만 저장',kind:'local'};
+  if(ui.view==='home'){const o=sigOthers();if(o.length)return {c:'warn',t:`못 보낸 공유 프로젝트 ${o.length}개`,kind:'others',o};}
+  return null;
+}
 function sigUI(){
   const ink=inkUI.mode==='ink';const sv=sigSave();const sy=sigSync();
   const d1=$('#sig-save');if(d1)d1.className='sig-dot '+sv.c;
   const d2=$('#sig-sync');if(d2){d2.hidden=!sy;if(sy)d2.className='sig-dot sync '+sy.c;}
-  const b=$('#sig-btn');if(b){const w=[ink?'손글씨 모드':'키보드 모드',sv.t,sy&&sy.t].filter(Boolean).join(', ');b.title='지금 상태: '+w;const r=$('#sig-sr');if(r)r.textContent='지금 상태 보기: '+w;
+  const b=$('#sig-btn');if(b){const w=[ink?'손글씨 모드':'키보드 모드','이 기기 '+sv.t,sy&&('서버 '+sy.t)].filter(Boolean).join(', ');b.title='지금 상태: '+w;const r=$('#sig-sr');if(r)r.textContent='지금 상태 보기: '+w;
     b.classList.toggle('alert',sv.c==='bad'||!!(sy&&sy.c==='bad'));}
-  const pop=$('#sig-pop');if(pop&&!pop.hidden)pop.innerHTML=sigInner();
+  const pop=$('#sig-pop');if(pop&&!pop.hidden){const ae=document.activeElement;const k=ae&&pop.contains(ae)&&ae.dataset?ae.dataset.act:'';pop.innerHTML=sigInner();if(k){const x=pop.querySelector(`[data-act="${k}"]`);if(x)x.focus();}}
 }
+/* 보낼 변경을 절차별로 묶어 '기초선 측정 2칸' 식으로 */
+function sigPendWhere(S){
+  const d=syncPending(S);const m=new Set();let ink=0;
+  d.cells.filter(w=>!SYNC_META.test(w.path)).concat(d.items).forEach(w=>{const sg=w.path.split('/');m.add(sg[0]==='procs'&&PROC[sg[1]]?PROC[sg[1]].title:'프로젝트 정보');if(INK_PATH.test(w.path))ink++;});
+  return {txt:Array.from(m).join(' · '),ink};
+}
+function sigServer(sy){
+  if(!sy)return '';
+  const S=Sync.cur;const dot=`<span class="sig-ic"><span class="sig-dot sync ${sy.c}"></span></span>`;
+  if(sy.kind==='local')return `<div class="sig-line">${dot}<div><b>서버 · 공유 안 함</b><small>이 기기에서만 보여요</small></div></div>`;
+  if(sy.kind==='others')return `<div class="sig-line">${dot}<div><b>서버 · 못 보낸 변경</b><small>열면 바로 보내요</small><ul class="sig-list">${sy.o.slice(0,5).map(x=>`<li><span>${esc(x.p.code||'(코드 없음)')}</span><button type="button" class="btn small" data-act="sig-goto" data-id="${esc(x.p.id)}">열기</button></li>`).join('')}</ul></div></div>`;
+  const n=S&&S.pendingN||0;const w=n&&S?sigPendWhere(S):null;
+  let small=sy.c==='ok'?(S&&S.lastOk?`${fmtHM(S.lastOk)}에 보냄 · 다른 기기도 보여요`:'다른 기기에서도 보여요'):'';
+  if(w&&w.txt)small=`이 기기에만: ${w.txt}${w.ink?' (손글씨 포함)':''}`;
+  if(sy.c==='bad'&&!n)small='이 기기에만 저장돼요';
+  if(sy.c==='warn'&&!n)small='서버와 같아요 · 연결되면 이어서';
+  const can=n&&S&&(!S.flushing||S.stuck)&&!S.error&&Sync.online;
+  return `<div class="sig-line">${dot}<div><b>서버 · ${esc(sy.t)}</b>${small?`<small>${esc(small)}</small>`:''}</div>${can?`<button type="button" class="btn small${sy.c==='bad'?' primary':''}" data-act="sig-send">지금 보내기</button>`:''}</div>`;
+}
+function fmtHM(ms){const d=new Date(ms);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function sigInner(){
   const ink=inkUI.mode==='ink';const sv=sigSave();const sy=sigSync();
   return `<h2 class="h3" id="sig-h">지금 상태</h2>
     <div class="sig-line"><span class="sig-ic">${ink?SIG_PEN:SIG_KB}</span><div><b>${ink?'손글씨 모드':'키보드 모드'}</b><small>${ink?'칸을 누르면 손글씨':'칸을 누르면 키보드'}</small></div><button type="button" class="btn small" data-act="sig-ink">${ink?'키보드로':'손글씨로'}</button></div>
-    <div class="sig-line"><span class="sig-ic"><span class="sig-dot ${sv.c}"></span></span><div><b>${esc(sv.t)}</b><small>${esc(sv.d)}</small></div></div>
-    ${sy?`<div class="sig-line"><span class="sig-ic"><span class="sig-dot sync ${sy.c}"></span></span><div><b>공유</b><small>${esc(sy.t)}</small></div></div>`:''}
-    <p class="sig-key"><span><span class="sig-dot ok"></span>정상</span><span><span class="sig-dot busy"></span>진행 중</span><span><span class="sig-dot bad"></span>확인 필요</span></p>
-    <div class="row end"><button type="button" class="btn small" data-act="sig-set">설정 열기</button></div>`;
+    <div class="sig-line"><span class="sig-ic"><span class="sig-dot ${sv.c}"></span></span><div><b>이 기기 · ${esc(sv.t)}</b><small>${esc(sv.d)}</small></div></div>
+    ${sigServer(sy)}
+    ${sy&&sy.kind!=='local'?'<p class="sig-note">녹음·사진은 이 기기에만</p>':''}
+    <p class="sig-key"><span><span class="sig-dot ok"></span>정상</span><span><span class="sig-dot busy"></span>진행 중</span><span><span class="sig-dot bad"></span>확인 필요</span>${SYNC_AVAIL()?'<span><span class="sig-dot loc"></span>기기에만</span>':''}</p>
+    <div class="row end"><button type="button" class="btn small ghost" data-act="priv-open">개인정보 안내</button><button type="button" class="btn small" data-act="sig-set">설정 열기</button></div>`;
 }
 function sigOpen(){
   let p=$('#sig-pop');
@@ -7011,9 +7131,55 @@ Object.assign(actions,{
   'sig-open':()=>sigOpen(),
   'sig-ink':()=>actions['input-mode'](),
   'sig-set':()=>{sigClose();setOpen();},
+  'sig-send':()=>{const S=Sync.cur;if(S&&S.flushing&&S.stuck)S.flushing=false;/* 답 없이 걸린 보내기는 놓고 다시 */const ae=document.activeElement;if(ae&&ae.blur&&!$('#sig-pop').contains(ae))ae.blur();syncFlushSoon(0,true);toast('서버로 보내는 중…');},
+  'sig-goto':el=>{sigClose();go('project',{projectId:el.dataset.id,proc:null,cat:null});},
 });
+setInterval(()=>{if(ui.view==='home'&&SYNC_AVAIL()){sigOthC.t=0;sigUI();}},15000);/* 목록 화면: 못 보낸 공유 프로젝트 다시 셈 */
 try{const mo=new MutationObserver(()=>sigUI());['#save-state','#sync-state'].forEach(q=>{const el=$(q);if(el)mo.observe(el,{childList:true,characterData:true,subtree:true,attributes:true});});}catch(e){}
 sigUI();
+
+/* ---------- 개인정보 안내 창(2026-11-24): 학생 코드 원칙·저장 위치·누가 보나·보관과 삭제·내보내기·보호자 동의 문구 ---------- */
+const PRIV_CONSENT='우리 학급에서는 학생의 행동 지원을 위해 수업 중 행동을 관찰·기록합니다. 기록에는 학생 이름 대신 학생 코드만 쓰며, 함께 지원하는 교직원만 볼 수 있습니다. 기록은 지원 기간이 끝나면 지웁니다. 관찰 중 녹음은 교사 기기에만 두고, 다시 세어 확인한 뒤 지웁니다. 동의하지 않으셔도 불이익은 없으며, 언제든 동의를 거둘 수 있습니다.';
+function privInner(){
+  const sh=store.projects.filter(p=>p.shared&&projVisible(p)).length;
+  return `<div class="sync-box priv-box" role="dialog" aria-modal="true" aria-labelledby="priv-h">
+    <div class="sec-head"><h2 class="h3" id="priv-h">개인정보 안내</h2><button type="button" class="btn small primary" data-act="priv-close">닫기</button></div>
+    <section><h3 class="sub-label">1. 학생 코드만 쓰기</h3><ul class="priv-list">
+      <li>이름·생년월일·학번 대신 코드</li><li>다른 학생은 '또래 A'처럼</li><li>얼굴 사진은 올리지 않기</li></ul></section>
+    <section><h3 class="sub-label">2. 어디에 저장되나</h3><ul class="priv-list">
+      <li><b>공유 안 한 프로젝트</b>: 이 기기에만</li>
+      <li><b>공유 프로젝트</b>: 글·손글씨가 서버(Firebase)로${sh?` <span class="muted">· 지금 ${sh}개</span>`:''}</li>
+      <li><b>녹음·사진</b>: 늘 이 기기에만</li>
+      <li><b>AI 도우미</b>: 누를 때만 그 내용을 Google AI로</li>
+      <li>위 막대 점을 누르면 지금 저장 상태</li></ul></section>
+    <section><h3 class="sub-label">3. 누가 볼 수 있나</h3><ul class="priv-list">
+      <li>공유 코드를 받은 멤버만(서버 규칙)</li><li>멤버를 뺐으면 공유 코드도 바꾸기</li><li>로그인 이메일은 가려 보임</li></ul></section>
+    <section><h3 class="sub-label">4. 보관과 삭제</h3><ul class="priv-list">
+      <li>지원이 끝나면 백업 후 프로젝트 삭제</li><li>소유자가 지우면 서버 자료도 지움</li><li>멤버가 지우면 그 기기에서만</li><li>녹음은 다시 세어 본 뒤 지우기</li></ul></section>
+    <section><h3 class="sub-label">5. 내보내기</h3><ul class="priv-list">
+      <li>목록 화면 '전체 백업 내보내기'(파일)</li><li>ABC 관찰 요약 'CSV 내보내기'(엑셀)</li><li>내보낸 파일도 학교 규정대로 보관</li></ul></section>
+    <section><h3 class="sub-label">6. 보호자 동의 안내 예시</h3>
+      <p class="priv-consent" id="priv-consent">${esc(PRIV_CONSENT)}</p>
+      <div class="row"><button type="button" class="btn small" data-act="priv-copy">문구 복사</button><span class="hint">학교 양식에 맞춰 고쳐 쓰세요</span></div></section>
+  </div>`;
+}
+function privOpen(){
+  sigClose();const sd=$('#set-dlg');if(sd&&!sd.hidden)setClose();
+  let d=$('#priv-dlg');
+  if(!d){d=document.createElement('div');d.id='priv-dlg';d.className='sync-dlg';document.body.appendChild(d);
+    d.addEventListener('click',e=>{if(e.target===d)privClose();});}
+  d.innerHTML=privInner();d.hidden=false;const h=d.querySelector('h2');if(h){h.tabIndex=-1;h.focus();}
+}
+function privClose(){const d=$('#priv-dlg');if(d){d.hidden=true;d.innerHTML='';}}
+document.addEventListener('keydown',e=>{const d=$('#priv-dlg');if(e.key==='Escape'&&d&&!d.hidden)privClose();});
+Object.assign(actions,{
+  'priv-open':()=>privOpen(),'priv-close':()=>privClose(),
+  'priv-copy':async()=>{try{await navigator.clipboard.writeText(PRIV_CONSENT);toast('안내 문구를 복사했어요');}catch(e){const r=document.createRange();const el=$('#priv-consent');if(el){r.selectNodeContents(el);const sl=getSelection();sl.removeAllRanges();sl.addRange(r);}toast('문구를 골라 두었어요. 복사하세요');}},
+});
+/* 새 프로젝트 학생 코드가 한글 이름(2~4자)처럼 보이면 알림만(막지는 않음) */
+document.addEventListener('input',e=>{const el=e.target;if(!el||el.id!=='new-code')return;const h=$('#new-code-hint');if(!h)return;
+  const nm=/^[가-힣]{2,4}$/.test(String(el.value||'').trim());h.classList.toggle('warn-t',nm);
+  const t=h.firstChild;if(t&&t.nodeType===3)t.nodeValue=nm?'이름 같아요 · 코드 권장 ':'실명 대신 코드 사용 ';});
 
 /* ---------- 앱 안 공지: 바뀐 점과 '새 apk 필요 / 앱 재시작만' ----------
    새 기능을 main에 올릴 때마다 NOTICES 맨 앞에 항목을 하나 넣는다(id는 겹치지 않게, 날짜-번호).
@@ -7323,6 +7489,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-24-12',d:'2026-11-24',k:'web',t:'저장 상태·개인정보',items:['위 막대 점: 서버 저장 상태','못 보내면 빨간 점·지금 보내기','회기·관찰지에 서버 저장 표시','로그인 이메일은 가려 보임','설정 > 개인정보 안내','소유자 삭제 시 서버 자료도']},
   {id:'2026-11-24-11',d:'2026-11-24',k:'web',t:'위 막대가 글자 안 가림',items:['폰·태블릿 상태 표시줄만큼 내림','설정·찾기 창도 시계 아래부터','맨 아래 내용도 버튼에 안 가림']},
   {id:'2026-11-24-10',d:'2026-11-24',k:'web',t:'앱 밖 측정 고르기 창',items:['학생 찾기·목록에서 고름','무엇을 잴지 → 측정 방법 순','찾기 창과 같은 모양']},
   {id:'2026-11-24-9',d:'2026-11-24',k:'web',t:'설정 창 정리',items:['앱·브라우저에 맞는 것만 보임','앱 밖 측정 켜면 하위 옵션','단축키는 간편 측정 아래로']},
