@@ -6779,7 +6779,10 @@ const SET_ROWS=[
   {id:'mini',g:'측정',t:'작게 띄워 세기',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['baseline','intervene'],on:null,ctl:()=>trigSeg('mini-trig',miniTrig()),hint:()=>'＋1을 누를지 그을지'},
   {id:'live',g:'측정',t:'＋1 창 자동 띄우기',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['baseline','intervene'],on:()=>liveAuto(),ck:'data-live-auto',hint:()=>'공유 프로젝트 회기 때'},
   {id:'bub',g:'측정',t:'○ 그려 회기 시작',sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN&&nat.ver>=14,on:()=>!!(nat.bub&&nat.bub.on),ck:'data-set="bub"',
-    hint:()=>{const b=nat.bub||{};if(!b.on)return '옆 작은 아이콘 판에 ○';if(!b.perm)return '다른 앱 위 표시 권한 필요';if(!nat.target)return '앱 밖 측정이 꺼져 있어요';return b.alive?'아이콘이 떠 있어요':'곧 아이콘이 떠요';}},
+    hint:()=>{const b=nat.bub||{};if(!b.on)return '옆 작은 아이콘 판에 ○';if(!b.perm)return '다른 앱 위 표시 권한 필요';if(!nat.target)return '아래에서 측정을 고르세요';return b.alive?'아이콘이 떠 있어요':'곧 아이콘이 떠요';},
+    more:()=>{const t=nat.target;const opts=[];
+      visibleProjects().forEach(p=>['bl','iv'].forEach(ph=>{const m=natMode(p,ph);if(m)opts.push({v:p.id+'|'+ph,l:natTitle(p,ph,m),on:!!(t&&t.pid===p.id&&t.ph===ph)});}));
+      return `<label class="field"><span>어느 측정</span><select data-bubtgt>${opts.some(o=>o.on)?'':'<option value="" selected>고르세요</option>'}${opts.map(o=>`<option value="${esc(o.v)}"${o.on?' selected':''}>${esc(o.l)}</option>`).join('')}</select></label>${opts.length?'':'<span class="muted">학생 프로젝트가 없어요</span>'}`;}},
   {id:'btn3',g:'측정',t:'음량 버튼으로 기록',get sc(){return syncMe()?'내 계정':'설치 앱';},rel:['baseline','intervene','abc','measure'],show:()=>!!PCN&&nat.ver>=4,on:()=>!!(nat.btn&&nat.btn.on),box:'data-nat-btn',ck:'data-btn3="on"',more:()=>{
     const b=nat.btn||{};const k=Number(b.count)||1;const p=curProject();const lv=!!(p&&natMode(p,'bl')==='lvl');
     const cnt=[1,2,3].map(x=>`<option value="${x}"${x===k?' selected':''}>${x}번${x===1?'(기본)':''}</option>`).join('');
@@ -6844,18 +6847,20 @@ async function setNatTimerOff(){
   try{const r=await PCN.setTimer({min:0,renew:!!t.renew,reset:t.reset!==false});nat.timer=r.timer||nat.timer;toast('측정 시간 없음');natPrefMark('tmr');}catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
   natUI();
 }
-/* 설정 '○ 그려 회기 시작': 떠 있는 아이콘을 켜고, 앱 밖 측정 대상이 없으면 지금 학생의 기초선(중재 화면이면 중재)으로 켠다 */
+/* 설정 '○ 그려 회기 시작': 체크가 먼저(떠 있는 아이콘 켜기), 어느 측정(앱 밖 측정 대상)은 아래에서 고른다 */
 async function setBubOn(on){
   try{
-    if(on&&!nat.target){
-      const p=curProject();const ph=ui.view==='proc'&&ui.proc==='intervene'?'iv':'bl';const m=p&&natMode(p,ph);
-      if(!m){toast('학생 프로젝트를 열고 켜 주세요');natUI();setTimeout(setRefresh,0);return;}
-      const r=await PCN.setTarget(natTargetArgs(p,ph,m));nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;
-    }
     const r=await PCN.setBubble({on,trig:(nat.bub&&nat.bub.trig)||'tap'});nat.bub=r.bub||null;
     if(on&&r.bub&&!r.bub.perm)toast('다른 앱 위 표시를 켜고 돌아오세요');
-    else toast(on?'옆 아이콘 판에 ○를 그리면 회기 시작':'떠 있는 아이콘을 껐습니다');
+    else toast(on?(nat.target?'옆 아이콘 판에 ○를 그리면 회기 시작':'아래에서 어느 측정인지 고르세요'):'떠 있는 아이콘을 껐습니다');
   }catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
+  natUI();setTimeout(setRefresh,0);
+}
+async function setBubTarget(v){
+  if(!v){natUI();setTimeout(setRefresh,0);return;}
+  const [pid,ph]=v.split('|');const p=projById(pid);const m=p&&natMode(p,ph);
+  try{if(!m)throw 0;const r=await PCN.setTarget(natTargetArgs(p,ph,m));nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;toast(`${natTitle(p,ph,m)} · ○로 회기 시작`);}
+  catch(e){toast('이 측정은 고를 수 없어요');}
   natUI();setTimeout(setRefresh,0);
 }
 async function setNatChkOn(on){
@@ -6876,6 +6881,7 @@ document.addEventListener('change',e=>{
   else if(k==='tmr'){if(v){setUI.tmr=true;}else{setNatTimerOff();return;}}
   else if(k==='chk'){setNatChkOn(v);return;}
   else if(k==='bub'){setBubOn(v);return;}
+  else if(el.matches('[data-bubtgt]')){setBubTarget(el.value);return;}
   else if(el.matches('[data-btn3],[data-tmr],[data-chk]'))return;/* 원래 처리(natBtnSet 등)가 앱에 보낸 뒤 natUI로 다시 그린다 */
   /* data-qk·data-live-auto·data-plan-auto는 원래 처리가 값을 바꾼 뒤에 다시 그린다 */
   setTimeout(setRefresh,0);
@@ -7239,7 +7245,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
-  {id:'2026-11-24-5',d:'2026-11-24',k:'web',t:'설정에 ○ 그려 회기 시작',items:['설정 → 측정 → ○ 그려 회기 시작','켜면 옆에 작은 아이콘이 뜸','앱 밖 측정도 함께 켜짐']},
+  {id:'2026-11-24-5',d:'2026-11-24',k:'web',t:'설정에 ○ 그려 회기 시작',items:['설정 → 측정 → ○ 그려 회기 시작','체크 먼저, 아래에서 어느 측정','옆 작은 아이콘 판에 ○']},
   {id:'2026-11-24-7',d:'2026-11-24',k:'web',t:'설정이 바로 넘어와요',items:['다른 기기에서 바꾸면 바로','새로고침 안 해도 됨']},
   {id:'2026-11-24-6',d:'2026-11-24',k:'web',t:'앱 옵션도 계정마다',items:['음량 버튼·측정 시간·끝 확인','다른 기기 앱에도 같게','처음 다르면 꺼진 쪽으로']},
   {id:'2026-11-24-5',d:'2026-11-24',k:'web',t:'설정도 계정마다',items:['로그인하면 다른 기기도 같은 설정','끈 설정은 꺼진 채로','손글씨·S펜은 기기마다']},
