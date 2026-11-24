@@ -22,7 +22,8 @@ import androidx.core.content.ContextCompat;
  * '음량 버튼 기록' — 회기가 열려 있고 화면이 꺼져 있을 때 음량 버튼(올림·내림 아무거나)을 정한 횟수(1~3번, 기본 1번)만큼 빠르게 누르면
  * 그 방법의 기본 버튼을 누른 것으로 기록한다: 빈도 ＋1, 지속시간 행동 시작/끝, 지연시간 지시/반응, 간격 기록 신호 때 '있음'.
  * 강도는 정한 횟수와 상관없이 이어 누른 수(1~3번)가 단계: 마지막 누름 뒤 GAP 동안 더 누르지 않으면 기록(4번째부터는 3으로 봄).
- * 회기 시작은 빠른 설정·위젯·알림창에서 한다(배터리 때문에 회기가 열려 있을 때만 돈다).
+ * 2026-11-24: '화면 켜져 있어도'(btnScr, 기본 켬)면 화면이 켜진 채로도 받고, '회기 시작도'(btnStart, 기본 켬)면 열린 회기가 없을 때 정한 횟수만큼 누르면 회기를 연다.
+ *   (배터리 때문에 회기가 열려 있거나, 회기 시작도를 켠 측정 대상이 있을 때만 돈다. 화면이 켜져 있으면 그동안 음량 조절은 안 된다. 다른 앱이 소리를 내면 세지 않고 음량도 평소대로.)
  *
  * 받는 방법: 갤럭시는 화면이 꺼지면 음량 키를 앱에 주지 않는다(2026-11-17 실기기 진단). 그래서 화면이 꺼져 있는 동안
  * '소리 없는 재생'(0으로 채운 AudioTrack)을 틀어 두면 음량 키가 미디어 음량을 바꾸므로, 음량 바뀜 방송(VOLUME_CHANGED_ACTION)으로
@@ -150,14 +151,15 @@ final class PressWatch {
         } catch (Exception e) { return ""; }
     }
 
-    /** 화면이 꺼져 있고(또는 누르는 도중) 재생·통화 중이 아니면 소리 없는 재생을 켠다 */
+    /** 화면이 꺼져 있거나('화면 켜져 있어도'를 켰거나, 누르는 도중) 재생·통화 중이 아니면 소리 없는 재생을 켠다 */
     private void update() {
         if (!started) return;
-        boolean want = (!interactive() || n > 0 || pending) && busyWhy().isEmpty();
+        boolean scrOn = interactive();
+        boolean want = (!scrOn || CounterStore.btnScr(c) || n > 0 || pending) && busyWhy().isEmpty();
         if (want == (silent != null)) return;
         if (want) {
             startSilent();
-            if (silent != null) log(c, "화면 꺼짐 · 음량 받기 켬");
+            if (silent != null) log(c, (scrOn ? "화면 켜짐" : "화면 꺼짐") + " · 음량 받기 켬");
         } else {
             String why = busyWhy();
             stopSilent();
@@ -324,8 +326,9 @@ final class PressWatch {
         if (!why.isEmpty()) { unlock(); log(c, why + " · 기록 안 함"); update(); return; }
         int lv = lvN;
         lvN = 0;
+        boolean wasOn = CounterStore.active(c);
         int fb = act(c, lv);
-        log(c, "→ " + (fb == FB_START ? "시작" : fb == FB_TICK ? (lv > 0 ? "강도 " + lv : CounterStore.INT.equals(CounterStore.mode(c)) ? "있음" : "＋1") : fb == FB_END ? "끝"
+        log(c, "→ " + (fb == FB_START ? (wasOn ? "시작" : "회기 시작") : fb == FB_TICK ? (lv > 0 ? "강도 " + lv : CounterStore.INT.equals(CounterStore.mode(c)) ? "있음" : "＋1") : fb == FB_END ? "끝"
             : "기록 안 됨" + (CounterStore.active(c) ? "(이 방법은 앱·알림창에서)" : "(열린 회기 없음)")));
         feedback(c, fb);
         unlock();
@@ -336,7 +339,10 @@ final class PressWatch {
 
     static int act(Context c) { return act(c, 0); }
     static int act(Context c, int lv) {
-        if (!CounterStore.active(c)) return FB_NONE; // 회기 시작은 빠른 설정·위젯·알림창에서
+        if (!CounterStore.active(c)) { // 열린 회기가 없으면 '회기 시작도'를 켰을 때만 회기 시작(횟수·행동은 아직 안 셈, 타일 첫 탭과 같음)
+            if (!CounterStore.btnStart(c) || !CounterStore.hasTarget(c)) return FB_NONE;
+            return CounterStore.begin(c) ? FB_START : FB_NONE;
+        }
         switch (CounterStore.mode(c)) {
             case CounterStore.FREQ: return CounterStore.add(c, 1) > 0 ? FB_TICK : FB_NONE;
             case CounterStore.DUR: return CounterStore.durToggle(c) ? FB_START : FB_END;

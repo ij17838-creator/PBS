@@ -48,14 +48,14 @@
         </service>
 
         <!-- 끝 확인 시계: 지속시간 행동이 진행 중일 때만 돈다(앱이 꺼져 있어도 '아직 행동 중인가요?'를 띄우려고).
-             '음량 버튼 기록'을 켜 두면 회기가 열려 있는 동안 돌며 화면 꺼짐 때 음량 누름을 센다 -->
+             '음량 버튼 기록'을 켜 두면 회기가 열려 있는 동안(회기 시작도를 켰으면 대기 중에도) 돌며 음량 누름을 센다 -->
         <service
             android:name=".DurWatch"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="교사가 학생 행동을 재는 동안 일정 간격으로 진행 여부를 묻는 알림, 그리고 측정 중 화면이 꺼진 채 음량 버튼을 3번 눌러 기록하는 기능(소리 없는 재생으로 음량 키를 받음)" />
+                android:value="교사가 학생 행동을 재는 동안 일정 간격으로 진행 여부를 묻는 알림, 그리고 수업 자료를 띄우거나 화면이 꺼진 채 음량 버튼을 눌러 회기를 시작하고 기록하는 기능(소리 없는 재생으로 음량 키를 받음)" />
         </service>
 
         <!-- 떠 있는 ＋1: 다른 앱(수업 자료) 위의 작은 버튼. 켜 둔 동안만 돈다 -->

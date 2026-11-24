@@ -94,8 +94,20 @@ final class CounterNotifier {
         return CounterStore.active(c) ? CounterStore.title(c) : CounterStore.tTitle(c);
     }
 
+    /** 대기 알림을 지운 뒤라 숨겨야 하는지 (열린 회기가 없을 때만) */
+    static boolean hiddenWait(Context c) { return !CounterStore.active(c) && CounterStore.waitHid(c); }
+
     static boolean show(Context c) {
         if (!CounterStore.anything(c)) { cancel(c); return false; }
+        if (hiddenWait(c)) {
+            // 지운 대기 알림은 다시 띄우지 않는다. 음량 버튼으로 회기를 시작하려고 감시가 돌면 안드로이드가 알림 하나를 꼭 요구하므로
+            // 맨 아래 '조용한 알림'(소리·아이콘 없음)으로만 남기고, 그것마저 지우면 그대로 둔다.
+            if (CounterStore.pressOn(c) && !CounterStore.quietGone(c)) {
+                try { NotificationManagerCompat.from(c).notify(ID, build(c)); return true; } catch (SecurityException e) { return false; }
+            }
+            cancel(c);
+            return false;
+        }
         NotificationManagerCompat nm = NotificationManagerCompat.from(c);
         if (!nm.areNotificationsEnabled()) return false;
         try { nm.notify(ID, build(c)); return true; }
@@ -107,8 +119,38 @@ final class CounterNotifier {
         return PendingIntent.getActivity(c, 10, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
+    static final String QUIET = "pbs_quiet";
+
+    /** 대기 알림을 숨긴 동안 음량 버튼 감시용으로만 쓰는 조용한 알림 채널(가장 낮은 중요도: 상태 표시줄 아이콘·소리 없음) */
+    static void ensureQuiet(Context c) {
+        if (Build.VERSION.SDK_INT < 26) return;
+        NotificationManager nm = c.getSystemService(NotificationManager.class);
+        if (nm.getNotificationChannel(QUIET) != null) return;
+        NotificationChannel ch = new NotificationChannel(QUIET, "음량 버튼 대기", NotificationManager.IMPORTANCE_MIN);
+        ch.setDescription("대기 알림을 지운 뒤에도 음량 버튼으로 회기를 시작할 수 있게 남기는 조용한 알림");
+        ch.setSound(null, null);
+        ch.enableVibration(false);
+        ch.setShowBadge(false);
+        nm.createNotificationChannel(ch);
+    }
+
     /** 측정 알림 (끝 확인 시계 서비스도 이 알림을 쓴다) */
     static Notification build(Context c) {
+        if (hiddenWait(c)) {
+            ensureQuiet(c);
+            return new NotificationCompat.Builder(c, QUIET)
+                .setSmallIcon(R.drawable.ic_stat_pbs)
+                .setContentTitle(CounterStore.tTitle(c))
+                .setContentText("음량 버튼 대기 중 · 누르면 회기 시작")
+                .setOngoing(true)
+                .setSilent(true)
+                .setShowWhen(false)
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setCategory(NotificationCompat.CATEGORY_STATUS)
+                .setContentIntent(openApp(c))
+                .setDeleteIntent(action(c, CounterReceiver.DISMISS, 4))
+                .build();
+        }
         ensureChannel(c);
         Intent open = new Intent(c, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent openPi = PendingIntent.getActivity(c, 10, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);

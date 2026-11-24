@@ -119,7 +119,8 @@ public class CounterReceiver extends BroadcastReceiver {
                 buzz(c, 200);
                 break;
             case DISMISS:
-                // 밀어서 지워도 측정 중이면 다시 띄운다
+                // 밀어서 지워도 측정 중(회기 열림)이면 다시 띄운다. 대기 알림은 지우면 다시 띄우지 않는다(앱에서 앱 밖 측정을 새로 켜면 다시 보임)
+                CounterStore.dismissWait(c);
                 break;
             default:
                 return;

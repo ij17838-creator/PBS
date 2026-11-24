@@ -157,15 +157,32 @@ final class CounterStore {
     static String btnLog(Context c) { return prefs(c).getString("btnLog", ""); }
     /** 몇 번 눌러야 기록할지 (1~3, 기본 1) */
     static int btnCount(Context c) { return Math.max(1, Math.min(3, prefs(c).getInt("btnCount", 1))); }
-    /** 음량 버튼 기록 감시가 지금 돌아야 하는지: 켬 + 회기 열림 + 빈도·지속시간·지연시간 */
+    /** 화면이 켜져 있어도 음량 누름을 받을지 (기본 켬, 2026-11-24) */
+    static boolean btnScr(Context c) { return prefs(c).getBoolean("btnScr", true); }
+    /** 열린 회기가 없을 때 음량 누름으로 회기를 시작할지 (기본 켬, 2026-11-24) */
+    static boolean btnStart(Context c) { return prefs(c).getBoolean("btnStart", true); }
+    /** 음량 버튼 기록 감시가 지금 돌아야 하는지: 켬 + 빈도·지속시간·지연시간 + (회기 열림 또는 '회기 시작도'를 켠 측정 대상) */
     static boolean pressOn(Context c) {
-        if (!btnOn(c) || !active(c)) return false; // 배터리: 회기가 열려 있을 때만
-        String m = mode(c);
+        if (!btnOn(c)) return false;
+        boolean on = active(c);
+        if (!on && !(btnStart(c) && hasTarget(c))) return false; // 배터리: 회기가 열려 있거나 음량으로 시작할 대상이 있을 때만
+        String m = on ? mode(c) : tMode(c);
         return FREQ.equals(m) || DUR.equals(m) || LAT.equals(m);
     }
-    static void setBtn(Context c, boolean on, boolean vol, boolean test, int count) {
+    static void setBtn(Context c, boolean on, boolean vol, boolean test, int count, boolean scr, boolean start) {
         prefs(c).edit().putBoolean("btnOn", on).putBoolean("btnVol", vol).putBoolean("btnTest", test)
-            .putInt("btnCount", Math.max(1, Math.min(3, count))).commit();
+            .putInt("btnCount", Math.max(1, Math.min(3, count))).putBoolean("btnScr", scr).putBoolean("btnStart", start).commit();
+    }
+
+    /** 대기 알림(열린 회기 없음)을 밀어서 지웠는지. 다시 띄우지 않는다. 앱에서 앱 밖 측정을 새로 켜면 풀린다 */
+    static boolean waitHid(Context c) { return prefs(c).getBoolean("waitHid", false); }
+    /** 숨긴 뒤 음량 버튼 대기 때문에 남긴 조용한 알림까지 지웠는지 */
+    static boolean quietGone(Context c) { return prefs(c).getBoolean("quietGone", false); }
+    static void dismissWait(Context c) {
+        SharedPreferences p = prefs(c);
+        if (p.getBoolean("active", false)) return;
+        if (p.getBoolean("waitHid", false)) p.edit().putBoolean("quietGone", true).commit();
+        else p.edit().putBoolean("waitHid", true).commit();
     }
 
     /* ---------- 내부 도우미 ---------- */
@@ -308,6 +325,9 @@ final class CounterStore {
             .putBoolean("ivAlign", ivAlign).putString("ivMode", im);
         boolean same = pid.equals(p.getString("tPid", "")) && ph.equals(p.getString("tPh", "")) && m.equals(p.getString("tMode", ""));
         if (!same && p.getBoolean("auto", false)) endLocked(p, e, ev, System.currentTimeMillis());
+        // 앱에서 앱 밖 측정을 새로 켜거나 대상을 바꾸면 숨겼던 대기 알림을 다시 보인다(설정값만 바뀐 것은 그대로)
+        boolean samePlace = pid.equals(p.getString("tPid", "")) && ph.equals(p.getString("tPh", ""));
+        if (!p.getBoolean("tOn", false) || !samePlace) e.putBoolean("waitHid", false).putBoolean("quietGone", false);
         e.putBoolean("tOn", true).putString("tPid", pid).putString("tPh", ph).putString("tTitle", title).putString("tMode", m)
             .putString("events", ev.toString()).commit();
     }
@@ -318,7 +338,7 @@ final class CounterStore {
         JSONArray ev = events(p);
         SharedPreferences.Editor e = p.edit();
         if (p.getBoolean("auto", false)) endLocked(p, e, ev, System.currentTimeMillis());
-        e.putBoolean("tOn", false).putString("events", ev.toString()).commit();
+        e.putBoolean("tOn", false).putBoolean("waitHid", false).putBoolean("quietGone", false).putString("events", ev.toString()).commit();
     }
 
     /* ---------- 버튼에서 부르는 것 ---------- */

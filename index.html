@@ -6120,14 +6120,16 @@ function natBtnBox(m,on){
   if(!next&&m!=='lvl')return `<div class="muted" style="flex:1 1 100%">음량 버튼 · 이 방법 미지원</div>`;
   const b=nat.btn||{on:false};const k=Number(b.count)||1;
   const cnt=[1,2,3].map(x=>`<option value="${x}"${x===k?' selected':''}>${x}번${x===1?'(기본)':''}</option>`).join('');
-  const lv=m==='lvl';
+  const lv=m==='lvl';const v13=nat.ver>=13;
   return `<details class="nat-chk" data-nat-btn${nat.btnOpen?' open':''}><summary>음량 버튼 · ${b.on?(lv?'누른 수=강도':`${k}번=${next}`):'끔'}</summary>
     <div class="dur-foot">
-      <label class="check"><input type="checkbox" data-btn3="on"${b.on?' checked':''}> <span>회기 중 음량 버튼</span></label>
+      <label class="check"><input type="checkbox" data-btn3="on"${b.on?' checked':''}> <span>${v13?'음량 버튼으로 기록':'회기 중 음량 버튼'}</span></label>
       ${lv?'':`<label class="field"><span>누를 횟수</span><select data-btn3="count"${b.on?'':' disabled'}>${cnt}</select></label>`}
       <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}${b.on?'':' disabled'}> <span>누를 때마다 진동(시험)</span></label>
+      ${v13&&!lv?`<label class="check"><input type="checkbox" data-btn3="scr"${b.scr!==false?' checked':''}${b.on?'':' disabled'}> <span>화면 켜져 있어도</span></label>
+      <label class="check"><input type="checkbox" data-btn3="start"${b.start!==false?' checked':''}${b.on?'':' disabled'}> <span>회기 시작도</span></label>`:''}
     </div>
-    <div class="dur-foot muted"><span>회기는 타일·위젯으로</span>${lv?'<span>1·2·3번=강도 1·2·3</span><span>1.5초 뒤 기록</span>':`<span>${k}번=${next}</span><span>${k>1?`${k+1}번째 누름=취소`:'잘못 누르면 −1'}</span>`}<span>재생·통화 중엔 안 셈</span><span>화면 꺼졌을 때만</span></div>
+    <div class="dur-foot muted"><span>${v13&&!lv&&b.start!==false?`회기 없으면 ${k}번=시작`:'회기는 타일·위젯으로'}</span>${lv?'<span>1·2·3번=강도 1·2·3</span><span>1.5초 뒤 기록</span>':`<span>${k}번=${next}</span><span>${k>1?`${k+1}번째 누름=취소`:'잘못 누르면 −1'}</span>`}<span>재생·통화 중엔 안 셈</span><span>${v13&&!lv&&b.scr!==false?'켜 둔 동안 음량 조절 안 됨':'화면 꺼졌을 때만'}</span></div>
     ${b.on&&'alive' in b?`<div class="dur-foot"><strong>${b.alive?'누름 세는 중':'회기 열면 셈'}</strong><button type="button" class="btn small" data-act="nat-btn-refresh">기록 새로 보기</button></div>
     <pre class="btn3-log">${esc(b.log||'아직 누른 기록 없음')}</pre>`:''}
   </details>`;
@@ -6136,8 +6138,10 @@ async function natBtnSet(b){
   const box=b||$('[data-nat-btn]');if(!box||!PCN)return;
   const g=n=>box.querySelector(`[data-btn3="${n}"]`);
   try{
-    const r=await PCN.setButtons({on:!!g('on').checked,test:!!(g('test')&&g('test').checked),count:Number(g('count')?g('count').value:(nat.btn&&nat.btn.count))||1});
-    nat.btn=r.btn||nat.btn;toast(nat.btn&&nat.btn.on?`화면 끈 채 음량 ${Number(nat.btn.count)||1}번`:'음량 버튼 기록을 껐습니다');
+    const o={on:!!g('on').checked,test:!!(g('test')&&g('test').checked),count:Number(g('count')?g('count').value:(nat.btn&&nat.btn.count))||1};
+    if(g('scr'))o.scr=!!g('scr').checked;if(g('start'))o.start=!!g('start').checked;
+    const r=await PCN.setButtons(o);
+    const nb=r.btn||nat.btn;nat.btn=nb;toast(nb&&nb.on?`${nat.ver>=13&&nb.scr!==false?'':'화면 끈 채 '}음량 ${Number(nb.count)||1}번`:'음량 버튼 기록을 껐습니다');
   }catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
   if(document.activeElement)document.activeElement.blur();
   natUI();
@@ -6660,7 +6664,7 @@ const SET_ROWS=[
     const b=nat.btn||{};const k=Number(b.count)||1;const p=curProject();const lv=!!(p&&natMode(p,'bl')==='lvl');
     const cnt=[1,2,3].map(x=>`<option value="${x}"${x===k?' selected':''}>${x}번${x===1?'(기본)':''}</option>`).join('');
     return `${lv?'<span class="muted">누른 수=강도</span>':`<label class="field"><span>누를 횟수</span><select data-btn3="count">${cnt}</select></label>`}
-      <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}> <span>누를 때마다 진동(시험)</span></label><span class="muted">회기 중·화면 꺼졌을 때만</span>`;}},
+      <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}> <span>누를 때마다 진동(시험)</span></label>${nat.ver>=13&&!lv?`<label class="check"><input type="checkbox" data-btn3="scr"${b.scr!==false?' checked':''}> <span>화면 켜져 있어도</span></label><label class="check"><input type="checkbox" data-btn3="start"${b.start!==false?' checked':''}> <span>회기 시작도</span></label><span class="muted">켜 둔 동안 음량 조절 안 됨</span>`:'<span class="muted">회기 중·화면 꺼졌을 때만</span>'}`;}},
   {id:'tmr',g:'측정',t:'측정 시간 정하기',sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN&&nat.ver>=5,on:()=>setNatTimer().min>0||setUI.tmr,box:'data-nat-timer',more:()=>{
     const t=setNatTimer();const mins=[5,10,15,20,30,40,45,60];if(t.min&&!mins.includes(Number(t.min)))mins.push(Number(t.min));
     return `<label class="field"><span>측정 시간</span><select data-tmr="min">${t.min?'':'<option value="0" selected>고르세요</option>'}${mins.map(x=>`<option value="${x}"${x===Number(t.min)?' selected':''}>${x}분</option>`).join('')}</select></label>
