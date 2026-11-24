@@ -4785,6 +4785,9 @@ async function makeFirestoreAdapter(){
     /* 앱 색 등 내 화면 설정: users/{uid}/prefs/look = {hue:0~359|null, at}. 본인만(규칙 users/{uid}/** 그대로) */
     async lookGet(me){const d=await F.getDoc(F.doc(db,'users',me.uid,'prefs','look'));return d.exists()?d.data():null;},
     async lookSet(me,o){await F.setDoc(F.doc(db,'users',me.uid,'prefs','look'),Object.assign({},o,{at:ts()}));count(1);},
+    /* 화면·측정 설정: users/{uid}/prefs/ui = {v,t,at}. 키별로 합친다(merge) */
+    async prefsGet(me){const d=await F.getDoc(F.doc(db,'users',me.uid,'prefs','ui'));return d.exists()?d.data():null;},
+    async prefsSet(me,o){await F.setDoc(F.doc(db,'users',me.uid,'prefs','ui'),{v:o.v,t:o.t,at:ts()},{merge:true});count(1);},
     async myLinks(me){const s=await F.getDocs(F.collection(db,'users',me.uid,'links'));return s.docs.map(d=>d.id);},
     async addLink(me,uid){await F.setDoc(F.doc(db,'users',me.uid,'links',uid),{at:ts()});count(1);},
     signOut(){if(PAUTH)PAUTH.googleSignOut().catch(()=>{});return U.signOut(auth);},
@@ -4897,6 +4900,7 @@ function syncOnAuth(u){
   Sync.user=u;Sync.authKnown=true;
   acctOnAuth(u);
   if(!u&&mini.on)miniOff();
+  if(u)setTimeout(()=>prefLoad(true),0);/* 화면·측정 설정도 계정에서 */
   if(u)setTimeout(hueAcctLoad,0);else if(before)hueLocal(null,null);/* 앱 색은 계정마다: 로그인하면 계정 색, 로그아웃하면 기본색 */
   if(u)setTimeout(syncAutoPull,0);/* 다른 기기에서 받은 공유 프로젝트도 내려받기 */
   if(!u&&PCN)setTimeout(natDrain,0);/* 설치형 앱: 숨긴 프로젝트의 앱 밖 측정도 끈다(natLockHidden) *//* 로그아웃: 세기 대기 창(작은 창·화면 안 ＋1)도 닫는다 */
@@ -6629,6 +6633,67 @@ async function hueAcctLoad(){
   if(d&&'hue' in d){const v=num(d.hue),l=num(d.l);if(v!==hueGet()||l!==hueLGet())hueLocal(v,l);}
   else{const v=hueGet(),l=hueLGet();if((v!==null||l!==null)&&ad.lookSet)ad.lookSet(me,{hue:v,l}).catch(e=>console.warn('lookSet',e&&e.code));}
 }
+/* ---- 설정을 계정에: 로그인하면 users/{uid}/prefs/ui = {v:{키:값|null}, t:{키:바꾼 시각 ms}, at}. 키마다 나중에 바꾼 쪽이 이긴다.
+   끈 것도 값('0' 등)과 시각으로 남겨서 다른 기기의 켜진 값이 되살리지 못한다. 예전 값(시각 없음)끼리 다르면 자동 기능은 끈 쪽(PREF_OFF).
+   기기에 남기는 것: 손글씨 모드·S펜 전용(기기마다 펜이 다름), 설치 앱 옵션(음량 버튼·측정 시간·끝 확인), 창 위치, 공지 본 것.
+   앱 색(pbs-hue)은 따로 prefs/look(hueAcctLoad). 로그아웃해도 이 기기 값은 그대로 둔다. */
+const PREF_KEYS=['pbs-glass','pbs-contrast','pbs-pg-all','pbs-cover-auto','pbs-live-auto','pbs-mini-trig','pbs-quick-key','pbs-ai'];
+const PREF_OFF={'pbs-cover-auto':'0','pbs-live-auto':'0'};
+const PREF_T_KEY='pbs-prefs-t',PREF_UID_KEY='pbs-prefs-uid';
+const prefs={snap:null,dirty:{},timer:0,last:0};
+function lsRaw(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsPut(k,v){try{if(v===null||v===undefined)localStorage.removeItem(k);else localStorage.setItem(k,String(v));}catch(e){}}
+function prefT(){try{return JSON.parse(localStorage.getItem(PREF_T_KEY)||'{}')||{};}catch(e){return {};}}
+function prefTSet(o){try{localStorage.setItem(PREF_T_KEY,JSON.stringify(o));}catch(e){}}
+function prefSnap(){const o={};PREF_KEYS.forEach(k=>o[k]=lsRaw(k));return o;}
+/* 누르거나 바꾼 뒤 값이 달라진 키를 찾아 시각을 적고, 로그인 중이면 계정에 보낸다 */
+function prefScan(){
+  const now=prefSnap();if(!prefs.snap){prefs.snap=now;return;}
+  const ch=PREF_KEYS.filter(k=>now[k]!==prefs.snap[k]);prefs.snap=now;if(!ch.length)return;
+  const t=prefT(),ms=Date.now();ch.forEach(k=>{t[k]=ms;prefs.dirty[k]=1;});prefTSet(t);
+  clearTimeout(prefs.timer);prefs.timer=setTimeout(prefPush,800);
+}
+function prefPush(){
+  const me=syncMe(),ad=Sync.ad;const keys=Object.keys(prefs.dirty);
+  if(!me||!ad||!ad.prefsSet||!keys.length||lsRaw(PREF_UID_KEY)!==me.uid)return;/* 계정 값을 받기 전이면 prefLoad가 시각으로 맞춘다 */
+  prefs.dirty={};const t=prefT(),up={v:{},t:{}};keys.forEach(k=>{up.v[k]=lsRaw(k);up.t[k]=t[k]||Date.now();});
+  ad.prefsSet(me,up).catch(e=>{console.warn('prefsSet',e&&e.code);keys.forEach(k=>prefs.dirty[k]=1);});
+}
+/* 계정 값 받기: 로그인할 때, 앱으로 돌아올 때(20초에 한 번까지) */
+async function prefLoad(force){
+  const me=syncMe();if(!me)return;
+  if(!force&&Date.now()-prefs.last<20000)return;prefs.last=Date.now();
+  const ad=Sync.ad||await syncAdapter().catch(()=>null);if(!ad||!ad.prefsGet)return;
+  let d;try{d=await ad.prefsGet(me);}catch(e){console.warn('prefsGet',e&&e.code);return;}
+  if((syncMe()||{}).uid!==me.uid)return;
+  prefScan();
+  const rv=(d&&d.v)||{},rt=(d&&d.t)||{},lt=prefT();
+  const owner=lsRaw(PREF_UID_KEY);const mine=!owner||owner===me.uid;/* 다른 계정이 쓰던 값은 이 계정에 올리지 않는다 */
+  const up={v:{},t:{}};const changed=[];
+  PREF_KEYS.forEach(k=>{
+    const lv=lsRaw(k);let la=lt[k]!==undefined?Number(lt[k])||0:(lv!==null?0:undefined);if(!mine)la=undefined;
+    const has=Object.prototype.hasOwnProperty.call(rt,k);
+    if(!has){if(la!==undefined){up.v[k]=lv;up.t[k]=la;}return;}
+    const ra=Number(rt[k])||0,r=rv[k]===undefined?null:rv[k];
+    if(r===lv){lt[k]=Math.max(ra,la||0);return;}
+    const takeRemote=la===undefined||ra>la||(ra===la&&!(k in PREF_OFF&&lv===PREF_OFF[k]));
+    if(takeRemote){lsPut(k,r);lt[k]=ra;changed.push(k);}else{up.v[k]=lv;up.t[k]=la;}
+  });
+  prefTSet(lt);lsPut(PREF_UID_KEY,me.uid);prefs.snap=prefSnap();
+  if(Object.keys(up.v).length&&ad.prefsSet)ad.prefsSet(me,up).catch(e=>console.warn('prefsSet',e&&e.code));
+  if(Object.keys(prefs.dirty).length)prefPush();
+  if(changed.length)prefApply(changed);
+}
+function prefApply(ch){
+  lookApply();
+  const c=$('#cover-auto');if(c)c.checked=lsRaw('pbs-cover-auto')==='1';
+  if(ch.includes('pbs-pg-all'))setTimeout(render,0);
+  setRefresh();
+}
+['click','change','keyup'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(prefScan,0)));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'||!syncMe())return;
+  if(Date.now()-prefs.last<20000)return;prefLoad(false);hueAcctLoad();});
+prefScan();
 const HUE_PRE=[[173,'민트'],[205,'바다'],[228,'파랑'],[262,'보라'],[330,'분홍'],[18,'노을'],[40,'호박'],[135,'풀잎']];
 function hueMore(){const h=hueGet();const cur=h===null?HUE_DEF:h;
   return `<div class="hue-wrap"><input type="range" class="hue-sl" min="0" max="359" step="1" value="${cur}" data-hue="sl" aria-label="앱 색 고르기"${hcOn()?' disabled':''}>
@@ -6651,22 +6716,22 @@ function setNatChk(){return Object.assign({sec:30,mode:'vib',miss:3,adj:true},na
 function setNatTimer(){return Object.assign({min:0,renew:false,reset:true},nat.timer||{});}
 /* g: 묶음, sc: 저장 범위, rel: 관련 절차·카테고리, show: 보일 때, on: 체크 상태(null이면 고르기 줄), more: 켰을 때 세부 설정 */
 const SET_ROWS=[
-  {id:'glass',g:'화면',t:'유리 효과',sc:'이 기기',rel:[],on:()=>glassOn()&&!hcOn(),dis:()=>hcOn(),hint:()=>hcOn()?'고대비면 꺼져요':'막대·창 뒤가 흐리게 비침'},
-  {id:'hc',g:'화면',t:'고대비',sc:'이 기기',rel:[],on:()=>hcOn(),hint:()=>'진한 글자·굵은 테두리'},
+  {id:'glass',g:'화면',t:'유리 효과',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:()=>glassOn()&&!hcOn(),dis:()=>hcOn(),hint:()=>hcOn()?'고대비면 꺼져요':'막대·창 뒤가 흐리게 비침'},
+  {id:'hc',g:'화면',t:'고대비',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:()=>hcOn(),hint:()=>'진한 글자·굵은 테두리'},
   {id:'hue',g:'화면',t:'앱 색',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:null,ctl:()=>`<button type="button" class="btn small" data-act="hue-reset"${hueGet()===null&&hueLGet()===null?' disabled':''}>기본색으로</button>`,hint:()=>hcOn()?'고대비면 기본색':syncMe()?'버튼·배경 색이 함께 바뀜':'로그인하면 계정에 저장',more:()=>hueMore()},
-  {id:'pg',g:'화면',t:'절차 한 장씩 보기',sc:'이 기기',rel:['profile','define','qabf','rating','hypo','plan','evaluate'],on:()=>!pgAll(),hint:()=>pgAll()?'지금은 한 화면에 모두':''},
-  {id:'cover',g:'화면',t:'나갔다 오면 가리기',sc:'이 기기',rel:['baseline','intervene','abc'],on:()=>{try{return localStorage.getItem(COVER_KEY)==='1';}catch(e){return false;}},hint:()=>'돌아오면 시계 화면'},
+  {id:'pg',g:'화면',t:'절차 한 장씩 보기',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['profile','define','qabf','rating','hypo','plan','evaluate'],on:()=>!pgAll(),hint:()=>pgAll()?'지금은 한 화면에 모두':''},
+  {id:'cover',g:'화면',t:'나갔다 오면 가리기',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['baseline','intervene','abc'],on:()=>{try{return localStorage.getItem(COVER_KEY)==='1';}catch(e){return false;}},hint:()=>'돌아오면 시계 화면'},
   {id:'ink',g:'입력',t:'손글씨 모드',sc:'이 기기',rel:['profile','define','rating','abc','hypo','plan','evaluate'],on:()=>inkUI.mode==='ink',
     more:()=>`<label class="check"><input type="checkbox" data-set="pen"${inkUI.penSeen?' checked':''}> <span>S펜만 쓰기</span></label><span class="muted">손바닥·손가락은 무시 · 숫자 칸은 키보드</span>`},
   {id:'qm',g:'측정',t:'간편 측정',sc:'이 학생',rel:['baseline','intervene','abc','measure'],show:()=>!!curProject(),on:null,ctl:()=>'',hint:()=>'트리거 한 번에 함께 기록',more:()=>qmOpts(curProject())},
-  {id:'qk',g:'측정',t:'간편 측정 단축키',sc:'이 기기',rel:['baseline','intervene','abc','measure'],show:()=>!PCN,on:()=>qkGet().on,ck:'data-qk="on"',more:()=>{
+  {id:'qk',g:'측정',t:'간편 측정 단축키',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['baseline','intervene','abc','measure'],show:()=>!PCN,on:()=>qkGet().on,ck:'data-qk="on"',more:()=>{
     const o=qkGet();const ns=[2,3,4,5].map(n=>`<option value="${n}"${n===o.n?' selected':''}>${n}번</option>`).join('');
     return `<span class="trig-seg" role="group" aria-label="단축키 방식"><button type="button" class="seg-btn" data-act="qk-mode" data-v="tap" aria-pressed="${o.mode!=='combo'}">연타</button><button type="button" class="seg-btn" data-act="qk-mode" data-v="combo" aria-pressed="${o.mode==='combo'}">조합</button></span>
       ${o.mode==='combo'?'':`<label class="field qm-key-n"><span class="sr-only">연타 횟수</span><select data-qk="n">${ns}</select></label>`}
       <button type="button" class="btn small${qk.cap?' primary':''}" data-act="qk-cap">${qk.cap?(o.mode==='combo'?'조합키를 누르세요':'키를 누르세요'):'커맨드 입력'}</button>
       <span class="mono">${esc(qkLabel(o))}</span><span class="muted">누르면 대기 창 + ＋1</span>`;}},
-  {id:'mini',g:'측정',t:'작게 띄워 세기',sc:'이 기기',rel:['baseline','intervene'],on:null,ctl:()=>trigSeg('mini-trig',miniTrig()),hint:()=>'＋1을 누를지 그을지'},
-  {id:'live',g:'측정',t:'＋1 창 자동 띄우기',sc:'이 기기',rel:['baseline','intervene'],on:()=>liveAuto(),ck:'data-live-auto',hint:()=>'공유 프로젝트 회기 때'},
+  {id:'mini',g:'측정',t:'작게 띄워 세기',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['baseline','intervene'],on:null,ctl:()=>trigSeg('mini-trig',miniTrig()),hint:()=>'＋1을 누를지 그을지'},
+  {id:'live',g:'측정',t:'＋1 창 자동 띄우기',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['baseline','intervene'],on:()=>liveAuto(),ck:'data-live-auto',hint:()=>'공유 프로젝트 회기 때'},
   {id:'btn3',g:'측정',t:'음량 버튼으로 기록',sc:'설치 앱',rel:['baseline','intervene','abc','measure'],show:()=>!!PCN&&nat.ver>=4,on:()=>!!(nat.btn&&nat.btn.on),box:'data-nat-btn',ck:'data-btn3="on"',more:()=>{
     const b=nat.btn||{};const k=Number(b.count)||1;const p=curProject();const lv=!!(p&&natMode(p,'bl')==='lvl');
     const cnt=[1,2,3].map(x=>`<option value="${x}"${x===k?' selected':''}>${x}번${x===1?'(기본)':''}</option>`).join('');
@@ -6688,7 +6753,7 @@ const SET_ROWS=[
   {id:'abcauto',g:'이 학생',t:'ABC 저절로 시작',sc:'이 학생',rel:['abc','measure'],show:()=>!!curProject(),on:()=>{const p=curProject();return !!(p&&abcData(p).plan.auto);},ck:'data-plan-auto',
     hint:()=>'시작 시간이 되면 관찰 시작',more:()=>{const a=abcData(curProject()).plan;const here=ui.view==='proc'&&ui.proc==='abc';
       return `<span>${a.start?`시작 <b class="mono">${esc(a.start)}</b>${a.end?` · 끝 <b class="mono">${esc(a.end)}</b>`:''}`:'<span class="muted">시작 시간이 없어요</span>'}</span>${here?'<span class="muted">ABC 화면에서 시간 정함</span>':'<button type="button" class="btn small" data-act="set-go" data-key="abc">시간 정하러 가기</button>'}`;}},
-  {id:'ai',g:'AI',t:'AI 도우미',sc:'이 기기',rel:['plan','intervene','evaluate'],on:null,ctl:()=>`<button type="button" class="btn small" data-act="set-ai">모델·생각 수준</button>`},
+  {id:'ai',g:'AI',t:'AI 도우미',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['plan','intervene','evaluate'],on:null,ctl:()=>`<button type="button" class="btn small" data-act="set-ai">모델·생각 수준</button>`},
 ];
 function setRow(o){
   const on=o.on?!!o.on():null;const dis=o.dis&&o.dis();const hint=o.hint?o.hint():'';
@@ -7111,6 +7176,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-24-5',d:'2026-11-24',k:'web',t:'설정도 계정마다',items:['로그인하면 다른 기기도 같은 설정','끈 설정은 꺼진 채로','손글씨·S펜은 기기마다','설치 앱 옵션도 기기마다']},
   {id:'2026-11-24-4',d:'2026-11-24',k:'apk',need:14,t:'○ 그려 회기 시작',items:['떠 있는 아이콘이 대기 중에도 보임','판에 동그라미를 그리면 회기 시작','다른 모양은 무시','화면 켜짐 음량 받기는 뺌']},
   {id:'2026-11-24-3',d:'2026-11-24',k:'web',t:'손글씨도 공유',items:['공유 프로젝트 손글씨도 서버로','앱·브라우저 어디서나 보임','녹음은 지금처럼 기기에만']},
   {id:'2026-11-24-2',d:'2026-11-24',k:'apk',need:13,t:'음량 버튼·대기 알림',items:['회기 없으면 음량으로 회기 시작','지운 대기 알림은 다시 안 뜸']},
