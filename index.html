@@ -803,6 +803,7 @@ body.pg-body .toast{bottom:calc(86px + env(safe-area-inset-bottom,0px))}
 .find-btn svg{flex:0 0 auto}
 .find{position:fixed;inset:0;z-index:60;background:rgba(21,36,38,.38);display:flex;justify-content:center;align-items:flex-start;padding:64px 16px 16px}
 .find[hidden]{display:none}
+.find-r[aria-disabled="true"]{opacity:.55}.find-r[aria-disabled="true"]:hover{background:transparent;border-left-color:transparent}
 .find-box{width:min(640px,100%);max-height:calc(100dvh - 80px);display:flex;flex-direction:column;background:var(--surface);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.25);overflow:hidden}
 .find-in{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border-bottom:1px solid var(--line);color:var(--muted)}
 .find-in input{flex:1;min-width:0;min-height:44px;border:1px solid var(--line);border-radius:10px;padding:0 12px;font:inherit;font-size:1.05rem;background:var(--surface-2);color:var(--ink)}
@@ -6781,10 +6782,8 @@ const SET_ROWS=[
   {id:'live',g:'칠판·PC',t:'＋1 창 자동 띄우기',get sc(){return syncMe()?'내 계정':'이 기기';},show:()=>!PCN,rel:['baseline','intervene'],on:()=>liveAuto(),ck:'data-live-auto',hint:()=>'공유 프로젝트 회기 때'},
   /* 앱 밖 측정(상위): 켜고 어느 측정인지 고르면 아래 하위 옵션(○ 그려·음량·측정 시간·끝 확인)이 열린다 */
   {id:'nat',g:'앱 밖 측정',t:'앱 밖 측정',sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN,on:()=>!!nat.target||setUI.nat,
-    hint:()=>nat.target?'위젯·알림창·아이콘으로 기록':'아래에서 측정을 고르세요',more:()=>{const t=nat.target;const opts=[];
-      visibleProjects().forEach(p=>['bl','iv'].forEach(ph=>{const m=natMode(p,ph);if(m)opts.push({v:p.id+'|'+ph,l:natTitle(p,ph,m),on:!!(t&&t.pid===p.id&&t.ph===ph)});}));
-      if(t&&!opts.some(o=>o.on)){const p=projById(t.pid);if(p)opts.push({v:t.pid+'|'+t.ph,l:natTitle(p,t.ph,natMode(p,t.ph)),on:true});}
-      return `<label class="field"><span>어느 측정</span><select data-nattgt>${opts.some(o=>o.on)?'':'<option value="" selected>고르세요</option>'}${opts.map(o=>`<option value="${esc(o.v)}"${o.on?' selected':''}>${esc(o.l)}</option>`).join('')}</select></label>${opts.length?'':'<span class="muted">학생 프로젝트가 없어요</span>'}`;}},
+    hint:()=>nat.target?'위젯·알림창·아이콘으로 기록':'어느 측정인지 고르세요',more:()=>{const t=nat.target;const p=t&&projById(t.pid);
+      return `${p?`<span><b>${esc(natTitle(p,t.ph,natMode(p,t.ph)||t.mode))}</b></span>`:'<span class="muted">아직 안 골랐어요</span>'}<button type="button" class="btn small${p?'':' primary'}" data-act="np-open">${p?'바꾸기':'측정 고르기'}</button>`;}},
   {id:'bub',g:'앱 밖 측정',par:'nat',t:'○ 그려 회기 시작',sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN&&nat.ver>=14,on:()=>!!(nat.bub&&nat.bub.on),ck:'data-set="bub"',
     hint:()=>{const b=nat.bub||{};if(!b.on)return '옆 작은 아이콘 판에 ○';if(!b.perm)return '다른 앱 위 표시 권한 필요';return b.alive?'아이콘이 떠 있어요':'곧 아이콘이 떠요';}},
   {id:'btn3',g:'앱 밖 측정',par:'nat',t:'음량 버튼으로 기록',get sc(){return syncMe()?'내 계정':'설치 앱';},rel:['baseline','intervene','abc','measure'],show:()=>!!PCN&&nat.ver>=4,on:()=>!!(nat.btn&&nat.btn.on),box:'data-nat-btn',ck:'data-btn3="on"',more:()=>{
@@ -6865,6 +6864,59 @@ async function setBubOn(on){
   }catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
   natUI();setTimeout(setRefresh,0);
 }
+/* ---- 앱 밖 측정 고르기 창: 프로젝트(검색) → 무엇을 잴지(기초선·중재·ABC) → 측정 방법(정의에서 정한 것). 찾기 창과 같은 모양(find-box) ---- */
+const npk={on:false,step:1,pid:null,ph:null,q:''};
+const NP_PH=[['bl','기초선','baseline'],['iv','중재','intervene'],['abc','ABC 관찰','abc']];
+function npOpen(){
+  let d=$('#nat-pick');if(!d){d=document.createElement('div');d.id='nat-pick';d.className='find';document.body.appendChild(d);
+    d.addEventListener('click',e=>{if(e.target===d)npClose();});
+    d.addEventListener('input',e=>{if(e.target.id==='np-q'){npk.q=e.target.value;npList();}});
+    d.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();npClose();}});}
+  const t=nat.target;Object.assign(npk,{on:true,step:1,pid:t?t.pid:null,ph:null,q:''});
+  d.hidden=false;document.body.classList.add('find-open');npDraw();
+  const q=$('#np-q');if(q&&!matchMedia('(pointer:coarse)').matches)try{q.focus();}catch(e){}
+}
+function npClose(){const d=$('#nat-pick');if(d){d.hidden=true;d.innerHTML='';}npk.on=false;document.body.classList.remove('find-open');setTimeout(setRefresh,0);}
+function npProjs(){const q=npk.q.trim().toLowerCase();
+  return visibleProjects().filter(p=>!q||[p.code,p.memo].some(x=>String(x||'').toLowerCase().includes(q)));}
+function npPh(p){return NP_PH.filter(([ph,,k])=>ph==='iv'||procOn(p,k));}
+function npList(){const el=$('#np-list');if(!el)return;const t=nat.target;const ps=npProjs();
+  el.innerHTML=ps.length?ps.map(p=>{const cur=t&&t.pid===p.id;
+    return `<button type="button" class="find-r${cur?' on':''}" data-act="np-proj" data-id="${esc(p.id)}"><b>${esc(p.code||'학생')}</b>${cur?' <span class="set-sc">지금 측정 중</span>':''}<span class="path">${esc(npPh(p).map(([ph,l])=>l).join(' · '))}${p.memo?' · '+esc(p.memo):''}</span></button>`;}).join('')
+    :`<p class="find-empty">${npk.q?'찾는 학생이 없어요':'학생 프로젝트가 없어요'}</p>`;}
+function npDraw(){
+  const d=$('#nat-pick');if(!d)return;const p=npk.pid&&projById(npk.pid);
+  const head=(back,title)=>`<div class="find-in">${back?`<button type="button" class="btn small" data-act="np-back" aria-label="뒤로">‹ 뒤로</button>`:FIND_SVG}${title}<button type="button" class="btn small" data-act="np-close">닫기</button></div>`;
+  let body='';
+  if(npk.step===1||!p){
+    d.innerHTML=`<div class="find-box" role="dialog" aria-modal="true" aria-label="앱 밖 측정 고르기">${head(false,'<input id="np-q" type="search" autocomplete="off" enterkeyhint="search" placeholder="학생 코드 찾기" aria-label="학생 찾기">')}
+      <p class="find-g">1 · 학생 프로젝트</p><div class="find-list" id="np-list"></div><p class="find-foot">고른 뒤 무엇을 잴지 · 방법 순서로</p></div>`;
+    const q=$('#np-q');if(q)q.value=npk.q;npList();return;
+  }
+  const t=nat.target;
+  if(npk.step===2){
+    body=`<p class="find-g">2 · 무엇을 잴까요</p><div class="find-list">${npPh(p).map(([ph,l])=>{const m=natMode(p,ph);const cur=t&&t.pid===p.id&&t.ph===ph;
+      return `<button type="button" class="find-r${cur?' on':''}" data-act="np-ph" data-ph="${ph}"><b>${l}</b>${cur?' <span class="set-sc">지금 측정 중</span>':''}<span class="path">${ph==='abc'?'발생 시각 기록':m?NAT_MODE_NAME[m]:(natNeedsApp(p,ph)?'새 앱 설치 필요':'측정 방법을 아직 안 정함')}</span></button>`;}).join('')}</div>`;
+  }else{
+    const ph=npk.ph;const m=natMode(p,ph);const l=(NP_PH.find(x=>x[0]===ph)||[])[1];
+    const opts=ph==='abc'?[['freq','발생 시각(빈도)']]:Object.entries(NAT_MODE_NAME);
+    body=`<p class="find-g">3 · 측정 방법 · ${esc(l)}</p><div class="find-list">${opts.map(([k,n])=>{const ok=k===m;
+      return `<button type="button" class="find-r${ok?' on':''}" data-act="np-mode" data-m="${k}"${ok?'':' aria-disabled="true"'}><b>${esc(n)}</b><span class="path">${ok?'표적행동 정의에서 정한 방법':'정의에서 바꾸면 쓸 수 있어요'}</span></button>`;}).join('')}</div>
+      ${m?'':`<p class="find-empty">${natNeedsApp(p,ph)?'새 앱을 설치하면 쓸 수 있어요':'표적행동 정의에서 측정 방법을 먼저 정하세요'}</p>`}
+      <p class="find-foot"><button type="button" class="btn small" data-act="np-define">표적행동 정의 열기</button></p>`;
+  }
+  d.innerHTML=`<div class="find-box" role="dialog" aria-modal="true" aria-label="앱 밖 측정 고르기">${head(true,`<b style="flex:1">${esc(p.code||'학생')}</b>`)}${body}</div>`;
+}
+Object.assign(actions,{
+  'np-open':()=>npOpen(),'np-close':()=>npClose(),
+  'np-back':()=>{npk.step=Math.max(1,npk.step-1);npDraw();},
+  'np-proj':el=>{npk.pid=el.dataset.id;npk.step=2;npDraw();},
+  'np-ph':el=>{npk.ph=el.dataset.ph;npk.step=3;npDraw();},
+  'np-mode':el=>{const p=projById(npk.pid);if(!p)return;const m=natMode(p,npk.ph);
+    if(el.dataset.m!==m){toast(m?'정의에서 정한 방법만 쓸 수 있어요':'표적행동 정의에서 방법을 먼저 정하세요');return;}
+    const v=p.id+'|'+npk.ph;npClose();setNatTgt(v);},
+  'np-define':()=>{const id=npk.pid;npClose();setClose();go('proc',{projectId:id,proc:'define',cat:''});},
+});
 /* 설정 '앱 밖 측정'(상위): 끄면 대상을 끄고(간편 측정도 끝냄), 고르면 그 측정으로 */
 async function setNatOff(){
   setUI.nat=false;if(!nat.target){setRefresh();return;}
@@ -6906,7 +6958,7 @@ document.addEventListener('change',e=>{
   else if(k==='chk'){setNatChkOn(v);return;}
   else if(k==='bub'){setBubOn(v);return;}
   else if(el.matches('[data-bubtgt]')){setBubTarget(el.value);return;}
-  else if(k==='nat'){if(v){setUI.nat=true;}else{setNatOff();return;}}
+  else if(k==='nat'){if(v){setUI.nat=true;if(!nat.target)setTimeout(npOpen,0);}else{setNatOff();return;}}
   else if(el.matches('[data-nattgt]')){setNatTgt(el.value);return;}
   else if(el.matches('[data-btn3],[data-tmr],[data-chk]'))return;/* 원래 처리(natBtnSet 등)가 앱에 보낸 뒤 natUI로 다시 그린다 */
   /* data-qk·data-live-auto·data-plan-auto는 원래 처리가 값을 바꾼 뒤에 다시 그린다 */
@@ -7271,6 +7323,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-24-10',d:'2026-11-24',k:'web',t:'앱 밖 측정 고르기 창',items:['학생 찾기·목록에서 고름','무엇을 잴지 → 측정 방법 순','찾기 창과 같은 모양']},
   {id:'2026-11-24-9',d:'2026-11-24',k:'web',t:'설정 창 정리',items:['앱·브라우저에 맞는 것만 보임','앱 밖 측정 켜면 하위 옵션','단축키는 간편 측정 아래로']},
   {id:'2026-11-24-8',d:'2026-11-24',k:'web',t:'설정에 ○ 그려 회기 시작',items:['설정 → 측정 → ○ 그려 회기 시작','체크 먼저, 아래에서 어느 측정','옆 작은 아이콘 판에 ○']},
   {id:'2026-11-24-7',d:'2026-11-24',k:'web',t:'설정이 바로 넘어와요',items:['다른 기기에서 바꾸면 바로','새로고침 안 해도 됨']},
