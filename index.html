@@ -5978,6 +5978,7 @@ async function natDrain(){
   nat.busy=true;
   try{
     const r=await PCN.drain();nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;nat.ver=r.ver||1;nat.chk=r.chk||null;nat.btn=r.btn||null;nat.timer=r.timer||null;nat.bub=r.bub||null;nat.live=r.live||null;
+    natPrefSeed();/* 설치 앱 옵션을 계정 설정에 처음 비춰 두기 */
     const hit=new Map();let lost=0,made=0;
     (r.events||[]).forEach(e=>{
       if(String(e.key||'').startsWith('live|')){liveNatEv(e);return;}/* 다른 기기 회기를 이 기기 알림창·떠 있는 ＋1로 셈 */
@@ -6119,7 +6120,7 @@ async function natTimerSet(b){
   const g=n=>box.querySelector(`[data-tmr="${n}"]`);
   try{
     const r=await PCN.setTimer({min:Number(g('min').value),renew:!!g('renew').checked,reset:!!g('reset').checked});
-    nat.timer=r.timer||nat.timer;toast(nat.timer&&nat.timer.min?`측정 시간 ${nat.timer.min}분`:'측정 시간 없음');
+    nat.timer=r.timer||nat.timer;toast(nat.timer&&nat.timer.min?`측정 시간 ${nat.timer.min}분`:'측정 시간 없음');natPrefMark('tmr');
   }catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
   if(document.activeElement)document.activeElement.blur();
   natUI();
@@ -6152,7 +6153,7 @@ async function natBtnSet(b){
     const o={on:!!g('on').checked,test:!!(g('test')&&g('test').checked),count:Number(g('count')?g('count').value:(nat.btn&&nat.btn.count))||1};
     if(g('start'))o.start=!!g('start').checked;
     const r=await PCN.setButtons(o);
-    const nb=r.btn||nat.btn;nat.btn=nb;toast(nb&&nb.on?`화면 끈 채 음량 ${Number(nb.count)||1}번`:'음량 버튼 기록을 껐습니다');
+    const nb=r.btn||nat.btn;nat.btn=nb;toast(nb&&nb.on?`화면 끈 채 음량 ${Number(nb.count)||1}번`:'음량 버튼 기록을 껐습니다');natPrefMark('btn');
   }catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
   if(document.activeElement)document.activeElement.blur();
   natUI();
@@ -6162,7 +6163,7 @@ async function natChkSet(b){
   const g=n=>box.querySelector(`[data-chk="${n}"]`);
   try{
     const r=await PCN.setCheck({sec:Number(g('sec').value),mode:g('mode').value,miss:Number(g('miss').value),adj:!!g('adj').checked});
-    nat.chk=r.chk||nat.chk;toast('끝 확인 설정을 바꿨습니다');
+    nat.chk=r.chk||nat.chk;toast('끝 확인 설정을 바꿨습니다');natPrefMark('chk');
   }catch(e){toast('새 앱을 설치해야 바꿀 수 있습니다');}
   if(document.activeElement)document.activeElement.blur();
   natUI();
@@ -6635,10 +6636,36 @@ async function hueAcctLoad(){
 }
 /* ---- 설정을 계정에: 로그인하면 users/{uid}/prefs/ui = {v:{키:값|null}, t:{키:바꾼 시각 ms}, at}. 키마다 나중에 바꾼 쪽이 이긴다.
    끈 것도 값('0' 등)과 시각으로 남겨서 다른 기기의 켜진 값이 되살리지 못한다. 예전 값(시각 없음)끼리 다르면 자동 기능은 끈 쪽(PREF_OFF).
-   기기에 남기는 것: 손글씨 모드·S펜 전용(기기마다 펜이 다름), 설치 앱 옵션(음량 버튼·측정 시간·끝 확인), 창 위치, 공지 본 것.
+   설치 앱 옵션(음량 버튼·측정 시간·끝 확인)은 pbs-nat-* 에 그 값을 비춰 두고(natPrefMark) 받으면 앱에 보낸다(natPrefApply). 간편 측정이 잠깐 바꾼 측정 시간은 안 보낸다.
+   기기에 남기는 것: 손글씨 모드·S펜 전용(기기마다 펜이 다름), 창 위치, 공지 본 것.
    앱 색(pbs-hue)은 따로 prefs/look(hueAcctLoad). 로그아웃해도 이 기기 값은 그대로 둔다. */
-const PREF_KEYS=['pbs-glass','pbs-contrast','pbs-pg-all','pbs-cover-auto','pbs-live-auto','pbs-mini-trig','pbs-quick-key','pbs-ai'];
-const PREF_OFF={'pbs-cover-auto':'0','pbs-live-auto':'0'};
+const PREF_KEYS=['pbs-glass','pbs-contrast','pbs-pg-all','pbs-cover-auto','pbs-live-auto','pbs-mini-trig','pbs-quick-key','pbs-ai','pbs-nat-btn','pbs-nat-tmr','pbs-nat-chk'];
+/* 자동 기능이 꺼진 값인가: 예전 값(시각 0)끼리 다르면 꺼진 쪽을 남긴다 */
+function prefIsOff(k,v){if(k==='pbs-cover-auto'||k==='pbs-live-auto')return v==='0';
+  let o=null;try{o=JSON.parse(v||'null');}catch(e){}if(!o)return false;
+  return k==='pbs-nat-btn'?!o.on:k==='pbs-nat-tmr'?!(Number(o.min)>0):k==='pbs-nat-chk'?o.mode==='off':false;}
+function natPrefVal(k){
+  if(k==='btn'){const b=nat.btn;return b?JSON.stringify({on:!!b.on,count:Number(b.count)||1,test:!!b.test,start:b.start!==false}):null;}
+  if(k==='tmr'){const t=nat.timer;return t?JSON.stringify({min:Number(t.min)||0,renew:!!t.renew,reset:t.reset!==false}):null;}
+  if(k==='chk'){const c=nat.chk;return c?JSON.stringify({sec:Number(c.sec)||30,mode:String(c.mode||'off'),miss:isNaN(Number(c.miss))?3:Number(c.miss),adj:!!c.adj}):null;}
+  return null;}
+/* 사용자가 설치 앱 옵션을 바꾼 뒤: 값을 비춰 두면 prefScan이 시각을 적고 계정에 보낸다 */
+function natPrefMark(k){if(!PCN)return;const v=natPrefVal(k);if(v!==null)lsPut('pbs-nat-'+k,v);prefScan();}
+/* 처음 한 번: 앱에 이미 있던 값을 예전 값(시각 0)으로 비춰 둔다 */
+function natPrefSeed(){if(!PCN)return;let n=0;const t=prefT();
+  ['btn','tmr','chk'].forEach(k=>{const K='pbs-nat-'+k;if(lsRaw(K)!==null)return;const v=natPrefVal(k);if(v===null)return;lsPut(K,v);if(t[K]===undefined)t[K]=0;if(prefs.snap)prefs.snap[K]=v;n++;});
+  if(n){prefTSet(t);if(syncMe())prefLoad(true);}}
+/* 계정에서 받은 설치 앱 옵션을 이 기기 앱에 보낸다. 간편 측정 중이면 끝날 때 되돌릴 값만 바꾼다 */
+async function natPrefApply(k){
+  if(!PCN)return;let v=null;try{v=JSON.parse(lsRaw('pbs-nat-'+k)||'null');}catch(e){}if(!v)return;
+  try{
+    if(k==='btn'&&nat.ver>=4){const o={on:!!v.on,count:Number(v.count)||1,test:!!v.test};if(nat.ver>=13)o.start=v.start!==false;const r=await PCN.setButtons(o);nat.btn=r.btn||nat.btn;}
+    else if(k==='tmr'&&nat.ver>=5){const run=qmRun();const o={min:Number(v.min)||0,renew:!!v.renew,reset:v.reset!==false};
+      if(run&&run.prev){run.prev=o;qmRunSet(run);}else{const r=await PCN.setTimer(o);nat.timer=r.timer||nat.timer;}}
+    else if(k==='chk'&&nat.ver>=2){const r=await PCN.setCheck({sec:Number(v.sec)||30,mode:String(v.mode||'off'),miss:Number(v.miss),adj:!!v.adj});nat.chk=r.chk||nat.chk;}
+  }catch(e){console.warn('natPrefApply',k,e&&e.message);}
+  natUI();
+}
 const PREF_T_KEY='pbs-prefs-t',PREF_UID_KEY='pbs-prefs-uid';
 const prefs={snap:null,dirty:{},timer:0,last:0};
 function lsRaw(k){try{return localStorage.getItem(k);}catch(e){return null;}}
@@ -6676,7 +6703,7 @@ async function prefLoad(force){
     if(!has){if(la!==undefined){up.v[k]=lv;up.t[k]=la;}return;}
     const ra=Number(rt[k])||0,r=rv[k]===undefined?null:rv[k];
     if(r===lv){lt[k]=Math.max(ra,la||0);return;}
-    const takeRemote=la===undefined||ra>la||(ra===la&&!(k in PREF_OFF&&lv===PREF_OFF[k]));
+    const takeRemote=la===undefined||ra>la||(ra===la&&!prefIsOff(k,lv));
     if(takeRemote){lsPut(k,r);lt[k]=ra;changed.push(k);}else{up.v[k]=lv;up.t[k]=la;}
   });
   prefTSet(lt);lsPut(PREF_UID_KEY,me.uid);prefs.snap=prefSnap();
@@ -6688,6 +6715,7 @@ function prefApply(ch){
   lookApply();
   const c=$('#cover-auto');if(c)c.checked=lsRaw('pbs-cover-auto')==='1';
   if(ch.includes('pbs-pg-all'))setTimeout(render,0);
+  ch.filter(k=>k.startsWith('pbs-nat-')).forEach(k=>natPrefApply(k.slice(8)));
   setRefresh();
 }
 ['click','change','keyup'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(prefScan,0)));
@@ -6732,17 +6760,17 @@ const SET_ROWS=[
       <span class="mono">${esc(qkLabel(o))}</span><span class="muted">누르면 대기 창 + ＋1</span>`;}},
   {id:'mini',g:'측정',t:'작게 띄워 세기',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['baseline','intervene'],on:null,ctl:()=>trigSeg('mini-trig',miniTrig()),hint:()=>'＋1을 누를지 그을지'},
   {id:'live',g:'측정',t:'＋1 창 자동 띄우기',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['baseline','intervene'],on:()=>liveAuto(),ck:'data-live-auto',hint:()=>'공유 프로젝트 회기 때'},
-  {id:'btn3',g:'측정',t:'음량 버튼으로 기록',sc:'설치 앱',rel:['baseline','intervene','abc','measure'],show:()=>!!PCN&&nat.ver>=4,on:()=>!!(nat.btn&&nat.btn.on),box:'data-nat-btn',ck:'data-btn3="on"',more:()=>{
+  {id:'btn3',g:'측정',t:'음량 버튼으로 기록',get sc(){return syncMe()?'내 계정':'설치 앱';},rel:['baseline','intervene','abc','measure'],show:()=>!!PCN&&nat.ver>=4,on:()=>!!(nat.btn&&nat.btn.on),box:'data-nat-btn',ck:'data-btn3="on"',more:()=>{
     const b=nat.btn||{};const k=Number(b.count)||1;const p=curProject();const lv=!!(p&&natMode(p,'bl')==='lvl');
     const cnt=[1,2,3].map(x=>`<option value="${x}"${x===k?' selected':''}>${x}번${x===1?'(기본)':''}</option>`).join('');
     return `${lv?'<span class="muted">누른 수=강도</span>':`<label class="field"><span>누를 횟수</span><select data-btn3="count">${cnt}</select></label>`}
       <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}> <span>누를 때마다 진동(시험)</span></label>${nat.ver>=13&&!lv?`<label class="check"><input type="checkbox" data-btn3="start"${b.start!==false?' checked':''}> <span>회기 시작도</span></label><span class="muted">화면 꺼졌을 때만</span>`:'<span class="muted">회기 중·화면 꺼졌을 때만</span>'}`;}},
-  {id:'tmr',g:'측정',t:'측정 시간 정하기',sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN&&nat.ver>=5,on:()=>setNatTimer().min>0||setUI.tmr,box:'data-nat-timer',more:()=>{
+  {id:'tmr',g:'측정',t:'측정 시간 정하기',get sc(){return syncMe()?'내 계정':'설치 앱';},rel:['baseline','intervene','measure'],show:()=>!!PCN&&nat.ver>=5,on:()=>setNatTimer().min>0||setUI.tmr,box:'data-nat-timer',more:()=>{
     const t=setNatTimer();const mins=[5,10,15,20,30,40,45,60];if(t.min&&!mins.includes(Number(t.min)))mins.push(Number(t.min));
     return `<label class="field"><span>측정 시간</span><select data-tmr="min">${t.min?'':'<option value="0" selected>고르세요</option>'}${mins.map(x=>`<option value="${x}"${x===Number(t.min)?' selected':''}>${x}분</option>`).join('')}</select></label>
       <label class="check"><input type="checkbox" data-tmr="renew"${t.renew?' checked':''}${t.min?'':' disabled'}> <span>끝나면 자동 갱신</span></label>
       <label class="check"><input type="checkbox" data-tmr="reset"${t.reset?' checked':''}${t.min&&t.renew?'':' disabled'}> <span>갱신 때 횟수 0으로</span></label>`;}},
-  {id:'chk',g:'측정',t:'지속시간 끝 확인',sc:'설치 앱',rel:['baseline','intervene'],show:()=>!!PCN&&nat.ver>=2,on:()=>setNatChk().mode!=='off',box:'data-nat-chk',more:()=>{
+  {id:'chk',g:'측정',t:'지속시간 끝 확인',get sc(){return syncMe()?'내 계정':'설치 앱';},rel:['baseline','intervene'],show:()=>!!PCN&&nat.ver>=2,on:()=>setNatChk().mode!=='off',box:'data-nat-chk',more:()=>{
     const k=setNatChk();const opt=(arr,v)=>arr.map(([x,l])=>`<option value="${x}"${String(x)===String(v)?' selected':''}>${l}</option>`).join('');
     const secs=[[15,'15초'],[30,'30초(기본)'],[60,'1분'],[120,'2분'],[300,'5분']];if(!secs.some(x=>x[0]===Number(k.sec)))secs.push([Number(k.sec),`${k.sec}초`]);
     const misses=[[0,'계속 재기'],[2,'2번 뒤 자동 끝'],[3,'3번 뒤 자동 끝(기본)'],[5,'5번 뒤 자동 끝'],[10,'10번 뒤 자동 끝']];if(!misses.some(x=>x[0]===Number(k.miss)))misses.push([Number(k.miss),`${k.miss}번 뒤 자동 끝`]);
@@ -6793,12 +6821,12 @@ function setRefresh(){
 }
 async function setNatTimerOff(){
   const t=setNatTimer();setUI.tmr=false;
-  try{const r=await PCN.setTimer({min:0,renew:!!t.renew,reset:t.reset!==false});nat.timer=r.timer||nat.timer;toast('측정 시간 없음');}catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
+  try{const r=await PCN.setTimer({min:0,renew:!!t.renew,reset:t.reset!==false});nat.timer=r.timer||nat.timer;toast('측정 시간 없음');natPrefMark('tmr');}catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
   natUI();
 }
 async function setNatChkOn(on){
   const k=setNatChk();
-  try{const r=await PCN.setCheck({sec:Number(k.sec)||30,mode:on?(k.mode==='off'?'vib':k.mode):'off',miss:Number(k.miss),adj:!!k.adj});nat.chk=r.chk||nat.chk;toast(on?'끝 확인을 켰습니다':'끝 확인을 껐습니다');}
+  try{const r=await PCN.setCheck({sec:Number(k.sec)||30,mode:on?(k.mode==='off'?'vib':k.mode):'off',miss:Number(k.miss),adj:!!k.adj});nat.chk=r.chk||nat.chk;toast(on?'끝 확인을 켰습니다':'끝 확인을 껐습니다');natPrefMark('chk');}
   catch(e){toast('새 앱을 설치해야 바꿀 수 있습니다');}
   natUI();
 }
@@ -7176,7 +7204,8 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
-  {id:'2026-11-24-5',d:'2026-11-24',k:'web',t:'설정도 계정마다',items:['로그인하면 다른 기기도 같은 설정','끈 설정은 꺼진 채로','손글씨·S펜은 기기마다','설치 앱 옵션도 기기마다']},
+  {id:'2026-11-24-6',d:'2026-11-24',k:'web',t:'앱 옵션도 계정마다',items:['음량 버튼·측정 시간·끝 확인','다른 기기 앱에도 같게','처음 다르면 꺼진 쪽으로']},
+  {id:'2026-11-24-5',d:'2026-11-24',k:'web',t:'설정도 계정마다',items:['로그인하면 다른 기기도 같은 설정','끈 설정은 꺼진 채로','손글씨·S펜은 기기마다']},
   {id:'2026-11-24-4',d:'2026-11-24',k:'apk',need:14,t:'○ 그려 회기 시작',items:['떠 있는 아이콘이 대기 중에도 보임','판에 동그라미를 그리면 회기 시작','다른 모양은 무시','화면 켜짐 음량 받기는 뺌']},
   {id:'2026-11-24-3',d:'2026-11-24',k:'web',t:'손글씨도 공유',items:['공유 프로젝트 손글씨도 서버로','앱·브라우저 어디서나 보임','녹음은 지금처럼 기기에만']},
   {id:'2026-11-24-2',d:'2026-11-24',k:'apk',need:13,t:'음량 버튼·대기 알림',items:['회기 없으면 음량으로 회기 시작','지운 대기 알림은 다시 안 뜸']},
