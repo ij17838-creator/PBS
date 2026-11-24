@@ -36,7 +36,8 @@ import java.util.List;
 
 /**
  * 떠 있는 ＋1 (S펜 에어 커맨드 느낌): 다른 앱(수업 자료) 위에 작고 반투명한 동그라미 아이콘이 옆 가장자리에 반쯤 붙어 있다.
- * - 켜는 조건: 사용자가 켜 둠(bubOn) + '다른 앱 위에 표시' 권한 + 회기가 열려 있음(회기 끝나면 사라짐).
+ * - 켜는 조건: 사용자가 켜 둠(bubOn) + '다른 앱 위에 표시' 권한 + 회기가 열려 있거나 앱 밖 측정 대상이 있음.
+ * - 대기(열린 회기 없음, 2026-11-24): 아이콘 ○, 판은 그리기 판이고 동그라미를 그렸을 때만 회기 시작(다른 모양은 무시).
  * - 아이콘(44dp): 지금 횟수 표시, 평소 반투명. 끌면 따라오고 놓으면 가까운 옆 가장자리에 반쯤 걸쳐 붙는다. 위치 기억.
  * - 아이콘을 누르면 옆으로 작은 판이 열린다: 누르기(bubTrig=tap)면 큰 ＋1 버튼, 긋기(draw)면 그리기 판(아무 획 = ＋1). −1·닫기.
  *   판 밖을 누르거나 8초 동안 안 쓰면 닫힌다. 판·아이콘 밖의 터치는 아래 앱으로 그대로 간다.
@@ -88,7 +89,7 @@ public class FloatBubble extends Service {
     /** 상태가 바뀔 때마다 부른다(CounterNotifier.refreshAll): 필요하면 띄우고, 아니면 닫는다, 떠 있으면 글자만 고친다 */
     static void sync(Context c) {
         Context a = c.getApplicationContext();
-        boolean want = on(a) && perm(a) && CounterStore.active(a); // 회기가 열려 있을 때만
+        boolean want = on(a) && perm(a) && CounterStore.anything(a); // 회기가 열려 있거나 앱 밖 측정 대상이 있을 때(대기 중엔 동그라미로 회기 시작)
         FloatBubble b = inst;
         if (want) {
             if (b != null) b.h.post(b::refresh);
@@ -107,7 +108,7 @@ public class FloatBubble extends Service {
         return new NotificationCompat.Builder(this, CounterNotifier.CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_pbs)
             .setContentTitle("떠 있는 ＋1 켜짐")
-            .setContentText("앱의 앱 밖 측정에서 끌 수 있어요")
+            .setContentText(CounterStore.active(this) ? "앱의 앱 밖 측정에서 끌 수 있어요" : "대기 중 · 아이콘 판에 ○를 그리면 회기 시작")
             .setOngoing(true).setSilent(true).setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(pi)
@@ -124,7 +125,7 @@ public class FloatBubble extends Service {
             return START_NOT_STICKY;
         }
         inst = this;
-        if (!(on(this) && perm(this) && CounterStore.active(this))) { stopSelf(); return START_NOT_STICKY; }
+        if (!(on(this) && perm(this) && CounterStore.anything(this))) { stopSelf(); return START_NOT_STICKY; }
         if (v == null) show();
         else refresh();
         return START_STICKY;
@@ -216,9 +217,10 @@ public class FloatBubble extends Service {
     private void openPanel() {
         if (panel != null || v == null) return;
         try {
-            boolean draw = "draw".equals(trig(this));
+            boolean wait = !CounterStore.active(this); // 대기: 동그라미를 그리면 회기 시작
+            boolean draw = wait || "draw".equals(trig(this));
             String mode = CounterStore.uiMode(this);
-            boolean freq = CounterStore.FREQ.equals(mode);
+            boolean freq = !wait && CounterStore.FREQ.equals(mode);
             LinearLayout box = new LinearLayout(this);
             box.setOrientation(LinearLayout.VERTICAL);
             box.setPadding(dp(10), dp(8), dp(10), dp(10));
@@ -242,7 +244,7 @@ public class FloatBubble extends Service {
             box.addView(top);
 
             View main;
-            boolean lvl = CounterStore.LVL.equals(mode), iv = CounterStore.INT.equals(mode);
+            boolean lvl = !wait && CounterStore.LVL.equals(mode), iv = !wait && CounterStore.INT.equals(mode);
             if (lvl) top.addView(small("↶", () -> { CounterReceiver.handle(getApplicationContext(), CounterReceiver.LV_UNDO); poke(); }), 1);
             if (lvl || iv) { // 강도 1·2·3 / 간격 신호 있음·없음: 판에 버튼을 늘어놓는다(긋기 대신)
                 LinearLayout row = new LinearLayout(this);
@@ -381,15 +383,17 @@ public class FloatBubble extends Service {
         else if (CounterStore.LVL.equals(mode)) big = "강도 " + n + "회";
         else if (CounterStore.INT.equals(mode)) big = CounterStore.ivPend(this) > 0 ? "지금 신호" : "간격 " + CounterStore.ivYes(this) + "/" + CounterStore.ivTot(this);
         else big = "앱 열기";
-        // 아이콘: 지금 횟수(빈도) 또는 ＋
-        v.setText(freq ? String.valueOf(n) : "＋");
+        boolean wait = !CounterStore.active(this);
+        if (wait) big = "대기 · ○=시작";
+        // 아이콘: 지금 횟수(빈도) 또는 ＋, 대기 중엔 ○
+        v.setText(wait ? "○" : freq ? String.valueOf(n) : "＋");
         v.setTextSize(TypedValue.COMPLEX_UNIT_SP, freq && n >= 100 ? 12 : 15);
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.OVAL);
         bg.setColor(run ? Color.parseColor("#B3402A") : Color.parseColor("#2B3A3C"));
         bg.setStroke(dp(2), Color.argb(200, 255, 255, 255));
         v.setBackground(bg);
-        if (head != null) head.setText(freq ? n + "회" : big);
+        if (head != null) head.setText(wait ? big : freq ? n + "회" : big);
         if (hit != null) {
             hit.setText(big);
             GradientDrawable g = new GradientDrawable();
@@ -410,9 +414,46 @@ public class FloatBubble extends Service {
         float L = 0;
         for (float[] st : drawn) for (int i = 2; i + 1 < st.length; i += 2) L += (float) Math.hypot(st[i] - st[i - 2], st[i + 1] - st[i - 1]);
         if (L < dp(14)) { pad.flash(0); return; }
+        if (!CounterStore.active(this)) { // 대기: 동그라미일 때만 회기 시작(다른 모양은 무시)
+            if (!circle(drawn)) { pad.flash(2); return; }
+            pad.flash(1);
+            CounterReceiver.handle(getApplicationContext(), CounterReceiver.BEGIN);
+            h.postDelayed(this::rebuild, 600); // 다음에 열면 회기 중 판(＋1 등)
+            return;
+        }
         pad.flash(1);
         act();
     };
+
+    /** 한 붓(또는 이어 그은 획)이 동그라미인지: 크기가 있고, 끝이 처음 가까이 돌아오고, 중심에서 거리가 고르고, 한 바퀴쯤 돈다 */
+    static boolean circle(List<float[]> drawn) {
+        int n = 0;
+        for (float[] st : drawn) n += st.length / 2;
+        if (n < 8) return false;
+        float[] x = new float[n], y = new float[n];
+        int k = 0;
+        for (float[] st : drawn) for (int i = 0; i + 1 < st.length; i += 2) { x[k] = st[i]; y[k] = st[i + 1]; k++; }
+        float minX = x[0], maxX = x[0], minY = y[0], maxY = y[0], cx = 0, cy = 0;
+        for (int i = 0; i < n; i++) { minX = Math.min(minX, x[i]); maxX = Math.max(maxX, x[i]); minY = Math.min(minY, y[i]); maxY = Math.max(maxY, y[i]); cx += x[i]; cy += y[i]; }
+        cx /= n; cy /= n;
+        float w = maxX - minX, hgt = maxY - minY;
+        if (Math.min(w, hgt) < 30 || Math.max(w, hgt) > 3.0f * Math.min(w, hgt)) return false;
+        float diag = (float) Math.hypot(w, hgt);
+        if (Math.hypot(x[n - 1] - x[0], y[n - 1] - y[0]) > 0.4f * diag) return false; // 닫혀야 함
+        double mean = 0, sq = 0;
+        for (int i = 0; i < n; i++) { double r = Math.hypot(x[i] - cx, y[i] - cy); mean += r; sq += r * r; }
+        mean /= n;
+        double sd = Math.sqrt(Math.max(0, sq / n - mean * mean));
+        if (mean <= 0 || sd / mean > 0.35) return false; // 중심에서 거리가 고름
+        double turn = 0, prev = Math.atan2(y[0] - cy, x[0] - cx);
+        for (int i = 1; i < n; i++) {
+            double a = Math.atan2(y[i] - cy, x[i] - cx), d = a - prev;
+            while (d > Math.PI) d -= 2 * Math.PI;
+            while (d < -Math.PI) d += 2 * Math.PI;
+            turn += d; prev = a;
+        }
+        return Math.abs(turn) > 1.6 * Math.PI; // 0.8바퀴 넘게 돎
+    }
 
     /** 긋기 판: 아무 획이나 그으면 ＋1 */
     private class Pad extends View {
@@ -453,7 +494,9 @@ public class FloatBubble extends Service {
             box.setStyle(Paint.Style.STROKE); box.setStrokeWidth(dp(2));
             box.setColor(run ? Color.parseColor("#B3402A") : Color.parseColor("#1B6862"));
             c.drawRoundRect(dp(1), dp(1), w - dp(1), hh - dp(1), r, r, box);
-            if (path.isEmpty() && fl == 0) c.drawText("그으면 ＋1", w / 2, hh / 2 + dp(5), txt);
+            boolean wait = !CounterStore.active(getContext());
+            if (path.isEmpty() && fl == 0) c.drawText(wait ? "○ 그리면 회기 시작" : "그으면 ＋1", w / 2, hh / 2 + dp(5), txt);
+            if (fl == 2) c.drawText("동그라미를 그려 주세요", w / 2, hh / 2 + dp(5), txt);
             c.drawPath(path, ink);
         }
     }

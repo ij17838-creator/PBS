@@ -157,8 +157,8 @@ final class CounterStore {
     static String btnLog(Context c) { return prefs(c).getString("btnLog", ""); }
     /** 몇 번 눌러야 기록할지 (1~3, 기본 1) */
     static int btnCount(Context c) { return Math.max(1, Math.min(3, prefs(c).getInt("btnCount", 1))); }
-    /** 화면이 켜져 있어도 음량 누름을 받을지 (기본 켬, 2026-11-24) */
-    static boolean btnScr(Context c) { return prefs(c).getBoolean("btnScr", true); }
+    /** 화면이 켜져 있을 때 음량 누름 받기: 2026-11-24 실기기에서 안 돼 사용자 결정으로 폐기(늘 끔) */
+    static boolean btnScr(Context c) { return false; }
     /** 열린 회기가 없을 때 음량 누름으로 회기를 시작할지 (기본 켬, 2026-11-24) */
     static boolean btnStart(Context c) { return prefs(c).getBoolean("btnStart", true); }
     /** 음량 버튼 기록 감시가 지금 돌아야 하는지: 켬 + 빈도·지속시간·지연시간 + (회기 열림 또는 '회기 시작도'를 켠 측정 대상) */

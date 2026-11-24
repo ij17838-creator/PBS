@@ -81,7 +81,8 @@ public class PbsCounterPlugin extends Plugin {
         // 6 = 떠 있는 ＋1(다른 앱 위 버튼) / 7 = 떠 있는 ＋1은 회기 중에만·작고 반투명 / 8 = 트리거 누르기·긋기(작은 판) / 9 = 에어 커맨드처럼 작은 아이콘+펼치는 판
         // 10 = 칠판·PC와 함께 세기를 앱(LiveSync)이 직접(앱 화면이 꺼져 있어도)
         // 13 = 음량 버튼을 화면 켜짐에도·회기 시작에도(scr·start), 지운 대기 알림은 다시 안 뜸
-        o.put("ver", 13);
+        // 14 = 화면 켜짐 음량 받기 폐기, 떠 있는 아이콘이 대기 중에도 떠서 ○를 그리면 회기 시작
+        o.put("ver", 14);
         o.put("live", LiveSync.status(c));
         JSObject bub = new JSObject();
         bub.put("on", FloatBubble.on(c));

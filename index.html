@@ -3747,7 +3747,7 @@ const actions={
     const cur=!!(nat.bub&&nat.bub.on&&nat.bub.perm);
     try{const r=await PCN.setBubble({on:!cur,trig:(nat.bub&&nat.bub.trig)||'tap'});nat.bub=r.bub||null;
       if(!cur&&r.bub&&!r.bub.perm)toast('다른 앱 위 표시를 켜 주세요');
-      else toast(cur?'떠 있는 ＋1을 껐습니다':'회기 중에만 ＋1이 떠요');}
+      else toast(cur?'떠 있는 ＋1을 껐습니다':nat.ver>=14?'대기 중엔 ○를 그리면 회기 시작':'회기 중에만 ＋1이 떠요');}
     catch(e){toast('이 앱에서는 안 됩니다');}
     natUI();
   },
@@ -6134,10 +6134,9 @@ function natBtnBox(m,on){
       <label class="check"><input type="checkbox" data-btn3="on"${b.on?' checked':''}> <span>${v13?'음량 버튼으로 기록':'회기 중 음량 버튼'}</span></label>
       ${lv?'':`<label class="field"><span>누를 횟수</span><select data-btn3="count"${b.on?'':' disabled'}>${cnt}</select></label>`}
       <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}${b.on?'':' disabled'}> <span>누를 때마다 진동(시험)</span></label>
-      ${v13&&!lv?`<label class="check"><input type="checkbox" data-btn3="scr"${b.scr!==false?' checked':''}${b.on?'':' disabled'}> <span>화면 켜져 있어도</span></label>
-      <label class="check"><input type="checkbox" data-btn3="start"${b.start!==false?' checked':''}${b.on?'':' disabled'}> <span>회기 시작도</span></label>`:''}
+      ${v13&&!lv?`<label class="check"><input type="checkbox" data-btn3="start"${b.start!==false?' checked':''}${b.on?'':' disabled'}> <span>회기 시작도</span></label>`:''}
     </div>
-    <div class="dur-foot muted"><span>${v13&&!lv&&b.start!==false?`회기 없으면 ${k}번=시작`:'회기는 타일·위젯으로'}</span>${lv?'<span>1·2·3번=강도 1·2·3</span><span>1.5초 뒤 기록</span>':`<span>${k}번=${next}</span><span>${k>1?`${k+1}번째 누름=취소`:'잘못 누르면 −1'}</span>`}<span>재생·통화 중엔 안 셈</span><span>${v13&&!lv&&b.scr!==false?'켜 둔 동안 음량 조절 안 됨':'화면 꺼졌을 때만'}</span></div>
+    <div class="dur-foot muted"><span>${v13&&!lv&&b.start!==false?`회기 없으면 ${k}번=시작`:'회기는 타일·위젯으로'}</span>${lv?'<span>1·2·3번=강도 1·2·3</span><span>1.5초 뒤 기록</span>':`<span>${k}번=${next}</span><span>${k>1?`${k+1}번째 누름=취소`:'잘못 누르면 −1'}</span>`}<span>재생·통화 중엔 안 셈</span><span>화면 꺼졌을 때만</span></div>
     ${b.on&&'alive' in b?`<div class="dur-foot"><strong>${b.alive?'누름 세는 중':'회기 열면 셈'}</strong><button type="button" class="btn small" data-act="nat-btn-refresh">기록 새로 보기</button></div>
     <pre class="btn3-log">${esc(b.log||'아직 누른 기록 없음')}</pre>`:''}
   </details>`;
@@ -6147,9 +6146,9 @@ async function natBtnSet(b){
   const g=n=>box.querySelector(`[data-btn3="${n}"]`);
   try{
     const o={on:!!g('on').checked,test:!!(g('test')&&g('test').checked),count:Number(g('count')?g('count').value:(nat.btn&&nat.btn.count))||1};
-    if(g('scr'))o.scr=!!g('scr').checked;if(g('start'))o.start=!!g('start').checked;
+    if(g('start'))o.start=!!g('start').checked;
     const r=await PCN.setButtons(o);
-    const nb=r.btn||nat.btn;nat.btn=nb;toast(nb&&nb.on?`${nat.ver>=13&&nb.scr!==false?'':'화면 끈 채 '}음량 ${Number(nb.count)||1}번`:'음량 버튼 기록을 껐습니다');
+    const nb=r.btn||nat.btn;nat.btn=nb;toast(nb&&nb.on?`화면 끈 채 음량 ${Number(nb.count)||1}번`:'음량 버튼 기록을 껐습니다');
   }catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
   if(document.activeElement)document.activeElement.blur();
   natUI();
@@ -6672,7 +6671,7 @@ const SET_ROWS=[
     const b=nat.btn||{};const k=Number(b.count)||1;const p=curProject();const lv=!!(p&&natMode(p,'bl')==='lvl');
     const cnt=[1,2,3].map(x=>`<option value="${x}"${x===k?' selected':''}>${x}번${x===1?'(기본)':''}</option>`).join('');
     return `${lv?'<span class="muted">누른 수=강도</span>':`<label class="field"><span>누를 횟수</span><select data-btn3="count">${cnt}</select></label>`}
-      <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}> <span>누를 때마다 진동(시험)</span></label>${nat.ver>=13&&!lv?`<label class="check"><input type="checkbox" data-btn3="scr"${b.scr!==false?' checked':''}> <span>화면 켜져 있어도</span></label><label class="check"><input type="checkbox" data-btn3="start"${b.start!==false?' checked':''}> <span>회기 시작도</span></label><span class="muted">켜 둔 동안 음량 조절 안 됨</span>`:'<span class="muted">회기 중·화면 꺼졌을 때만</span>'}`;}},
+      <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}> <span>누를 때마다 진동(시험)</span></label>${nat.ver>=13&&!lv?`<label class="check"><input type="checkbox" data-btn3="start"${b.start!==false?' checked':''}> <span>회기 시작도</span></label><span class="muted">화면 꺼졌을 때만</span>`:'<span class="muted">회기 중·화면 꺼졌을 때만</span>'}`;}},
   {id:'tmr',g:'측정',t:'측정 시간 정하기',sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN&&nat.ver>=5,on:()=>setNatTimer().min>0||setUI.tmr,box:'data-nat-timer',more:()=>{
     const t=setNatTimer();const mins=[5,10,15,20,30,40,45,60];if(t.min&&!mins.includes(Number(t.min)))mins.push(Number(t.min));
     return `<label class="field"><span>측정 시간</span><select data-tmr="min">${t.min?'':'<option value="0" selected>고르세요</option>'}${mins.map(x=>`<option value="${x}"${x===Number(t.min)?' selected':''}>${x}분</option>`).join('')}</select></label>
@@ -7112,8 +7111,9 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-24-4',d:'2026-11-24',k:'apk',need:14,t:'○ 그려 회기 시작',items:['떠 있는 아이콘이 대기 중에도 보임','판에 동그라미를 그리면 회기 시작','다른 모양은 무시','화면 켜짐 음량 받기는 뺌']},
   {id:'2026-11-24-3',d:'2026-11-24',k:'web',t:'손글씨도 공유',items:['공유 프로젝트 손글씨도 서버로','앱·브라우저 어디서나 보임','녹음은 지금처럼 기기에만']},
-  {id:'2026-11-24-2',d:'2026-11-24',k:'apk',need:13,t:'음량 버튼·대기 알림',items:['화면 켜져 있어도 음량으로 기록','회기 없으면 음량으로 회기 시작','지운 대기 알림은 다시 안 뜸']},
+  {id:'2026-11-24-2',d:'2026-11-24',k:'apk',need:13,t:'음량 버튼·대기 알림',items:['회기 없으면 음량으로 회기 시작','지운 대기 알림은 다시 안 뜸']},
   {id:'2026-11-24-1',d:'2026-11-24',k:'web',t:'묶음마다 저장 버튼',items:['묶음 끝마다 저장 버튼','이 절차 완료 → 저장','완료 뒤 고친 것도 바로 공유','지운 관찰지도 다른 기기 반영']},
   {id:'2026-11-23-2',d:'2026-11-23',k:'web',t:'AI 결과 경고 문장',items:['AI 칸마다 경고 한 줄','오류·편향 가능, 참고용','보고서 인쇄엔 안 나옴']},
   {id:'2026-11-23-1',d:'2026-11-23',k:'web',t:'AI 모델 Hydrogen',items:['AI 설정: Neon·Hydrogen 고르기','사고 수준은 늘 높음','고른 모델로 연결 시험']},
