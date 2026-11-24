@@ -7088,6 +7088,7 @@ function prefApply(ch){
   const c=$('#cover-auto');if(c)c.checked=lsRaw('pbs-cover-auto')==='1';
   if(ch.includes('pbs-pg-all'))setTimeout(render,0);
   ch.filter(k=>k.startsWith('pbs-nat-')).forEach(k=>natPrefApply(k.slice(8)));
+  if(ch.includes('pbs-live-auto'))liveAutoOff();
   setRefresh();
 }
 ['click','change','keyup'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(prefScan,0)));
@@ -7929,6 +7930,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-24-15',d:'2026-11-24',k:'web',t:'＋1 대기 창 닫기',items:['자동 띄우기 끄면 대기 창 닫힘','다른 기기에서 꺼도 닫힘','휴대폰 회기 중이면 끝날 때']},
   {id:'2026-11-24-14',d:'2026-11-24',k:'web',t:'고르는 창도 앱 모양',items:['목록 고르기: 앱 색 유리 창','휴대폰은 아래에서 올라옴','날짜는 앱 달력으로','시각은 시·분 칸에서 확인','다크·고대비·키보드 그대로']},
   {id:'2026-11-24-13',d:'2026-11-24',k:'web',t:'회기 시작 방법·추천 설정',items:['학생마다 회기 시작 방법 하나','측정·회기 화면에 준비됨 표시','준비하기: 바뀔 것 먼저 보여 줌','다른 방법은 접어 둠·설정엔 보조','설정 > 추천 설정 한 번에','직접 끈 것은 체크 빠져 있음']},
   {id:'2026-11-24-12',d:'2026-11-24',k:'web',t:'저장 상태·개인정보',items:['위 막대 점: 서버 저장 상태','못 보내면 빨간 점·지금 보내기','회기·관찰지에 서버 저장 표시','로그인 이메일은 가려 보임','설정 > 개인정보 안내','소유자 삭제 시 서버 자료도']},
@@ -8415,7 +8417,7 @@ function liveEnded(){
   liveFlash(false);
   if(live.note){try{live.note.close();}catch(e){}live.note=null;}
   if(PCN&&live.mkey){const k=live.mkey;live.mkey=null;live.mcount=null;if(nat.key===k)PCN.stop().then(()=>{nat.key=null;natUI();}).catch(()=>{});}
-  if(mini.on&&mini.live&&!mini.pip)miniOff();/* 작은 창은 남겨 두고 다음 회기를 기다린다 */
+  if(mini.on&&mini.live&&(!mini.pip||!liveAuto()))miniOff();/* 작은 창은 남겨 두고 다음 회기를 기다린다(자동 띄우기를 껐으면 닫음) */
   toast('휴대폰 회기가 끝났습니다');
 }
 /* 화면 안 ＋1 또는 작은 창(PiP) */
@@ -8433,6 +8435,12 @@ async function liveMini(gesture){
 /* 큰 화면 크롬: 작은 창은 누른 직후에만 열 수 있다. 그래서 공유 프로젝트가 있으면 화면을 처음 누를 때(또는 회기가 시작된 뒤 처음 누를 때) 바로 연다 */
 function liveCanPip(){return !PCN&&!!window.documentPictureInPicture&&matchMedia('(min-width:900px)').matches;}
 function liveAuto(){try{return localStorage.getItem('pbs-live-auto')!=='0';}catch(e){return true;}}
+/* 자동 띄우기를 끄면(이 기기·다른 기기 설정) 떠 있는 대기 창을 닫는다. 휴대폰 회기 중이면 회기가 끝날 때 닫는다(기록은 휴대폰이 가짐) */
+function liveAutoOff(){
+  if(liveAuto()||!(mini.on&&mini.live))return;
+  if(liveActive()){toast('휴대폰 회기가 끝나면 대기 창을 닫아요');return;}
+  miniOff();live.closed=Date.now();toast('대기 창을 닫았습니다');
+}
 function liveGesture(e){
   if(!liveCanPip()||(mini.on&&(mini.pip||!mini.live))||live.opening||cover.on)return;
   if(e.target&&e.target.closest&&e.target.closest('[data-act="live-arm"],[data-act="live-pip"],#mini'))return;
@@ -8511,7 +8519,7 @@ Object.assign(actions,{
   'live-pip':()=>{liveNotePerm();liveMini(true);},
   'live-inc':()=>{liveInc(1);}
 });
-document.addEventListener('change',e=>{if(e.target.matches&&e.target.matches('[data-live-auto]')){try{localStorage.setItem('pbs-live-auto',e.target.checked?'1':'0');}catch(x){}toast(e.target.checked?'화면을 누르면 대기 창이 떠요':'대기 창은 버튼으로만');}});
+document.addEventListener('change',e=>{if(e.target.matches&&e.target.matches('[data-live-auto]')){try{localStorage.setItem('pbs-live-auto',e.target.checked?'1':'0');}catch(x){}toast(e.target.checked?'화면을 누르면 대기 창이 떠요':'대기 창은 버튼으로만');if(!e.target.checked)setTimeout(liveAutoOff,0);}});
 setInterval(()=>{liveRemote();liveHostTick();},10000);
 
 /* ---------- boot ---------- */
