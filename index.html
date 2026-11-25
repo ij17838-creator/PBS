@@ -921,6 +921,9 @@ body.pk-open{overflow:hidden}
 .hp-corner .hp-i{pointer-events:auto}
 .hp-ov{position:fixed;inset:0;z-index:235}
 .hp-ov:has(.sheet){background:var(--glass-dim)}
+.mq-ov{background:var(--glass-dim);display:flex;align-items:center;justify-content:center;padding:16px}
+.mq-box{position:relative;width:min(360px,100%)}
+.mq-box .pk-head{color:var(--ink)}
 .hp-box .pk-head .hp-dev{font-size:.72rem;padding:2px 8px;font-weight:700;color:var(--ink)}
 .hp-body{padding:10px 14px 14px;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
 .hp-body p{margin:0;font-size:.93rem;line-height:1.55;color:var(--ink)}
@@ -7032,7 +7035,7 @@ function hueAcctApply(d,me,ad){
    설치 앱 옵션(음량 버튼·측정 시간·끝 확인)은 pbs-nat-* 에 그 값을 비춰 두고(natPrefMark) 받으면 앱에 보낸다(natPrefApply). 간편 측정이 잠깐 바꾼 측정 시간은 안 보낸다.
    기기에 남기는 것: 손글씨 모드·S펜 전용(기기마다 펜이 다름), 창 위치, 공지 본 것.
    앱 색(pbs-hue)은 따로 prefs/look(hueAcctLoad). 로그아웃해도 이 기기 값은 그대로 둔다. */
-const PREF_KEYS=['pbs-glass','pbs-contrast','pbs-pg-all','pbs-live-auto','pbs-mini-trig','pbs-quick-key','pbs-ai','pbs-nat-btn','pbs-nat-tmr','pbs-nat-chk','pbs-guide'];
+const PREF_KEYS=['pbs-glass','pbs-contrast','pbs-pg-all','pbs-live-auto','pbs-mini-trig','pbs-mini-on','pbs-quick-key','pbs-ai','pbs-nat-btn','pbs-nat-tmr','pbs-nat-chk','pbs-guide'];
 /* 자동 기능이 꺼진 값인가: 예전 값(시각 0)끼리 다르면 꺼진 쪽을 남긴다 */
 function prefIsOff(k,v){if(k==='pbs-cover-auto'||k==='pbs-live-auto')return v==='0';
   let o=null;try{o=JSON.parse(v||'null');}catch(e){}if(!o)return false;
@@ -7317,7 +7320,7 @@ const HELP={
   'set:ink':{w:'S펜으로 칸에 바로 써요. 숫자 칸은 키보드로 입력해요.',u:'\'S펜만 쓰기\'를 켜면 손바닥·손가락 터치는 무시해요. 이 기기에만 저장돼요.'},
   'set:qm':{w:'트리거 한 번으로 여러 측정(기초선·중재·ABC)을 함께 시작하고 기록해요.',u:'한 수업에서 빈도와 ABC를 같이 잴 때 써요. 개수·종류·색은 여기서 정해요.'},
   'set:qk':{w:'키보드 단축키로 간편 측정을 시작하고 ＋1 해요.',u:'같은 키 여러 번(연타)이나 조합키 중 고르고 \'커맨드 입력\'으로 키를 정해요.',d:'web'},
-  'set:mini':{w:'세기 창을 작게 띄워 다른 프로그램 위에서 ＋1 해요.',u:'수업 자료를 띄운 채 셀 때 써요. 버튼 누르기나 긋기 중 고르세요.',d:'web'},
+  'set:mini':{w:'세기 창을 작게 띄워 다른 프로그램 위에서 ＋1 해요. 켜면 누르기·긋기 중 고를 수 있어요.',u:'켜 두면 \'＋1 창 대기\'·\'휴대폰 회기 대기\'를 누를 때 바로 떠요. 꺼 두면 누를 때 켤지 물어요.',d:'web'},
   'set:nat':{w:'앱이 뒤에 있거나 화면이 꺼져도 위젯·알림창·떠 있는 아이콘으로 기록해요.',u:'어느 학생의 어느 측정인지 먼저 고르세요. 켜면 아래 옵션이 열려요.',d:'app'},
   'set:bub':{w:'화면 옆 작은 아이콘 판에 ○를 그리면 회기가 시작돼요.',u:'다른 앱을 쓰는 중에 회기를 시작할 때 써요. \'다른 앱 위 표시\' 권한이 필요해요.',d:'app'},
   'set:btn3':{w:'회기 중 화면이 꺼져 있을 때 음량 버튼을 누르면 ＋1 돼요.',u:'\'회기 시작도\'를 켜면 화면이 꺼진 채로 회기도 시작해요. 누를 횟수는 1~3번.',d:'app'},
@@ -7490,7 +7493,7 @@ const SET_ROWS=[
       ${o.mode==='combo'?'':`<label class="field qm-key-n"><span class="sr-only">연타 횟수</span><select data-qk="n">${ns}</select></label>`}
       <button type="button" class="btn small${qk.cap?' primary':''}" data-act="qk-cap">${qk.cap?(o.mode==='combo'?'조합키를 누르세요':'키를 누르세요'):'커맨드 입력'}</button>
       <span class="mono">${esc(qkLabel(o))}</span><span class="muted">누르면 대기 창 + ＋1</span>`;}},
-  {id:'mini',g:'칠판·PC',t:'작게 띄워 세기',get sc(){return syncMe()?'내 계정':'이 기기';},show:()=>!PCN,rel:['baseline','intervene'],on:null,ctl:()=>trigSeg('mini-trig',miniTrig()),hint:()=>'＋1을 누를지 그을지'},
+  {id:'mini',g:'칠판·PC',t:'작게 띄워 세기',get sc(){return syncMe()?'내 계정':'이 기기';},show:()=>!PCN,rel:['baseline','intervene'],on:()=>miniEnabled(),hint:()=>miniEnabled()?'＋1을 누를지 그을지':'끄면 대기 버튼 때 물어요',more:()=>trigSeg('mini-trig',miniTrig())},
   /* 앱 밖 측정(상위): 켜고 어느 측정인지 고르면 아래 하위 옵션(○ 그려·음량·측정 시간·끝 확인)이 열린다 */
   {id:'nat',g:'앱 밖 측정',t:'앱 밖 측정',sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN,on:()=>!!nat.target||setUI.nat,
     hint:()=>nat.target?'위젯·알림창·아이콘으로 기록':'어느 측정인지 고르세요',more:()=>{const t=nat.target;const p=t&&projById(t.pid);
@@ -7668,6 +7671,7 @@ document.addEventListener('change',e=>{
   if(k==='glass'){try{localStorage.setItem(GLASS_KEY,v?'1':'0');}catch(x){}lookApply();toast(v?'유리 효과를 켰습니다':'유리 효과를 껐습니다');}
   else if(k==='hc'){try{if(v)localStorage.setItem(HC_KEY,'1');else localStorage.removeItem(HC_KEY);}catch(x){}lookApply();toast(v?'고대비를 켰습니다':'고대비를 껐습니다');}
   else if(k==='pg'){if(v===pgAll()){if(ui.view==='proc')actions['pg-all']();else{pgAllSet(!v);toast(v?'한 장씩 보기':'전체 보기: 한 화면에 모두');}}}
+  else if(k==='mini'){lsPut(MINI_ON,v?'1':'0');if(!v&&mini.on&&!(mini.live&&liveActive()))miniOff();toast(v?'작게 띄워 세기를 켰습니다':'작게 띄워 세기를 껐습니다');}
   else if(k==='ink'){inputModeSet(v?'ink':'kb');toast(v?'손글씨 모드':'키보드 모드');}
   else if(k==='pen'){inkUI.penSeen=v;inkModeSet(v?'pen':'finger');toast(v?'S펜만 씁니다':'손가락도 씁니다');}
   else if(k==='tmr'){if(v){setUI.tmr=true;}else{setNatTimerOff();return;}}
@@ -8129,6 +8133,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-25-6',d:'2026-11-25',k:'web',t:'작게 띄워 세기 켜고 끄기',items:['설정 > 칠판·PC에 켜고 끄기','꺼 두면 대기 버튼 때 켤지 물음','켜고 띄우기 → 설정도 켜짐']},
   {id:'2026-11-25-5',d:'2026-11-25',k:'web',t:'작은 대기 창·시작 알림',items:['대기 중엔 \'대기 중\' 한 줄만','회기 시작하면 ＋1로 바뀌고 반짝','회기 줄에 \'알림 켜기\' 버튼','회기 시작 알림 누르면 ＋1 창']},
   {id:'2026-11-25-4',d:'2026-11-25',k:'web',t:'대기 창은 버튼으로만',items:['아무 데나 눌러도 대기 창 안 뜸','＋1 창 대기 버튼으로 띄움','휴대폰 회기 대기 버튼으로 미리','＋1 창 자동 띄우기 옵션 뺌']},
   {id:'2026-11-25-2',d:'2026-11-25',k:'web',t:'화면 가리기 뺌',items:['오른쪽 아래 화면 가리기 버튼 뺌','B 키 가리기·나갔다 오면 가리기 뺌','작게 띄워 세기는 그대로']},
@@ -8458,7 +8463,25 @@ async function miniShow(tryPip){
   $('#mini-out').addEventListener('click',()=>miniOff());
   addEventListener('resize',()=>{if(mini.on&&!m.hidden)miniPlace();});
 })();
-Object.assign(actions,{'mini-on':el=>miniOn(el),
+/* 작게 띄워 세기 켜고 끄기(설정). 꺼져 있으면 대기·띄우기 버튼을 누를 때 켤지 묻고, '켜고 띄우기'면 설정을 켜고 바로 띄운다(2026-11-25 사용자 요청) */
+const MINI_ON='pbs-mini-on';
+function miniEnabled(){return lsRaw(MINI_ON)==='1';}
+function miniAsk(run){
+  if(miniEnabled())return run();
+  const old=$('#mq-ov');if(old)old.remove();
+  const ov=document.createElement('div');ov.id='mq-ov';ov.className='hp-ov mq-ov';
+  ov.innerHTML=`<div class="pk-box hp-box mq-box" role="alertdialog" aria-modal="true" aria-labelledby="mq-h"><div class="pk-head"><b id="mq-h">작게 띄워 세기가 꺼져 있어요</b></div>
+    <div class="hp-body"><p>설정에서 켤까요? 켜면 다음부터는 묻지 않고 바로 떠요.</p></div>
+    <div class="pk-foot"><button type="button" class="btn small" data-mq="no">취소</button><button type="button" class="btn small primary" data-mq="yes">켜고 띄우기</button></div></div>`;
+  document.body.appendChild(ov);
+  const close=()=>{ov.remove();document.removeEventListener('keydown',esc,true);};
+  const esc=e=>{if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();close();}};
+  document.addEventListener('keydown',esc,true);
+  ov.addEventListener('click',e=>{const b=e.target.closest('[data-mq]');if(e.target!==ov&&!b)return;e.preventDefault();e.stopPropagation();close();
+    if(b&&b.dataset.mq==='yes'){lsPut(MINI_ON,'1');prefScan();setRefresh();toast('작게 띄워 세기를 켰습니다');try{const r=run();if(r&&r.catch)r.catch(()=>{});}catch(x){}}});
+  const y=ov.querySelector('[data-mq="yes"]');if(y)try{y.focus();}catch(e){}
+}
+Object.assign(actions,{'mini-on':el=>miniAsk(()=>miniOn(el)),
   'mini-trig':el=>{try{localStorage.setItem(MINI_TRIG,el.dataset.v);}catch(e){}$$('[data-act="mini-trig"]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===el.dataset.v)));toast(el.dataset.v==='draw'?'작은 판에 그으면 ＋1':'눌러서 ＋1');}});
 
 /* ---------- 실시간 함께 세기: 휴대폰 앱에서 연 빈도 회기를 다른 기기(컴퓨터·전자칠판)에서도 ＋1 ----------
@@ -8721,8 +8744,8 @@ function liveArmRow(p,ph){
   return `<div class="bl-nat"><button type="button" class="btn small" data-act="live-arm" data-ph="${ph}">＋1 창 대기</button><span class="muted">누르면 회기 시작</span>${lr?`<button type="button" class="btn small" data-act="live-pip">휴대폰 회기 대기</button>${liveNoteBtn()}<span class="muted live-st" data-pid="${esc(p.shared.projectId)}">${esc(liveSt(p.shared.projectId))}</span>`:''}</div>`;
 }
 Object.assign(actions,{
-  'live-arm':el=>{liveNotePerm();qmArm(el.dataset.ph);},
-  'live-pip':()=>{liveNotePerm();liveMini(true);},
+  'live-arm':el=>miniAsk(()=>{liveNotePerm();qmArm(el.dataset.ph);}),
+  'live-pip':()=>miniAsk(()=>{liveNotePerm();liveMini(true);}),
   'live-note':async()=>{try{const r=await Notification.requestPermission();toast(r==='granted'?'휴대폰 회기가 시작되면 알림이 떠요':'알림이 허용되지 않았어요');}catch(e){}const y=window.scrollY;render();window.scrollTo(0,y);},
   'live-inc':()=>{liveInc(1);}
 });
