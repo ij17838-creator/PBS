@@ -697,8 +697,6 @@ html.in-ink .ink-host{caret-color:transparent}
 .cover-open .fill{position:absolute;inset:0 auto 0 0;width:0;background:var(--accent-soft);pointer-events:none}
 .cover-open.hold .fill{width:100%;transition:width .7s linear}
 .cover-open span{position:relative}
-.cover-auto{display:flex;align-items:center;gap:8px;min-height:44px;color:var(--muted);font-size:.92rem;cursor:pointer}
-.cover-auto input{width:22px;height:22px;min-height:0}
 /* 작게 띄워 세기: 화면은 가리고 ＋1 표시만 */
 .mini-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:8px}
 .mini{position:fixed;z-index:210;display:flex;flex-direction:column;align-items:center;gap:6px;touch-action:none;user-select:none;-webkit-user-select:none;transition:left .18s ease,top .18s ease}
@@ -949,7 +947,6 @@ body.pg-body .gd{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 .gd-tip{display:flex;align-items:center;gap:1px;margin:4px 14px 0;font-size:.8rem;color:var(--muted)}
 .gd-foot{display:flex;align-items:center;gap:8px;padding:8px 14px 12px}
 .gd-foot .muted{font-size:.8rem}
-@media (min-width:1240px){.gd{right:calc(132px + env(safe-area-inset-right,0px))}}
 @media (max-width:560px){.gd{right:12px;left:12px;width:auto}.gd.fold{left:auto}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.gd:not(.fold),.gd-pill{background:var(--surface)}}
 :root.hc .gd:not(.fold),:root.hc .gd-pill{border:2px solid var(--line-strong)}
@@ -1096,15 +1093,11 @@ body.pg-body .gd{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
     <p id="usage"></p>
   </footer>
 </div>
-<div class="bigdock" id="bigdock" aria-label="큰 화면 바로가기">
-  <button type="button" class="btn primary" data-act="cover-on" title="단축키 B">화면 가리기</button>
-</div>
 <div class="cover" id="cover" hidden aria-label="화면 가림">
   <div class="cover-clock" id="cover-clock">00:00</div>
   <div class="cover-date" id="cover-date"></div>
   <div class="cover-foot">
     <button type="button" class="btn cover-open" id="cover-open"><span class="fill"></span><span>길게 눌러 열기</span></button>
-    <label class="cover-auto"><input type="checkbox" id="cover-auto">나갔다 오면 가리기</label>
   </div>
 </div>
 <div class="pres" id="pres" hidden></div>
@@ -7039,7 +7032,7 @@ function hueAcctApply(d,me,ad){
    설치 앱 옵션(음량 버튼·측정 시간·끝 확인)은 pbs-nat-* 에 그 값을 비춰 두고(natPrefMark) 받으면 앱에 보낸다(natPrefApply). 간편 측정이 잠깐 바꾼 측정 시간은 안 보낸다.
    기기에 남기는 것: 손글씨 모드·S펜 전용(기기마다 펜이 다름), 창 위치, 공지 본 것.
    앱 색(pbs-hue)은 따로 prefs/look(hueAcctLoad). 로그아웃해도 이 기기 값은 그대로 둔다. */
-const PREF_KEYS=['pbs-glass','pbs-contrast','pbs-pg-all','pbs-cover-auto','pbs-live-auto','pbs-mini-trig','pbs-quick-key','pbs-ai','pbs-nat-btn','pbs-nat-tmr','pbs-nat-chk','pbs-guide'];
+const PREF_KEYS=['pbs-glass','pbs-contrast','pbs-pg-all','pbs-live-auto','pbs-mini-trig','pbs-quick-key','pbs-ai','pbs-nat-btn','pbs-nat-tmr','pbs-nat-chk','pbs-guide'];
 /* 자동 기능이 꺼진 값인가: 예전 값(시각 0)끼리 다르면 꺼진 쪽을 남긴다 */
 function prefIsOff(k,v){if(k==='pbs-cover-auto'||k==='pbs-live-auto')return v==='0';
   let o=null;try{o=JSON.parse(v||'null');}catch(e){}if(!o)return false;
@@ -7127,7 +7120,6 @@ async function prefWatch(){
 function prefUnwatch(){(prefs.unsub||[]).forEach(f=>{try{f();}catch(e){}});prefs.unsub=null;}
 function prefApply(ch){
   lookApply();
-  const c=$('#cover-auto');if(c)c.checked=lsRaw('pbs-cover-auto')==='1';
   if(ch.includes('pbs-pg-all'))setTimeout(render,0);
   ch.filter(k=>k.startsWith('pbs-nat-')).forEach(k=>natPrefApply(k.slice(8)));
   if(ch.includes('pbs-live-auto'))liveAutoOff();
@@ -7299,7 +7291,6 @@ function recList(){
     if(p&&m==='dur'&&nat.ver>=2&&setNatChk().mode==='off'){const ex=swExplicit('pbs-nat-chk');L.push({id:'chk',t:'지속시간 끝 확인',now:'끔',to:'30초마다 진동',def:!ex,note:ex?'직접 끈 것':'끝 깜빡 방지',run:async()=>{const k=setNatChk();const r=await PCN.setCheck({sec:Number(k.sec)||30,mode:'vib',miss:Number(k.miss),adj:!!k.adj});nat.chk=r.chk||nat.chk;natPrefMark('chk');}});}
     if(nat.bub&&nat.bub.on&&sw!=='bub')L.push({id:'bubOff',t:'○ 그려 회기 시작',now:'켬',to:'끔',def:false,note:'한 가지 방법만',run:()=>swBub(false)});
   }else{
-    if(lsRaw(COVER_KEY)!=='1'){const ex=lsRaw(COVER_KEY)==='0';L.push({id:'cover',t:'나갔다 오면 가리기',now:'끔',to:'켬',def:!ex,note:ex?'직접 끈 것':'칠판에 학생 자료 가림',run:()=>{lsPut(COVER_KEY,'1');const c=$('#cover-auto');if(c)c.checked=true;}});}
     if(!qkGet().on)L.push({id:'qk',t:'간편 측정 단축키',now:'끔',to:`켬 · ${qkLabel(qkGet())}`,def:false,note:'직접 끈 것',run:()=>{qkSet(Object.assign(qkGet(),{on:true}));qkRefresh();}});
     if(!liveAuto())L.push({id:'live',t:'＋1 창 자동 띄우기',now:'끔',to:'켬',def:false,note:'직접 끈 것',run:()=>lsPut('pbs-live-auto','1')});
     if(p&&!swWay(p)&&p.shared&&p.procs.define.data.measure==='빈도')L.push({id:'sw',t:`${p.code||'학생'} 회기 시작`,now:'안 정함',to:'칠판 ＋1 창',def:true,run:()=>swSet(p,'live')});
@@ -7310,7 +7301,7 @@ function recList(){
 function recBox(){
   const L=recList();
   return `<section class="set-g rec"><h3>추천 설정 · ${PCN?'설치 앱':'칠판·PC'}${hpBtn('set:rec')}</h3>
-    <p class="set-hint" style="margin:0">${PCN?'음량 1번으로 시작·기록':'가리기·단축키·＋1 창'}</p>
+    <p class="set-hint" style="margin:0">${PCN?'음량 1번으로 시작·기록':'단축키·＋1 창'}</p>
     ${L.length?chgBox('rec',L,'rec-go'):'<p class="muted chg-none">이미 추천 설정이에요</p><div class="row"><button type="button" class="btn small" data-act="chg-cancel" data-key="rec">닫기</button></div>'}</section>`;
 }
 Object.assign(actions,{
@@ -7325,7 +7316,6 @@ const HELP={
   'set:hc':{w:'글자를 진하게, 테두리를 굵게 보여 줘요.',u:'밝은 교실이나 칠판에서 잘 안 보일 때 켜세요. 켜면 유리 효과·앱 색은 꺼져요.'},
   'set:hue':{w:'버튼·배경 색을 고르고 밝기를 맞춰요.',u:'그래프의 기초선·중재 색과 진행 중·완료·경고 색은 그대로예요.'},
   'set:pg':{w:'절차 화면을 묶음 한 장씩 나눠 보여 줘요. 위 띠나 아래 이전·다음으로 옮겨요.',u:'한 화면에 모두 보고 싶으면 끄세요. 아래 가운데 숫자를 눌러도 바뀌어요.'},
-  'set:cover':{w:'다른 화면에 갔다가 돌아오면 시계 화면으로 가려요.',u:'칠판·TV에 화면을 띄울 때 켜 두면 학생 자료가 보이지 않아요. 누르면 다시 보여요.'},
   'set:ink':{w:'S펜으로 칸에 바로 써요. 숫자 칸은 키보드로 입력해요.',u:'\'S펜만 쓰기\'를 켜면 손바닥·손가락 터치는 무시해요. 이 기기에만 저장돼요.'},
   'set:qm':{w:'트리거 한 번으로 여러 측정(기초선·중재·ABC)을 함께 시작하고 기록해요.',u:'한 수업에서 빈도와 ABC를 같이 잴 때 써요. 개수·종류·색은 여기서 정해요.'},
   'set:qk':{w:'키보드 단축키로 간편 측정을 시작하고 ＋1 해요.',u:'같은 키 여러 번(연타)이나 조합키 중 고르고 \'커맨드 입력\'으로 키를 정해요.',d:'web'},
@@ -7494,7 +7484,6 @@ const SET_ROWS=[
   {id:'hc',g:'화면',t:'고대비',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:()=>hcOn(),hint:()=>'진한 글자·굵은 테두리'},
   {id:'hue',g:'화면',t:'앱 색',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:null,ctl:()=>`<button type="button" class="btn small" data-act="hue-reset"${hueGet()===null&&hueLGet()===null?' disabled':''}>기본색으로</button>`,hint:()=>hcOn()?'고대비면 기본색':syncMe()?'버튼·배경 색이 함께 바뀜':'로그인하면 계정에 저장',more:()=>hueMore()},
   {id:'pg',g:'화면',t:'절차 한 장씩 보기',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['profile','define','qabf','rating','hypo','plan','evaluate'],on:()=>!pgAll(),hint:()=>pgAll()?'지금은 한 화면에 모두':''},
-  {id:'cover',g:'화면',t:'나갔다 오면 가리기',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['baseline','intervene','abc'],on:()=>{try{return localStorage.getItem(COVER_KEY)==='1';}catch(e){return false;}},hint:()=>'돌아오면 시계 화면'},
   {id:'ink',g:'입력',t:'손글씨 모드',sc:'이 기기',rel:['profile','define','rating','abc','hypo','plan','evaluate'],on:()=>inkUI.mode==='ink',
     more:()=>`<label class="check"><input type="checkbox" data-set="pen"${inkUI.penSeen?' checked':''}> <span>S펜만 쓰기</span></label><span class="muted">손바닥·손가락은 무시 · 숫자 칸은 키보드</span>`},
   {id:'qm',g:'측정',t:'간편 측정',sc:'이 학생',sw:['qm'],rel:['baseline','intervene','abc','measure'],show:()=>!!curProject(),on:null,ctl:()=>'',hint:()=>'트리거 한 번에 함께 기록',more:()=>qmOpts(curProject())},
@@ -7683,7 +7672,6 @@ document.addEventListener('change',e=>{
   if(k==='glass'){try{localStorage.setItem(GLASS_KEY,v?'1':'0');}catch(x){}lookApply();toast(v?'유리 효과를 켰습니다':'유리 효과를 껐습니다');}
   else if(k==='hc'){try{if(v)localStorage.setItem(HC_KEY,'1');else localStorage.removeItem(HC_KEY);}catch(x){}lookApply();toast(v?'고대비를 켰습니다':'고대비를 껐습니다');}
   else if(k==='pg'){if(v===pgAll()){if(ui.view==='proc')actions['pg-all']();else{pgAllSet(!v);toast(v?'한 장씩 보기':'전체 보기: 한 화면에 모두');}}}
-  else if(k==='cover'){try{localStorage.setItem(COVER_KEY,v?'1':'0');}catch(x){}const c=$('#cover-auto');if(c)c.checked=v;toast(v?'나갔다 오면 화면을 가립니다':'나갔다 와도 가리지 않습니다');}
   else if(k==='ink'){inputModeSet(v?'ink':'kb');toast(v?'손글씨 모드':'키보드 모드');}
   else if(k==='pen'){inkUI.penSeen=v;inkModeSet(v?'pen':'finger');toast(v?'S펜만 씁니다':'손가락도 씁니다');}
   else if(k==='tmr'){if(v){setUI.tmr=true;}else{setNatTimerOff();return;}}
@@ -8145,6 +8133,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-25-2',d:'2026-11-25',k:'web',t:'화면 가리기 뺌',items:['오른쪽 아래 화면 가리기 버튼 뺌','B 키 가리기·나갔다 오면 가리기 뺌','작게 띄워 세기는 그대로']},
   {id:'2026-11-25-1',d:'2026-11-25',k:'web',t:'도움말 ⓘ·첫날 안내',items:['설정 옵션마다 ⓘ 도움말','절차·묶음 제목 옆에도 ⓘ','앱 전용·칠판 전용 표시','첫 로그인 때 3단계 안내','건너뛰기·설정에서 다시 보기','안내는 설정을 안 바꿈']},
   {id:'2026-11-24-15',d:'2026-11-24',k:'web',t:'＋1 대기 창 닫기',items:['자동 띄우기 끄면 대기 창 닫힘','다른 기기에서 꺼도 닫힘','휴대폰 회기 중이면 끝날 때']},
   {id:'2026-11-24-14',d:'2026-11-24',k:'web',t:'고르는 창도 앱 모양',items:['목록 고르기: 앱 색 유리 창','휴대폰은 아래에서 올라옴','날짜는 앱 달력으로','시각은 시·분 칸에서 확인','다크·고대비·키보드 그대로']},
@@ -8305,8 +8294,7 @@ function noticeInit(){
   }).catch(()=>{});
 }
 
-/* ---------- 전자칠판·큰 화면: 화면 가리기, 아래쪽 바로가기 ---------- */
-const COVER_KEY='pbs-cover-auto';
+/* ---------- 전자칠판·큰 화면: 작게 띄워 세기의 가린 배경(시계) ---------- */
 const cover={on:false,title:'',t:null};
 function coverClock(){if(!cover.on)return;const d=new Date();$('#cover-clock').textContent=pad(d.getHours())+':'+pad(d.getMinutes());$('#cover-date').textContent=`${d.getMonth()+1}월 ${d.getDate()}일 ${WD[d.getDay()]}요일`;}
 function coverSet(on){
@@ -8316,28 +8304,20 @@ function coverSet(on){
   else{clearInterval(cover.t);cover.t=null;document.title=cover.title||document.title;}
 }
 (function(){
-  const b=$('#cover-open'),ck=$('#cover-auto');if(!b)return;
-  try{ck.checked=localStorage.getItem(COVER_KEY)==='1';}catch(e){}
-  ck.addEventListener('change',()=>{try{localStorage.setItem(COVER_KEY,ck.checked?'1':'0');}catch(e){}});
+  const b=$('#cover-open');if(!b)return;
   let tm=null;
   const stop=()=>{clearTimeout(tm);tm=null;b.classList.remove('hold');};
   b.addEventListener('pointerdown',e=>{e.preventDefault();stop();void b.offsetWidth;b.classList.add('hold');tm=setTimeout(()=>{stop();if(mini.on)miniOff();else coverSet(false);},700);});
   ['pointerup','pointerleave','pointercancel'].forEach(t=>b.addEventListener(t,stop));
   b.addEventListener('contextmenu',e=>e.preventDefault());
   b.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();if(mini.on)miniOff();else coverSet(false);}});
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&ck.checked)coverSet(true);});
-  /* 발표용 리모컨·키보드: B 또는 . 으로 가리기/열기, 가린 상태에서 Esc로 열기 */
+  /* 가린 화면(작게 띄워 세기 뒤)에서 Esc·B·. 으로 닫기. 혼자 쓰는 '화면 가리기'(버튼·B 키·나갔다 오면 가리기)는 2026-11-25 사용자 요청으로 뺐다 */
   const hot=k=>k==='b'||k==='B'||k==='.'||k==='ㅠ';
   document.addEventListener('keydown',e=>{
     if(e.ctrlKey||e.metaKey||e.altKey||e.isComposing)return;
     if(cover.on){if(e.key==='Escape'||hot(e.key)){e.preventDefault();e.stopPropagation();if(mini.on)miniOff();else coverSet(false);}return;}
-    const t=e.target;const typing=t&&t.closest&&t.closest('input,textarea,select,[contenteditable="true"],canvas');
-    if(!typing&&hot(e.key)){e.preventDefault();coverSet(true);}
   },true);
 })();
-Object.assign(actions,{
-  'cover-on':()=>coverSet(true),
-});
 
 /* ---------- 작게 띄워 세기: 회기 하나를 골라 화면은 가리고 ＋1 표시만 띄운다 ----------
    표시는 끌어 옮길 수 있고, 화면 밖으로 밀면 가장자리에 손잡이만 남는다(누르면 다시 나옴).
