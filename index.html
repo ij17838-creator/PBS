@@ -8133,6 +8133,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-25-3',d:'2026-11-25',k:'web',t:'간편 측정이면 대기 창 안 띄움',items:['회기 시작 방법이 간편 측정이면','PC에 대기 창을 미리 안 띄움','휴대폰에서 시작하면 그때 ＋1']},
   {id:'2026-11-25-2',d:'2026-11-25',k:'web',t:'화면 가리기 뺌',items:['오른쪽 아래 화면 가리기 버튼 뺌','B 키 가리기·나갔다 오면 가리기 뺌','작게 띄워 세기는 그대로']},
   {id:'2026-11-25-1',d:'2026-11-25',k:'web',t:'도움말 ⓘ·첫날 안내',items:['설정 옵션마다 ⓘ 도움말','절차·묶음 제목 옆에도 ⓘ','앱 전용·칠판 전용 표시','첫 로그인 때 3단계 안내','건너뛰기·설정에서 다시 보기','안내는 설정을 안 바꿈']},
   {id:'2026-11-24-15',d:'2026-11-24',k:'web',t:'＋1 대기 창 닫기',items:['자동 띄우기 끄면 대기 창 닫힘','다른 기기에서 꺼도 닫힘','휴대폰 회기 중이면 끝날 때']},
@@ -8643,7 +8644,7 @@ function liveGesture(e){
   if(!Sync.user)return;
   const r=liveActive();
   if(Date.now()-(live.closed||0)<3000)return;
-  if(!r&&(!liveAuto()||!store.projects.some(liveReady)))return;/* 측정 방법을 '빈도'로 고른 공유 프로젝트가 있을 때만 대기 */
+  if(!r&&(!liveAuto()||!store.projects.some(liveWaitOk)))return;/* 측정 방법을 '빈도'로 고른 공유 프로젝트가 있을 때만 대기 */
   liveMini(true);setTimeout(liveNotePerm,600);
 }
 document.addEventListener('pointerup',liveGesture,true);
@@ -8696,6 +8697,8 @@ function liveBar(){
 /* 회기 화면: 작은 창을 미리 열어 두면 휴대폰 회기 때 저절로 ＋1이 된다(크롬 등 큰 화면) */
 /* 함께 세기를 기다릴 만한 프로젝트: 공유 중이고 측정 방법이 '빈도' */
 function liveReady(p){return !!(p&&p.shared&&p.procs.define.data.measure==='빈도');}
+/* 미리 대기 창을 띄울 프로젝트: 회기 시작 방법이 '간편 측정'이면 뺀다(휴대폰에서 시작하면 그때 ＋1이 뜸, PC는 단축키로). 2026-11-25 사용자 요청 */
+function liveWaitOk(p){return liveReady(p)&&swWay(p)!=='qm';}
 /* 브라우저: 그 프로젝트의 휴대폰 소식 */
 function liveSt(pid){
   const v=live.docs.get(pid);if(!Sync.user)return '로그인하면 휴대폰과 연결';
