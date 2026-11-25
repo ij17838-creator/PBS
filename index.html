@@ -3184,7 +3184,6 @@ function sesRow(p,ph,s,i){
       <label class="field"><span>관찰자</span><textarea rows="1" class="one" id="ses-${s.id}-observer" data-f="ses:${k}:observer" placeholder="예: 담임">${esc(s.observer)}</textarea></label>
       <label class="field wide2"><span>메모</span><textarea rows="1" class="one" id="ses-${s.id}-note" data-f="ses:${k}:note" placeholder="예: 시험 주간, 결석 후 첫날">${esc(s.note)}</textarea></label>
     </div>
-    ${freq?`<div class="mini-row"><button type="button" class="btn small" data-act="mini-on" data-ph="${ph}" data-id="${s.id}">작게 띄워 세기</button>${trigSeg('mini-trig',miniTrig())}<span class="muted">화면 가리고 ＋1만</span></div>`:''}
     ${freq&&(PCN||s.tapLog)?natRow(p,ph,s,i):''}${p.procs.define.data.measure==='지속시간'||s.durLog?durEd(p,ph,s):''}${measEds(p,ph,s)}
     ${ui.confirm==='del-ses:'+k?confirmBox('이 회기 기록을 삭제합니다.','del-ses',k):''}
   </div>`;
@@ -8133,6 +8132,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-25-7',d:'2026-11-25',k:'web',t:'회기 칸 작게 띄워 세기 뺌',items:['회기마다 있던 작게 띄워 세기 줄 뺌','화면 가리고 세는 방식 없앰','지난 회기는 −·＋1로 고침']},
   {id:'2026-11-25-6',d:'2026-11-25',k:'web',t:'작게 띄워 세기 켜고 끄기',items:['설정 > 칠판·PC에 켜고 끄기','꺼 두면 대기 버튼 때 켤지 물음','켜고 띄우기 → 설정도 켜짐']},
   {id:'2026-11-25-5',d:'2026-11-25',k:'web',t:'작은 대기 창·시작 알림',items:['대기 중엔 \'대기 중\' 한 줄만','회기 시작하면 ＋1로 바뀌고 반짝','회기 줄에 \'알림 켜기\' 버튼','회기 시작 알림 누르면 ＋1 창']},
   {id:'2026-11-25-4',d:'2026-11-25',k:'web',t:'대기 창은 버튼으로만',items:['아무 데나 눌러도 대기 창 안 뜸','＋1 창 대기 버튼으로 띄움','휴대폰 회기 대기 버튼으로 미리','＋1 창 자동 띄우기 옵션 뺌']},
