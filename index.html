@@ -7202,8 +7202,7 @@ function swCheck(p,ph){
     if(d.measure!=='빈도')return {st:'no',msg:'빈도일 때만 써요',chg};
     if(!matchMedia('(min-width:900px)').matches)return {st:'other',msg:'넓은 화면에서 써요',chg};
     if(!p.shared)return {st:'ok',msg:"'＋1 창 대기' 누르기",chg};
-    if(!liveAuto())chg.push({id:'live',t:'＋1 창 자동 띄우기',now:'끔',to:'켬',def:true,note:'휴대폰 회기 때',run:()=>{lsPut('pbs-live-auto','1');}});
-    return {st:chg.length?'fix':'ok',msg:chg.length?'자동 띄우기가 꺼짐':"'＋1 창 대기' 또는 휴대폰",chg};
+    return {st:'ok',msg:"'＋1 창 대기' 버튼",chg};
   }
   return {st:'none',msg:'',chg};
 }
@@ -7292,7 +7291,6 @@ function recList(){
     if(nat.bub&&nat.bub.on&&sw!=='bub')L.push({id:'bubOff',t:'○ 그려 회기 시작',now:'켬',to:'끔',def:false,note:'한 가지 방법만',run:()=>swBub(false)});
   }else{
     if(!qkGet().on)L.push({id:'qk',t:'간편 측정 단축키',now:'끔',to:`켬 · ${qkLabel(qkGet())}`,def:false,note:'직접 끈 것',run:()=>{qkSet(Object.assign(qkGet(),{on:true}));qkRefresh();}});
-    if(!liveAuto())L.push({id:'live',t:'＋1 창 자동 띄우기',now:'끔',to:'켬',def:false,note:'직접 끈 것',run:()=>lsPut('pbs-live-auto','1')});
     if(p&&!swWay(p)&&p.shared&&p.procs.define.data.measure==='빈도')L.push({id:'sw',t:`${p.code||'학생'} 회기 시작`,now:'안 정함',to:'칠판 ＋1 창',def:true,run:()=>swSet(p,'live')});
   }
   if(pgAll())L.push({id:'pg',t:'절차 한 장씩 보기',now:'한 화면에 모두',to:'한 장씩',def:false,note:'직접 바꾼 것',run:()=>{pgAllSet(false);setTimeout(render,0);}});
@@ -7301,7 +7299,7 @@ function recList(){
 function recBox(){
   const L=recList();
   return `<section class="set-g rec"><h3>추천 설정 · ${PCN?'설치 앱':'칠판·PC'}${hpBtn('set:rec')}</h3>
-    <p class="set-hint" style="margin:0">${PCN?'음량 1번으로 시작·기록':'단축키·＋1 창'}</p>
+    <p class="set-hint" style="margin:0">${PCN?'음량 1번으로 시작·기록':'단축키'}</p>
     ${L.length?chgBox('rec',L,'rec-go'):'<p class="muted chg-none">이미 추천 설정이에요</p><div class="row"><button type="button" class="btn small" data-act="chg-cancel" data-key="rec">닫기</button></div>'}</section>`;
 }
 Object.assign(actions,{
@@ -7320,7 +7318,6 @@ const HELP={
   'set:qm':{w:'트리거 한 번으로 여러 측정(기초선·중재·ABC)을 함께 시작하고 기록해요.',u:'한 수업에서 빈도와 ABC를 같이 잴 때 써요. 개수·종류·색은 여기서 정해요.'},
   'set:qk':{w:'키보드 단축키로 간편 측정을 시작하고 ＋1 해요.',u:'같은 키 여러 번(연타)이나 조합키 중 고르고 \'커맨드 입력\'으로 키를 정해요.',d:'web'},
   'set:mini':{w:'세기 창을 작게 띄워 다른 프로그램 위에서 ＋1 해요.',u:'수업 자료를 띄운 채 셀 때 써요. 버튼 누르기나 긋기 중 고르세요.',d:'web'},
-  'set:live':{w:'휴대폰에서 회기를 시작하면 칠판·PC에 ＋1 창이 저절로 떠요.',u:'공유 프로젝트를 휴대폰과 칠판으로 함께 셀 때 켜세요. 끄면 떠 있는 창도 닫혀요.',d:'web'},
   'set:nat':{w:'앱이 뒤에 있거나 화면이 꺼져도 위젯·알림창·떠 있는 아이콘으로 기록해요.',u:'어느 학생의 어느 측정인지 먼저 고르세요. 켜면 아래 옵션이 열려요.',d:'app'},
   'set:bub':{w:'화면 옆 작은 아이콘 판에 ○를 그리면 회기가 시작돼요.',u:'다른 앱을 쓰는 중에 회기를 시작할 때 써요. \'다른 앱 위 표시\' 권한이 필요해요.',d:'app'},
   'set:btn3':{w:'회기 중 화면이 꺼져 있을 때 음량 버튼을 누르면 ＋1 돼요.',u:'\'회기 시작도\'를 켜면 화면이 꺼진 채로 회기도 시작해요. 누를 횟수는 1~3번.',d:'app'},
@@ -7494,7 +7491,6 @@ const SET_ROWS=[
       <button type="button" class="btn small${qk.cap?' primary':''}" data-act="qk-cap">${qk.cap?(o.mode==='combo'?'조합키를 누르세요':'키를 누르세요'):'커맨드 입력'}</button>
       <span class="mono">${esc(qkLabel(o))}</span><span class="muted">누르면 대기 창 + ＋1</span>`;}},
   {id:'mini',g:'칠판·PC',t:'작게 띄워 세기',get sc(){return syncMe()?'내 계정':'이 기기';},show:()=>!PCN,rel:['baseline','intervene'],on:null,ctl:()=>trigSeg('mini-trig',miniTrig()),hint:()=>'＋1을 누를지 그을지'},
-  {id:'live',g:'칠판·PC',t:'＋1 창 자동 띄우기',sw:['live'],get sc(){return syncMe()?'내 계정':'이 기기';},show:()=>!PCN,rel:['baseline','intervene'],on:()=>liveAuto(),ck:'data-live-auto',hint:()=>'공유 프로젝트 회기 때'},
   /* 앱 밖 측정(상위): 켜고 어느 측정인지 고르면 아래 하위 옵션(○ 그려·음량·측정 시간·끝 확인)이 열린다 */
   {id:'nat',g:'앱 밖 측정',t:'앱 밖 측정',sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN,on:()=>!!nat.target||setUI.nat,
     hint:()=>nat.target?'위젯·알림창·아이콘으로 기록':'어느 측정인지 고르세요',more:()=>{const t=nat.target;const p=t&&projById(t.pid);
@@ -8133,6 +8129,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-25-4',d:'2026-11-25',k:'web',t:'대기 창은 버튼으로만',items:['아무 데나 눌러도 대기 창 안 뜸','＋1 창 대기 버튼으로 띄움','휴대폰 회기 대기 버튼으로 미리','＋1 창 자동 띄우기 옵션 뺌']},
   {id:'2026-11-25-2',d:'2026-11-25',k:'web',t:'화면 가리기 뺌',items:['오른쪽 아래 화면 가리기 버튼 뺌','B 키 가리기·나갔다 오면 가리기 뺌','작게 띄워 세기는 그대로']},
   {id:'2026-11-25-1',d:'2026-11-25',k:'web',t:'도움말 ⓘ·첫날 안내',items:['설정 옵션마다 ⓘ 도움말','절차·묶음 제목 옆에도 ⓘ','앱 전용·칠판 전용 표시','첫 로그인 때 3단계 안내','건너뛰기·설정에서 다시 보기','안내는 설정을 안 바꿈']},
   {id:'2026-11-24-15',d:'2026-11-24',k:'web',t:'＋1 대기 창 닫기',items:['자동 띄우기 끄면 대기 창 닫힘','다른 기기에서 꺼도 닫힘','휴대폰 회기 중이면 끝날 때']},
@@ -8646,8 +8643,7 @@ function liveGesture(e){
   if(!r&&(!liveAuto()||!store.projects.some(liveReady)))return;/* 측정 방법을 '빈도'로 고른 공유 프로젝트가 있을 때만 대기 */
   liveMini(true);setTimeout(liveNotePerm,600);
 }
-document.addEventListener('pointerup',liveGesture,true);
-document.addEventListener('keydown',e=>{if(!e.repeat)liveGesture(e);},true);
+/* 2026-11-25 사용자 결정: 아무 데나 눌러 대기 창이 뜨면 기록하기 방해 → 대기 창은 '＋1 창 대기'·위 막대 '작은 창' 버튼으로만(liveGesture는 안 씀) */
 /* 다른 창 뒤에 있을 때: 탭 제목을 깜빡여 알린다 */
 function liveFlash(on){
   clearInterval(live.flashT);live.flashT=null;
@@ -8708,7 +8704,7 @@ function liveSt(pid){
 function liveArmRow(p,ph){
   if(ph==='abc'||p.procs.define.data.measure!=='빈도'||!matchMedia('(min-width:900px)').matches)return '';
   const lr=!PCN&&liveReady(p)&&!!window.documentPictureInPicture;
-  return `<div class="bl-nat"><button type="button" class="btn small" data-act="live-arm" data-ph="${ph}">＋1 창 대기</button><span class="muted">누르면 회기 시작</span>${lr?`<label class="check"><input type="checkbox" data-live-auto${liveAuto()?' checked':''}> <span>자동으로 띄우기</span></label><span class="muted live-st" data-pid="${esc(p.shared.projectId)}">${esc(liveSt(p.shared.projectId))}</span>`:''}</div>`;
+  return `<div class="bl-nat"><button type="button" class="btn small" data-act="live-arm" data-ph="${ph}">＋1 창 대기</button><span class="muted">누르면 회기 시작</span>${lr?`<button type="button" class="btn small" data-act="live-pip">휴대폰 회기 대기</button><span class="muted live-st" data-pid="${esc(p.shared.projectId)}">${esc(liveSt(p.shared.projectId))}</span>`:''}</div>`;
 }
 Object.assign(actions,{
   'live-arm':el=>{liveNotePerm();qmArm(el.dataset.ph);},
