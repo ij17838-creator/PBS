@@ -65,6 +65,19 @@ public class FloatBubble extends Service {
     static boolean perm(Context c) { return Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(c); }
     static boolean alive() { return inst != null; }
     static String trig(Context c) { return "draw".equals(CounterStore.prefs(c).getString("bubTrig", "tap")) ? "draw" : "tap"; }
+    /** 대기 중 회기를 시작하는 모양(2026-11-26, 플러그인 ver 15): bubShape=circle(기본, circle()로 판단) 또는 그 밖의 이름.
+     *  그 밖의 모양은 웹 화면이 보낸 본보기 획(bubTpl: "x,y,x,y..;x,y.." 본보기 여러 개)과 견줘 판단한다(shapeOk).
+     *  그래서 새 모양은 index.html만 바꿔 더할 수 있다. bubMark = 아이콘·안내에 보일 글자(○·✓ 등) */
+    static String shape(Context c) { String v = CounterStore.prefs(c).getString("bubShape", "circle"); return v == null || v.isEmpty() ? "circle" : v; }
+    static String mark(Context c) { String v = CounterStore.prefs(c).getString("bubMark", "○"); return v == null || v.isEmpty() ? "○" : v; }
+    static void setShape(Context c, String shape, String tpl, String mark) {
+        boolean circ = shape == null || shape.isEmpty() || "circle".equals(shape) || tpl == null || tpl.trim().isEmpty();
+        CounterStore.prefs(c).edit().putString("bubShape", circ ? "circle" : shape).putString("bubTpl", circ ? "" : tpl)
+            .putString("bubMark", circ ? "○" : (mark == null || mark.isEmpty() ? "★" : mark)).apply();
+        FloatBubble b = inst;
+        if (b != null) b.h.post(b::rebuild);
+        CounterNotifier.refreshAll(c);
+    }
     /** 트리거 저장: tap(누르기) / draw(긋기) */
     static void setTrig(Context c, String trig) {
         CounterStore.prefs(c).edit().putString("bubTrig", "draw".equals(trig) ? "draw" : "tap").apply();
@@ -108,7 +121,7 @@ public class FloatBubble extends Service {
         return new NotificationCompat.Builder(this, CounterNotifier.CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_pbs)
             .setContentTitle("떠 있는 ＋1 켜짐")
-            .setContentText(CounterStore.active(this) ? "앱의 앱 밖 측정에서 끌 수 있어요" : "대기 중 · 아이콘 판에 ○를 그리면 회기 시작")
+            .setContentText(CounterStore.active(this) ? "앱의 앱 밖 측정에서 끌 수 있어요" : "대기 중 · 아이콘 판에 " + mark(this) + " 그리면 회기 시작")
             .setOngoing(true).setSilent(true).setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(pi)
@@ -384,9 +397,10 @@ public class FloatBubble extends Service {
         else if (CounterStore.INT.equals(mode)) big = CounterStore.ivPend(this) > 0 ? "지금 신호" : "간격 " + CounterStore.ivYes(this) + "/" + CounterStore.ivTot(this);
         else big = "앱 열기";
         boolean wait = !CounterStore.active(this);
-        if (wait) big = "대기 · ○=시작";
-        // 아이콘: 지금 횟수(빈도) 또는 ＋, 대기 중엔 ○
-        v.setText(wait ? "○" : freq ? String.valueOf(n) : "＋");
+        String mk = mark(this);
+        if (wait) big = "대기 · " + mk + "=시작";
+        // 아이콘: 지금 횟수(빈도) 또는 ＋, 대기 중엔 시작 모양(○ 등)
+        v.setText(wait ? mk : freq ? String.valueOf(n) : "＋");
         v.setTextSize(TypedValue.COMPLEX_UNIT_SP, freq && n >= 100 ? 12 : 15);
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.OVAL);
@@ -414,8 +428,10 @@ public class FloatBubble extends Service {
         float L = 0;
         for (float[] st : drawn) for (int i = 2; i + 1 < st.length; i += 2) L += (float) Math.hypot(st[i] - st[i - 2], st[i + 1] - st[i - 1]);
         if (L < dp(14)) { pad.flash(0); return; }
-        if (!CounterStore.active(this)) { // 대기: 동그라미일 때만 회기 시작(다른 모양은 무시)
-            if (!circle(drawn)) { pad.flash(2); return; }
+        if (!CounterStore.active(this)) { // 대기: 고른 시작 모양일 때만 회기 시작(다른 모양은 무시)
+            String sh = shape(this);
+            boolean ok = "circle".equals(sh) ? circle(drawn) : shapeOk(drawn, CounterStore.prefs(this).getString("bubTpl", ""));
+            if (!ok) { pad.flash(2); return; }
             pad.flash(1);
             CounterReceiver.handle(getApplicationContext(), CounterReceiver.BEGIN);
             h.postDelayed(this::rebuild, 600); // 다음에 열면 회기 중 판(＋1 등)
@@ -453,6 +469,68 @@ public class FloatBubble extends Service {
             turn += d; prev = a;
         }
         return Math.abs(turn) > 1.6 * Math.PI; // 0.8바퀴 넘게 돎
+    }
+
+    /* ---------- 고른 모양 견주기(index.html shpMatch와 같은 계산): 획을 이어 붙여 N점으로 고르게 다시 찍고,
+       긴 변을 1로 맞춰(가로세로 비율 유지) 무게중심을 0에 둔 뒤, 본보기(정방향·거꾸로)와 점마다 거리의 평균이 SHP_TOL보다 작으면 맞음 ---------- */
+    static final int SHP_N = 32;
+    static final double SHP_TOL = 0.18;
+    static double[] shpNorm(double[] p) {
+        int m = p.length / 2;
+        if (m < 2) return null;
+        double L = 0;
+        for (int i = 1; i < m; i++) L += Math.hypot(p[2 * i] - p[2 * i - 2], p[2 * i + 1] - p[2 * i - 1]);
+        if (L <= 0) return null;
+        double step = L / (SHP_N - 1), acc = 0;
+        double[] o = new double[SHP_N * 2];
+        int k = 0;
+        o[k++] = p[0]; o[k++] = p[1];
+        double px = p[0], py = p[1];
+        int i = 1;
+        while (i < m && k < SHP_N * 2) {
+            double qx = p[2 * i], qy = p[2 * i + 1], d = Math.hypot(qx - px, qy - py);
+            if (d > 0 && acc + d >= step) {
+                double t = (step - acc) / d, nx = px + t * (qx - px), ny = py + t * (qy - py);
+                o[k++] = nx; o[k++] = ny; px = nx; py = ny; acc = 0;
+            } else { acc += d; px = qx; py = qy; i++; }
+        }
+        while (k < SHP_N * 2) { o[k++] = p[2 * m - 2]; o[k++] = p[2 * m - 1]; }
+        double minX = o[0], maxX = o[0], minY = o[1], maxY = o[1], cx = 0, cy = 0;
+        for (int j = 0; j < SHP_N; j++) { minX = Math.min(minX, o[2 * j]); maxX = Math.max(maxX, o[2 * j]); minY = Math.min(minY, o[2 * j + 1]); maxY = Math.max(maxY, o[2 * j + 1]); }
+        double s = Math.max(maxX - minX, maxY - minY);
+        if (s <= 0) return null;
+        for (int j = 0; j < SHP_N; j++) { o[2 * j] /= s; o[2 * j + 1] /= s; cx += o[2 * j]; cy += o[2 * j + 1]; }
+        cx /= SHP_N; cy /= SHP_N;
+        for (int j = 0; j < SHP_N; j++) { o[2 * j] -= cx; o[2 * j + 1] -= cy; }
+        return o;
+    }
+    static double shpDist(double[] a, double[] b) {
+        double f = 0, r = 0;
+        for (int j = 0; j < SHP_N; j++) {
+            f += Math.hypot(a[2 * j] - b[2 * j], a[2 * j + 1] - b[2 * j + 1]);
+            int q = SHP_N - 1 - j;
+            r += Math.hypot(a[2 * j] - b[2 * q], a[2 * j + 1] - b[2 * q + 1]);
+        }
+        return Math.min(f, r) / SHP_N;
+    }
+    static boolean shapeOk(List<float[]> drawn, String tpl) {
+        if (tpl == null || tpl.trim().isEmpty()) return circle(drawn);
+        int n = 0;
+        for (float[] st : drawn) n += st.length;
+        double[] p = new double[n];
+        int k = 0;
+        for (float[] st : drawn) for (float f : st) p[k++] = f;
+        double[] a = shpNorm(p);
+        if (a == null) return false;
+        for (String one : tpl.split(";")) {
+            String[] xs = one.trim().split(",");
+            if (xs.length < 4) continue;
+            double[] t = new double[xs.length - xs.length % 2];
+            try { for (int j = 0; j < t.length; j++) t[j] = Double.parseDouble(xs[j].trim()); } catch (Exception e) { continue; }
+            double[] b = shpNorm(t);
+            if (b != null && shpDist(a, b) < SHP_TOL) return true;
+        }
+        return false;
     }
 
     /** 긋기 판: 아무 획이나 그으면 ＋1 */
@@ -495,8 +573,9 @@ public class FloatBubble extends Service {
             box.setColor(run ? Color.parseColor("#B3402A") : Color.parseColor("#1B6862"));
             c.drawRoundRect(dp(1), dp(1), w - dp(1), hh - dp(1), r, r, box);
             boolean wait = !CounterStore.active(getContext());
-            if (path.isEmpty() && fl == 0) c.drawText(wait ? "○ 그리면 회기 시작" : "그으면 ＋1", w / 2, hh / 2 + dp(5), txt);
-            if (fl == 2) c.drawText("동그라미를 그려 주세요", w / 2, hh / 2 + dp(5), txt);
+            String mk = mark(getContext());
+            if (path.isEmpty() && fl == 0) c.drawText(wait ? mk + " 그리면 회기 시작" : "그으면 ＋1", w / 2, hh / 2 + dp(5), txt);
+            if (fl == 2) c.drawText("circle".equals(shape(getContext())) ? "동그라미를 그려 주세요" : mk + " 모양을 그려 주세요", w / 2, hh / 2 + dp(5), txt);
             c.drawPath(path, ink);
         }
     }

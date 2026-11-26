@@ -1008,6 +1008,8 @@ body.pg-body .gd{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 .sw-zone .sw-strip:not(.sw-sum) .sw-t,.set-more .sw-t{display:none}
 .set-more .sw-strip{flex:1 1 100%;margin:0;background:var(--surface)}
 .set-more:empty{display:none}
+.shp-box{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;flex:1 1 100%}
+.shp-pad{width:190px;height:120px;border:2px solid var(--accent);border-radius:12px;background:var(--surface);color:var(--accent);touch-action:none;cursor:crosshair}
 .def-sw{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0 0;padding-top:10px;border-top:1px solid var(--line)}
 .sw-other{margin-top:8px}.sw-other>summary{cursor:pointer;font-size:.86rem;color:var(--muted);padding:4px 0}
 .chg-box{display:flex;flex-direction:column;gap:6px;border-left:3px solid var(--accent);padding:4px 0 2px 10px}
@@ -4077,7 +4079,7 @@ const actions={
     const cur=!!(nat.bub&&nat.bub.on&&nat.bub.perm);
     try{const r=await PCN.setBubble({on:!cur,trig:(nat.bub&&nat.bub.trig)||'tap'});nat.bub=r.bub||null;
       if(!cur&&r.bub&&!r.bub.perm)toast('다른 앱 위 표시를 켜 주세요');
-      else toast(cur?'떠 있는 아이콘을 껐습니다':nat.ver>=14?'대기 중엔 ○를 그리면 회기 시작':'회기 중에만 ＋1이 떠요');}
+      else toast(cur?'떠 있는 아이콘을 껐습니다':nat.ver>=14?`대기 중엔 ${shpMk()}를 그리면 회기 시작`:'회기 중에만 ＋1이 떠요');}
     catch(e){toast('이 앱에서는 안 됩니다');}
     natUI();
   },
@@ -7043,7 +7045,7 @@ function hueAcctApply(d,me,ad){
    설치 앱 옵션(음량 버튼·측정 시간·끝 확인)은 pbs-nat-* 에 그 값을 비춰 두고(natPrefMark) 받으면 앱에 보낸다(natPrefApply). 간편 측정이 잠깐 바꾼 측정 시간은 안 보낸다.
    기기에 남기는 것: 손글씨 모드·S펜 전용(기기마다 펜이 다름), 창 위치, 공지 본 것.
    앱 색(pbs-hue)은 따로 prefs/look(hueAcctLoad). 로그아웃해도 이 기기 값은 그대로 둔다. */
-const PREF_KEYS=['pbs-glass','pbs-contrast','pbs-pg-all','pbs-mini-trig','pbs-quick-key','pbs-ai','pbs-nat-btn','pbs-nat-tmr','pbs-nat-chk','pbs-guide'];
+const PREF_KEYS=['pbs-glass','pbs-contrast','pbs-pg-all','pbs-mini-trig','pbs-quick-key','pbs-ai','pbs-nat-btn','pbs-nat-tmr','pbs-nat-chk','pbs-nat-shp','pbs-guide'];
 /* 자동 기능이 꺼진 값인가: 예전 값(시각 0)끼리 다르면 꺼진 쪽을 남긴다 */
 function prefIsOff(k,v){if(k==='pbs-cover-auto'||k==='pbs-live-auto')return v==='0';
   let o=null;try{o=JSON.parse(v||'null');}catch(e){}if(!o)return false;
@@ -7052,12 +7054,13 @@ function natPrefVal(k){
   if(k==='btn'){const b=nat.btn;return b?JSON.stringify({on:!!b.on,count:Number(b.count)||1,test:!!b.test,start:b.start!==false}):null;}
   if(k==='tmr'){const t=nat.timer;return t?JSON.stringify({min:Number(t.min)||0,renew:!!t.renew,reset:t.reset!==false}):null;}
   if(k==='chk'){const c=nat.chk;return c?JSON.stringify({sec:Number(c.sec)||30,mode:String(c.mode||'off'),miss:isNaN(Number(c.miss))?3:Number(c.miss),adj:!!c.adj}):null;}
+  if(k==='shp'){const b=nat.bub;return b&&nat.ver>=15?JSON.stringify({k:String(b.shape||'circle'),pts:shpPts()}):null;}
   return null;}
 /* 사용자가 설치 앱 옵션을 바꾼 뒤: 값을 비춰 두면 prefScan이 시각을 적고 계정에 보낸다 */
 function natPrefMark(k){if(!PCN)return;const v=natPrefVal(k);if(v!==null)lsPut('pbs-nat-'+k,v);prefScan();}
 /* 처음 한 번: 앱에 이미 있던 값을 예전 값(시각 0)으로 비춰 둔다 */
 function natPrefSeed(){if(!PCN)return;let n=0;const t=prefT();
-  ['btn','tmr','chk'].forEach(k=>{const K='pbs-nat-'+k;if(lsRaw(K)!==null)return;const v=natPrefVal(k);if(v===null)return;lsPut(K,v);if(t[K]===undefined)t[K]=0;if(prefs.snap)prefs.snap[K]=v;n++;});
+  ['btn','tmr','chk','shp'].forEach(k=>{const K='pbs-nat-'+k;if(lsRaw(K)!==null)return;const v=natPrefVal(k);if(v===null)return;lsPut(K,v);if(t[K]===undefined)t[K]=0;if(prefs.snap)prefs.snap[K]=v;n++;});
   if(n){prefTSet(t);if(syncMe())prefLoad(true);}}
 /* 계정에서 받은 설치 앱 옵션을 이 기기 앱에 보낸다. 간편 측정 중이면 끝날 때 되돌릴 값만 바꾼다 */
 async function natPrefApply(k){
@@ -7066,6 +7069,7 @@ async function natPrefApply(k){
     if(k==='btn'&&nat.ver>=4){const o={on:!!v.on,count:Number(v.count)||1,test:!!v.test};if(nat.ver>=13)o.start=v.start!==false;const r=await PCN.setButtons(o);nat.btn=r.btn||nat.btn;}
     else if(k==='tmr'&&nat.ver>=5){const run=qmRun();const o={min:Number(v.min)||0,renew:!!v.renew,reset:v.reset!==false};
       if(run&&run.prev){run.prev=o;qmRunSet(run);}else{const r=await PCN.setTimer(o);nat.timer=r.timer||nat.timer;}}
+    else if(k==='shp'&&nat.ver>=15){shp.k=null;await shpApply(String(v.k||'circle'),Array.isArray(v.pts)?v.pts:[]);}
     else if(k==='chk'&&nat.ver>=2){const r=await PCN.setCheck({sec:Number(v.sec)||30,mode:String(v.mode||'off'),miss:Number(v.miss),adj:!!v.adj});nat.chk=r.chk||nat.chk;}
   }catch(e){console.warn('natPrefApply',k,e&&e.message);}
   natUI();
@@ -7197,7 +7201,7 @@ function swCheck(p,ph){
     if(!bub.on)chg.push({id:'bub',t:'떠 있는 아이콘',now:'끔',to:'켬',def:true,run:()=>swBub(true)});
     startOff();
     if(bub.on&&!bub.perm&&!chg.length)return {st:'fix',msg:'다른 앱 위 표시 권한 필요',chg:[{id:'perm',t:'다른 앱 위 표시',now:'권한 없음',to:'권한 요청',def:true,run:()=>swBub(true)}]};
-    return {st:chg.length?'fix':'ok',msg:chg.length?'준비가 더 필요해요':'옆 아이콘 판에 ○',chg};
+    return {st:chg.length?'fix':'ok',msg:chg.length?'준비가 더 필요해요':`옆 아이콘 판에 ${shpMk()}`,chg};
   }
   if(w==='qm'){
     if(PCN){const it=qmCfg(p).items.slice(0,qmCfg(p).n);const t=it.find(x=>x.k!=='abc')||it[0];
@@ -7328,7 +7332,7 @@ const HELP={
   'set:qk':{w:'키보드 단축키로 간편 측정을 시작하고 ＋1 해요.',u:'같은 키 여러 번(연타)이나 조합키 중 고르고 \'커맨드 입력\'으로 키를 정해요.',d:'web'},
   'set:mini':{w:'작은 ＋1 창을 다른 프로그램 위에 띄워 ＋1 해요. 누르기·긋기 중 고를 수 있어요.',u:'회기 화면의 \'작은 ＋1 창 열기\'·\'휴대폰 회기 작은 창\'을 누르면 떠요.',d:'web'},
   'set:nat':{w:'앱이 뒤에 있거나 화면이 꺼져도 위젯·알림창·떠 있는 아이콘으로 기록해요.',u:'어느 학생의 어느 측정인지 먼저 고르세요. 켜면 아래 옵션이 열려요.',d:'app'},
-  'set:bub':{w:'화면 옆 작은 아이콘 판에 ○를 그리면 회기가 시작돼요.',u:'다른 앱을 쓰는 중에 회기를 시작할 때 써요. \'다른 앱 위 표시\' 권한이 필요해요.',d:'app'},
+  'set:bub':{w:'화면 옆 작은 아이콘 판에 고른 모양(기본 ○)을 그리면 회기가 시작돼요. 시작 모양은 ✓·Z·∧나 내가 그린 모양으로 바꿀 수 있어요.',u:'다른 앱을 쓰는 중에 회기를 시작할 때 써요. \'다른 앱 위 표시\' 권한이 필요해요. 내가 그린 모양은 판에 3번 그려 등록하고, 그려서 맞는지 시험해 보세요.',d:'app'},
   'set:btn3':{w:'회기 중 화면이 꺼져 있을 때 음량 버튼을 누르면 ＋1 돼요.',u:'\'회기 시작도\'를 켜면 화면이 꺼진 채로 회기도 시작해요. 누를 횟수는 1~3번.',d:'app'},
   'set:tmr':{w:'회기 시간을 정하면 그 시간이 지나 저절로 끝나요.',u:'\'끝나면 자동 갱신\'을 켜면 끝나자마자 다음 회기가 이어져요.',d:'app'},
   'set:chk':{w:'지속시간을 재는 동안 정한 간격마다 진동·소리로 아직 하는지 물어요.',u:'끝을 깜빡 놓치지 않게 해요. 응답이 없으면 정한 횟수 뒤 저절로 끝나요.',d:'app'},
@@ -7498,8 +7502,8 @@ const SET_ROWS=[
   {id:'nat',g:'앱 밖 측정',t:'앱 밖 측정',sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN,on:()=>!!nat.target||setUI.nat,
     hint:()=>nat.target?'위젯·알림창·아이콘으로 기록':'어느 측정인지 고르세요',more:()=>{const t=nat.target;const p=t&&projById(t.pid);
       return `${p?`<span><b>${esc(natTitle(p,t.ph,natMode(p,t.ph)||t.mode))}</b></span>`:'<span class="muted">아직 안 골랐어요</span>'}<button type="button" class="btn small${p?'':' primary'}" data-act="np-open">${p?'바꾸기':'측정 고르기'}</button>`;}},
-  {id:'bub',g:'앱 밖 측정',par:'nat',t:'떠 있는 아이콘',sw:['bub'],sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN&&nat.ver>=14,on:()=>!!(nat.bub&&nat.bub.on),ck:'data-set="bub"',
-    hint:()=>{const b=nat.bub||{};if(!b.on)return '옆 작은 아이콘 판에 ○';if(!b.perm)return '다른 앱 위 표시 권한 필요';return b.alive?'아이콘이 떠 있어요':'곧 아이콘이 떠요';}},
+  {id:'bub',g:'앱 밖 측정',par:'nat',t:'떠 있는 아이콘',sw:['bub'],sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN&&nat.ver>=14,on:()=>!!(nat.bub&&nat.bub.on),ck:'data-set="bub"',more:()=>shpMore(),
+    hint:()=>{const b=nat.bub||{};if(!b.on)return `옆 작은 아이콘 판에 ${shpMk()}`;if(!b.perm)return '다른 앱 위 표시 권한 필요';return b.alive?'아이콘이 떠 있어요':'곧 아이콘이 떠요';}},
   {id:'btn3',g:'앱 밖 측정',par:'nat',t:'음량 버튼으로 기록',sw:['vol','qm'],get sc(){return syncMe()?'내 계정':'설치 앱';},rel:['baseline','intervene','abc','measure'],show:()=>!!PCN&&nat.ver>=4,on:()=>!!(nat.btn&&nat.btn.on),box:'data-nat-btn',ck:'data-btn3="on"',more:()=>{
     const b=nat.btn||{};const k=Number(b.count)||1;const p=curProject();const lv=!!(p&&natMode(p,'bl')==='lvl');
     const cnt=[1,2,3].map(x=>`<option value="${x}"${x===k?' selected':''}>${x}번${x===1?'(기본)':''}</option>`).join('');
@@ -7579,10 +7583,88 @@ async function setBubOn(on){
   try{
     const r=await PCN.setBubble({on,trig:(nat.bub&&nat.bub.trig)||'tap'});nat.bub=r.bub||null;
     if(on&&r.bub&&!r.bub.perm)toast('다른 앱 위 표시를 켜고 돌아오세요');
-    else toast(on?(nat.target?'옆 아이콘 판에 ○를 그리면 회기 시작':'아래에서 어느 측정인지 고르세요'):'떠 있는 아이콘을 껐습니다');
+    else toast(on?(nat.target?`옆 아이콘 판에 ${shpMk()}를 그리면 회기 시작`:'아래에서 어느 측정인지 고르세요'):'떠 있는 아이콘을 껐습니다');
   }catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
   natUI();setTimeout(setRefresh,0);
 }
+/* ---- 떠 있는 아이콘의 회기 시작 모양(2026-11-26, 앱 ver 15): ○(기본)·✓·Z·∧·내가 그린 모양.
+   ○는 앱의 circle()로, 나머지는 본보기 획(t: [x,y,x,y..] 한 붓 여러 개)을 앱에 보내 견준다(FloatBubble.shapeOk). 새 모양은 SHP에 한 줄만 더하면 된다(새 apk 없이).
+   shpNorm·shpDist는 FloatBubble.shpNorm·shpDist와 같은 계산(같이 고칠 것). 계정에는 pbs-nat-shp={k,pts(내가 그린 본보기)} ---- */
+const SHP=[
+  {k:'circle',m:'○',n:'동그라미 ○(기본)'},
+  {k:'check',m:'✓',n:'체크 ✓',t:[[0,.55,.35,1,1,0]]},
+  {k:'z',m:'Z',n:'지그재그 Z',t:[[0,0,1,0,0,1,1,1]]},
+  {k:'peak',m:'∧',n:'산 모양 ∧',t:[[0,1,.5,0,1,1]]},
+  {k:'mine',m:'★',n:'내가 그린 모양'}];
+const SHP_N=32,SHP_TOL=0.18,SHP_MAX=3;
+const shp={k:null,busy:false};/* k: 아직 앱에 안 보낸 고른 값(내가 그린 모양을 처음 그리는 중) */
+function shpMk(){return (nat.bub&&nat.bub.mark)||'○';}
+function shpPts(){let o=null;try{o=JSON.parse(lsRaw('pbs-nat-shp')||'null');}catch(e){}return o&&Array.isArray(o.pts)?o.pts.filter(x=>typeof x==='string').slice(0,SHP_MAX):[];}
+function shpCurK(){return shp.k||(nat.bub&&nat.bub.shape)||'circle';}
+function shpNorm(p){const m=Math.floor(p.length/2);if(m<2)return null;let L=0;for(let i=1;i<m;i++)L+=Math.hypot(p[2*i]-p[2*i-2],p[2*i+1]-p[2*i-1]);if(!(L>0))return null;
+  const step=L/(SHP_N-1);let acc=0;const o=[p[0],p[1]];let px=p[0],py=p[1],i=1;
+  while(i<m&&o.length<SHP_N*2){const qx=p[2*i],qy=p[2*i+1],d=Math.hypot(qx-px,qy-py);if(d>0&&acc+d>=step){const t=(step-acc)/d,nx=px+t*(qx-px),ny=py+t*(qy-py);o.push(nx,ny);px=nx;py=ny;acc=0;}else{acc+=d;px=qx;py=qy;i++;}}
+  while(o.length<SHP_N*2)o.push(p[2*m-2],p[2*m-1]);
+  let a=Infinity,b=-Infinity,c=Infinity,e=-Infinity;for(let j=0;j<SHP_N;j++){a=Math.min(a,o[2*j]);b=Math.max(b,o[2*j]);c=Math.min(c,o[2*j+1]);e=Math.max(e,o[2*j+1]);}
+  const sc=Math.max(b-a,e-c);if(!(sc>0))return null;let cx=0,cy=0;for(let j=0;j<SHP_N;j++){o[2*j]/=sc;o[2*j+1]/=sc;cx+=o[2*j];cy+=o[2*j+1];}cx/=SHP_N;cy/=SHP_N;
+  for(let j=0;j<SHP_N;j++){o[2*j]-=cx;o[2*j+1]-=cy;}return o;}
+function shpDist(a,b){let f=0,r=0;for(let j=0;j<SHP_N;j++){f+=Math.hypot(a[2*j]-b[2*j],a[2*j+1]-b[2*j+1]);const q=SHP_N-1-j;r+=Math.hypot(a[2*j]-b[2*q],a[2*j+1]-b[2*q+1]);}return Math.min(f,r)/SHP_N;}
+/* 앱과 같은 동그라미 판단(FloatBubble.circle) */
+function shpCircle(p){const n=Math.floor(p.length/2);if(n<8)return false;const x=[],y=[];for(let i=0;i<n;i++){x.push(p[2*i]);y.push(p[2*i+1]);}
+  const minX=Math.min(...x),maxX=Math.max(...x),minY=Math.min(...y),maxY=Math.max(...y);const cx=x.reduce((a,b)=>a+b,0)/n,cy=y.reduce((a,b)=>a+b,0)/n;
+  const w=maxX-minX,h=maxY-minY;if(Math.min(w,h)<30||Math.max(w,h)>3*Math.min(w,h))return false;if(Math.hypot(x[n-1]-x[0],y[n-1]-y[0])>0.4*Math.hypot(w,h))return false;
+  let mean=0,sq=0;for(let i=0;i<n;i++){const r=Math.hypot(x[i]-cx,y[i]-cy);mean+=r;sq+=r*r;}mean/=n;const sd=Math.sqrt(Math.max(0,sq/n-mean*mean));if(mean<=0||sd/mean>0.35)return false;
+  let turn=0,prev=Math.atan2(y[0]-cy,x[0]-cx);for(let i=1;i<n;i++){const a=Math.atan2(y[i]-cy,x[i]-cx);let d=a-prev;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;turn+=d;prev=a;}
+  return Math.abs(turn)>1.6*Math.PI;}
+function shpTpl(k,pts){if(k==='mine')return (pts||[]).join(';');const s=SHP.find(x=>x.k===k);return s&&s.t?s.t.map(a=>a.join(',')).join(';'):'';}
+/* 그린 점(이어 붙인 x,y)이 고른 모양인가 */
+function shpMatch(p,k){if(k==='circle')return shpCircle(p);const tpl=shpTpl(k,shpPts());if(!tpl)return false;const a=shpNorm(p);if(!a)return false;
+  return tpl.split(';').some(one=>{const t=one.split(',').map(Number).filter(v=>!isNaN(v));const b=shpNorm(t);return !!b&&shpDist(a,b)<SHP_TOL;});}
+/* 앱에 보낸다: 본보기가 없으면 앱은 ○로 되돌린다 */
+async function shpApply(k,pts){if(!PCN||nat.ver<15)return false;const s=SHP.find(x=>x.k===k)||SHP[0];const tpl=shpTpl(s.k,pts);
+  const r=await PCN.setBubShape({shape:tpl?s.k:'circle',tpl,mark:tpl?s.m:'○'});nat.bub=r.bub||nat.bub;return true;}
+async function shpPick(k){
+  if(k==='mine'&&!shpPts().length){shp.k='mine';toast('아래 판에 모양을 그려 등록하세요');setTimeout(setRefresh,0);return;}
+  shp.k=null;
+  try{await shpApply(k,shpPts());const s=SHP.find(x=>x.k===shpCurK())||SHP[0];toast(`대기 중엔 ${s.m}를 그리면 회기 시작`);natPrefMark('shp');}
+  catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
+  natUI();setTimeout(setRefresh,0);
+}
+/* 판에 그린 것: 내가 그린 모양을 등록 중이면 본보기로 넣고(3개까지), 아니면 맞는지 시험 */
+async function shpDrawn(p,box){
+  const st=box&&box.querySelector('[data-shp-st]');const say=t=>{if(st)st.textContent=t;};
+  let L=0;for(let i=1;i<p.length/2;i++)L+=Math.hypot(p[2*i]-p[2*i-2],p[2*i+1]-p[2*i-1]);if(L<14)return;
+  const k=shpCurK(),pts=shpPts();
+  if(k==='mine'&&pts.length<SHP_MAX){const a=shpNorm(p);if(!a)return;const str=a.map(v=>Math.round(v*1000)/1000).join(',');const nx=pts.concat([str]);
+    const o={k:'mine',pts:nx};lsPut('pbs-nat-shp',JSON.stringify(o));shp.k=null;
+    try{await shpApply('mine',nx);natPrefMark('shp');}catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
+    say(nx.length<SHP_MAX?`${nx.length}/${SHP_MAX} 등록 · 한 번 더`:`${SHP_MAX}/${SHP_MAX} 등록 · 그려서 시험`);setTimeout(setRefresh,900);return;}
+  say(shpMatch(p,k)?'맞아요 · 이 모양이면 시작':'다른 모양이에요');
+}
+async function shpReset(){lsPut('pbs-nat-shp',JSON.stringify({k:'mine',pts:[]}));shp.k='mine';
+  try{await shpApply('circle',[]);natPrefMark('shp');}catch(e){}toast('다시 그려 등록하세요');natUI();setTimeout(setRefresh,0);}
+function shpMore(){
+  if(nat.ver<15)return '<span class="muted">시작 모양 고르기 · 새 앱 설치 필요</span>';
+  const k=shpCurK(),pts=shpPts(),mine=k==='mine';
+  const opt=SHP.map(x=>`<option value="${x.k}"${x.k===k?' selected':''}>${esc(x.n)}</option>`).join('');
+  const st=mine?(pts.length<SHP_MAX?`${pts.length?`${pts.length}/${SHP_MAX} 등록 · `:''}판에 그려 등록`:`${SHP_MAX}/${SHP_MAX} 등록 · 그려서 시험`):`${(SHP.find(x=>x.k===k)||SHP[0]).m} 그려서 시험`;
+  return `<label class="field"><span>시작 모양</span><select data-shp="k">${opt}</select></label>
+    <div class="shp-box" data-shp-box><canvas class="shp-pad" data-shp-pad aria-label="모양 그려 보는 판"></canvas>
+    <span class="muted" data-shp-st>${esc(st)}</span>${mine&&pts.length?'<button type="button" class="btn small" data-act="shp-reset">다시 등록</button>':''}</div>`;
+}
+/* 시험 판: 손가락·S펜으로 긋고 0.7초 쉬면 판단 */
+const shpInk={el:null,pts:[],tm:0};
+function shpPadSize(c){const r=c.getBoundingClientRect(),dpr=window.devicePixelRatio||1;const w=Math.round(r.width*dpr),h=Math.round(r.height*dpr);if(c.width!==w||c.height!==h){c.width=w;c.height=h;}return {r,dpr};}
+document.addEventListener('pointerdown',e=>{const c=e.target.closest&&e.target.closest('[data-shp-pad]');if(!c)return;e.preventDefault();
+  if(shpInk.el!==c){shpInk.el=c;shpInk.pts=[];}clearTimeout(shpInk.tm);const {r,dpr}=shpPadSize(c);const g=c.getContext('2d');
+  if(!shpInk.pts.length)g.clearRect(0,0,c.width,c.height);
+  g.lineWidth=3*dpr;g.lineCap='round';g.lineJoin='round';g.strokeStyle=getComputedStyle(c).color||'#1B6862';
+  let lx=(e.clientX-r.left)*dpr,ly=(e.clientY-r.top)*dpr;shpInk.pts.push(lx,ly);try{c.setPointerCapture(e.pointerId);}catch(x){}
+  const mv=ev=>{const x=(ev.clientX-r.left)*dpr,y=(ev.clientY-r.top)*dpr;g.beginPath();g.moveTo(lx,ly);g.lineTo(x,y);g.stroke();lx=x;ly=y;shpInk.pts.push(x,y);};
+  const up=()=>{c.removeEventListener('pointermove',mv);c.removeEventListener('pointerup',up);c.removeEventListener('pointercancel',up);
+    shpInk.tm=setTimeout(()=>{const p=shpInk.pts.map(v=>v/dpr);shpInk.pts=[];g.clearRect(0,0,c.width,c.height);shpDrawn(p,c.closest('[data-shp-box]'));},700);};
+  c.addEventListener('pointermove',mv);c.addEventListener('pointerup',up);c.addEventListener('pointercancel',up);
+},true);
 /* ---- 앱 밖 측정 고르기 창: 프로젝트(검색) → 무엇을 잴지(기초선·중재·ABC) → 측정 방법(정의에서 정한 것). 찾기 창과 같은 모양(find-box) ---- */
 const npk={on:false,step:1,pid:null,ph:null,q:''};
 const NP_PH=[['bl','기초선','baseline'],['iv','중재','intervene'],['abc','ABC 관찰','abc']];
@@ -7654,7 +7736,7 @@ async function setNatTgt(v){
 async function setBubTarget(v){
   if(!v){natUI();setTimeout(setRefresh,0);return;}
   const [pid,ph]=v.split('|');const p=projById(pid);const m=p&&natMode(p,ph);
-  try{if(!m)throw 0;const r=await PCN.setTarget(natTargetArgs(p,ph,m));nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;toast(`${natTitle(p,ph,m)} · ○로 회기 시작`);}
+  try{if(!m)throw 0;const r=await PCN.setTarget(natTargetArgs(p,ph,m));nat.key=r.active?r.key:null;nat.target=r.target&&r.target.on?r.target:null;toast(`${natTitle(p,ph,m)} · ${shpMk()}로 회기 시작`);}
   catch(e){toast('이 측정은 고를 수 없어요');}
   natUI();setTimeout(setRefresh,0);
 }
@@ -7676,6 +7758,7 @@ document.addEventListener('change',e=>{
   else if(k==='chk'){setNatChkOn(v);return;}
   else if(k==='bub'){setBubOn(v);return;}
   else if(el.matches('[data-bubtgt]')){setBubTarget(el.value);return;}
+  else if(el.matches('[data-shp]')){el.blur();shpPick(el.value);return;}
   else if(k==='nat'){if(v){setUI.nat=true;if(!nat.target)setTimeout(npOpen,0);}else{setNatOff();return;}}
   else if(el.matches('[data-nattgt]')){setNatTgt(el.value);return;}
   else if(el.matches('[data-btn3],[data-tmr],[data-chk]'))return;/* 원래 처리(natBtnSet 등)가 앱에 보낸 뒤 natUI로 다시 그린다 */
@@ -7685,6 +7768,7 @@ document.addEventListener('change',e=>{
 Object.assign(actions,{
   'set-open':()=>setOpen(),
   'hue-fold':()=>{setUI.hue=!setUI.hue;setRefresh();},
+  'shp-reset':()=>shpReset(),
   'set-open-qm':()=>{setOpen();const r=$('#set-dlg [data-row="qm"]');if(r)r.scrollIntoView({block:'center'});},'set-close':()=>setClose(),'hue-pre':el=>hueSave(Number(el.dataset.v)),'hue-reset':()=>{hueSave(null,null);toast('기본색으로 되돌렸습니다');},
   'set-ai':()=>{setClose();aiDlgOpen();},
   'set-go':el=>{setClose();go('proc',{proc:el.dataset.key});},
@@ -8132,6 +8216,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-26-2',d:'2026-11-26',k:'apk',need:15,t:'회기 시작 모양 고르기',items:['설정 → 앱 밖 측정 → 떠 있는 아이콘 → 시작 모양','○(기본)·✓·Z·∧ 중 고르기','내가 그린 모양: 판에 3번 그려 등록','판에 그려서 맞는지 시험','대기 아이콘에 고른 모양 표시']},
   {id:'2026-11-26-1',d:'2026-11-26',k:'web',t:'쓰기 편하게 정리',items:['홈: 내 프로젝트 목록을 맨 위로','회기 시작: 이 기기 방법 위·추천 표시','이름 통일: 떠 있는 아이콘·작은 ＋1 창','추천 설정은 준비하기에 합침','작은 ＋1 창은 누르면 바로 뜸','공지는 최근 10개만, 나머지 접음']},
   {id:'2026-11-25-7',d:'2026-11-25',k:'web',t:'회기 칸 작게 띄워 세기 뺌',items:['회기마다 있던 작게 띄워 세기 줄 뺌','화면 가리고 세는 방식 없앰','지난 회기는 −·＋1로 고침']},
   {id:'2026-11-25-6',d:'2026-11-25',k:'web',t:'작게 띄워 세기 켜고 끄기',items:['설정 > 칠판·PC에 켜고 끄기','꺼 두면 대기 버튼 때 켤지 물음','켜고 띄우기 → 설정도 켜짐']},

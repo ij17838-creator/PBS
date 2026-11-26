@@ -82,13 +82,16 @@ public class PbsCounterPlugin extends Plugin {
         // 10 = 칠판·PC와 함께 세기를 앱(LiveSync)이 직접(앱 화면이 꺼져 있어도)
         // 13 = 음량 버튼을 화면 켜짐에도·회기 시작에도(scr·start), 지운 대기 알림은 다시 안 뜸
         // 14 = 화면 켜짐 음량 받기 폐기, 떠 있는 아이콘이 대기 중에도 떠서 ○를 그리면 회기 시작
-        o.put("ver", 14);
+        // 15 = 대기 중 회기 시작 모양을 고름(○ 말고 ✓·Z 등, 내가 그린 모양): setBubShape, 본보기 획은 웹 화면이 보냄
+        o.put("ver", 15);
         o.put("live", LiveSync.status(c));
         JSObject bub = new JSObject();
         bub.put("on", FloatBubble.on(c));
         bub.put("perm", FloatBubble.perm(c));
         bub.put("alive", FloatBubble.alive());
         bub.put("trig", FloatBubble.trig(c));
+        bub.put("shape", FloatBubble.shape(c));
+        bub.put("mark", FloatBubble.mark(c));
         o.put("bub", bub);
         JSObject b = new JSObject();
         b.put("on", CounterStore.btnOn(c));
@@ -239,6 +242,13 @@ public class PbsCounterPlugin extends Plugin {
         } else {
             FloatBubble.set(c, on);
         }
+        call.resolve(state());
+    }
+
+    /** 대기 중 회기 시작 모양: {shape:'circle'|이름, tpl:"x,y,..;..", mark:'✓'} (circle이면 tpl 없이) */
+    @PluginMethod
+    public void setBubShape(PluginCall call) {
+        FloatBubble.setShape(getContext(), call.getString("shape", "circle"), call.getString("tpl", ""), call.getString("mark", ""));
         call.resolve(state());
     }
 
