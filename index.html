@@ -7167,7 +7167,8 @@ function setNatTimer(){return Object.assign({min:0,renew:false,reset:true},nat.t
 /* ---- 학생별 회기 시작 방법(p.startWay): 학생마다 한 가지만 정해 두고 그것이 이 기기에서 준비됐는지 보여 준다.
    '준비하기'·'추천 설정'은 누를 때만, 바뀌는 것을 먼저 보여 주고(체크로 뺄 수 있음) '이대로 바꾸기'를 눌러야 바꾼다.
    다른 방법은 지우지 않고 회기 화면에서 '세부 설정·다른 방법' 안에 접어 둔다. 직접 끈 옵션은 추천에서 체크를 빼 둔다. */
-const SW_WAYS=[['tap','화면 버튼','모든 기기'],['vol','음량 버튼','설치 앱'],['bub','떠 있는 아이콘','설치 앱'],['qm','간편 측정','설치 앱·PC'],['live','작은 ＋1 창','칠판·PC']];
+const SW_WAYS=[['tap','화면 버튼','모든 기기','앱 화면 ＋1 누르기'],['vol','음량 버튼','설치 앱','화면 꺼도 눌러 기록'],['bub','떠 있는 아이콘','설치 앱','다른 앱 위에서 시작'],['qm','간편 측정','설치 앱·PC','여러 측정 한 번에'],['live','작은 ＋1 창','칠판·PC','화면 위 작은 창']];
+/* [id, 이름, 쓰는 기기, 무엇을 하나(목록에 보임)] */
 const swUI={open:'',pick:{},more:{},busy:false,catOpen:false};
 function swWay(p){const w=p&&p.startWay;return SW_WAYS.some(x=>x[0]===w)?w:'';}
 function swName(w){return (SW_WAYS.find(x=>x[0]===w)||[])[1]||'';}
@@ -7247,9 +7248,10 @@ async function chgRun(key,list){
 function swStrip(p,ph,where){
   const w=swWay(p);const k=swCheck(p,ph);const key=where||ph;const open=swUI.open===key;
   /* 이 기기에서 되는 방법을 위에, 다른 기기용은 아래 묶음으로(고를 수는 있음) */
-  const rw=swRecWay(p);const o1=([v,n,dv])=>`<option value="${v}"${v===w?' selected':''}>${n} · ${dv}${v===rw?' · 추천':''}</option>`;
-  const here=SW_WAYS.filter(x=>swDevOk(x[0])),there=SW_WAYS.filter(x=>!swDevOk(x[0]));
-  const opts=`<optgroup label="이 기기에서">${here.map(o1).join('')}</optgroup>${there.length?`<optgroup label="${PCN?'칠판·PC에서':'휴대폰·탭 앱에서'}">${there.map(o1).join('')}</optgroup>`:''}`;
+  /* 2026-11-26 간략화: 줄마다 기기 이름을 빼고 '무엇을 하나'만. 추천은 맨 위, 다른 기기용은 아래 묶음 이름에만 기기를 적는다 */
+  const rw=swRecWay(p);const o1=([v,n,,ds])=>`<option value="${v}"${v===w?' selected':''}>${v===rw?'★ ':''}${n} · ${ds}</option>`;
+  const here=SW_WAYS.filter(x=>swDevOk(x[0])).sort((a,b)=>(b[0]===rw)-(a[0]===rw)),there=SW_WAYS.filter(x=>!swDevOk(x[0]));
+  const opts=`<optgroup label="이 기기${rw&&swDevOk(rw)?' · ★ 추천':''}">${here.map(o1).join('')}</optgroup>${there.length?`<optgroup label="다른 기기용 · ${PCN?'칠판·PC':'휴대폰·탭 앱'}">${there.map(o1).join('')}</optgroup>`:''}`;
   const st={ok:['ok','준비됨'],fix:['warn','준비 필요'],no:['warn','안 돼요'],other:['muted','이 기기 아님'],none:['muted','안 정함']}[k.st]||['muted',''];
   const ex=['ok','fix'].includes(k.st)?swExtras(p,ph):[];const need=k.st==='fix'||ex.some(c=>c.def);
   /* 칠판·PC에서 휴대폰 회기 학생을 볼 때: 이 기기에서 함께 세는 짝 버튼 */
@@ -8216,6 +8218,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-26-4',d:'2026-11-26',k:'web',t:'회기 시작 고르기 쉽게',items:['줄마다 무엇을 하는지 한마디','추천(★)은 맨 위','다른 기기용은 아래 묶음에만 기기 이름']},
   {id:'2026-11-26-3',d:'2026-11-26',k:'web',t:'기능 이름·안내 쉽게',items:['측정 시간 → 회기 길이','지속시간 끝 확인 → 행동 끝났는지 묻기','자동 갱신 → 끝나면 새 회기 이어서','에피소드 → 행동 기록','트리거 → 위젯·음량 버튼','설정 안내 문구 다듬음']},
   {id:'2026-11-26-2',d:'2026-11-26',k:'apk',need:15,t:'회기 시작 모양 고르기',items:['설정 → 앱 밖 측정 → 떠 있는 아이콘 → 회기 시작 모양','○(기본)·✓·Z·∧ 중 고르기','내가 그린 모양: 판에 3번 그려 등록','판에 그려서 맞는지 시험','대기 아이콘에 고른 모양 표시']},
   {id:'2026-11-26-1',d:'2026-11-26',k:'web',t:'쓰기 편하게 정리',items:['홈: 내 프로젝트 목록을 맨 위로','회기 시작: 이 기기 방법 위·추천 표시','이름 통일: 떠 있는 아이콘·작은 ＋1 창','추천 설정은 준비하기에 합침','작은 ＋1 창은 누르면 바로 뜸','공지는 최근 10개만, 나머지 접음']},
