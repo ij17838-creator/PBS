@@ -697,27 +697,31 @@ html.in-ink .ink-host{caret-color:transparent}
 @media (min-width:1240px){.bigdock{position:fixed;right:max(12px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:18;display:flex;flex-direction:column;gap:8px;width:108px}.bigdock .btn{width:100%;min-height:52px;padding:0 10px;box-shadow:var(--shadow)}.bigdock .btn[hidden]{display:none}}
 /* 작게 띄워 세기: 화면은 가리고 ＋1 표시만 */
 .mini-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:8px}
-.mini{position:fixed;z-index:210;display:flex;flex-direction:column;align-items:center;gap:6px;touch-action:none;user-select:none;-webkit-user-select:none;transition:left .18s ease,top .18s ease}
+.mini{position:fixed;z-index:210;display:flex;flex-direction:row;align-items:center;gap:8px;padding:8px 8px 8px 12px;border:1px solid var(--line-strong);border-radius:18px;background:var(--surface);box-shadow:0 6px 22px rgba(0,0,0,.18);touch-action:none;user-select:none;-webkit-user-select:none;transition:left .18s ease,top .18s ease}
 .mini[hidden]{display:none}
 .mini.drag{transition:none}
-.mini-mark{width:104px;height:104px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:800;font-size:30px;line-height:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(0,0,0,.25);cursor:pointer;touch-action:none}
-.mini-mark small{font-size:15px;font-weight:700;opacity:.9;color:inherit}
+.mini-info{display:flex;flex-direction:column;align-items:center;min-width:48px;cursor:grab;touch-action:none}
+.mini-info b{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis}.mini-info b.on{color:var(--accent)}
+.mini-info span{font-size:22px;font-weight:800;line-height:1.1;color:var(--ink);white-space:nowrap}
+.mini-wait{display:none;font-size:13px;font-weight:700;color:var(--muted);white-space:nowrap;cursor:grab;touch-action:none;padding-right:4px}
+.mini-wait i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:1px;animation:mini-wb 2s ease-in-out infinite}@keyframes mini-wb{50%{opacity:.25}}
+.mini-mark{width:60px;height:60px;flex:none;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:800;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.2);cursor:pointer;touch-action:none}
 .mini-mark.hit{animation:mini-hit .35s ease}
-@keyframes mini-hit{0%{transform:scale(1)}40%{transform:scale(1.15)}100%{transform:scale(1)}}
-.mini-tools{display:flex;gap:6px}
-.mini-tools .btn{min-height:44px;min-width:52px;padding:0 10px;box-shadow:var(--shadow)}
-.mini.tuck .mini-tools{display:none}
-.mini.tuck .mini-mark{width:44px;height:104px;border-radius:12px;font-size:16px}
-.mini.tuck .mini-mark .mini-plus{display:none}
-.mini-pad{display:none;flex-direction:column;width:200px;border:2px solid var(--accent);border-radius:14px;background:var(--surface);overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.2)}
-.mini-pad-bar{min-height:36px;display:flex;align-items:center;padding:0 10px;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:14px;cursor:grab;touch-action:none}
-.mini-pad canvas{display:block;width:100%;height:150px;touch-action:none;cursor:crosshair}
+@keyframes mini-hit{0%{transform:scale(1)}40%{transform:scale(1.12)}100%{transform:scale(1)}}
+.mini-tools{display:flex;flex-direction:column;gap:4px}
+.mini-tools .btn{min-height:28px;min-width:36px;padding:0 6px;font-size:13px;box-shadow:none}
+.mini.idle .mini-info,.mini.idle .mini-mark,.mini.idle .mini-pad,.mini.idle #mini-dec{display:none}
+.mini.idle .mini-wait{display:block}
+.mini.idle .mini-tools{flex-direction:row}
+.mini.tuck{padding:6px;gap:0}
+.mini.tuck>*:not(.mini-info){display:none}
+.mini.tuck .mini-info{min-width:30px}.mini.tuck .mini-info b{display:none}.mini.tuck .mini-info span{font-size:15px;writing-mode:vertical-rl;text-orientation:upright;padding:8px 0}
+.mini-pad{display:none;flex-direction:column;width:160px;border:2px solid var(--accent);border-radius:12px;background:var(--surface);overflow:hidden}
+.mini-pad-bar{min-height:26px;display:flex;align-items:center;padding:0 8px;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:12px;cursor:grab;touch-action:none}
+.mini-pad canvas{display:block;width:100%;height:64px;touch-action:none;cursor:crosshair}
 .mini-pad.ok canvas{background:var(--accent-soft)}
 .mini.draw .mini-mark{display:none}
-.mini.draw .mini-pad{display:flex}
-.mini.draw.tuck .mini-pad{width:44px}
-.mini.draw.tuck .mini-pad canvas{display:none}
-.mini.draw.tuck .mini-pad-bar{min-height:150px;padding:0;justify-content:center;writing-mode:vertical-rl}
+.mini.draw:not(.idle):not(.tuck) .mini-pad{display:flex}
 .trig-seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden}
 .trig-seg .seg-btn{min-height:36px;font-size:.86rem}
 .trig-seg .seg-btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
@@ -828,25 +832,25 @@ body.find-open{overflow:hidden}
   --glass-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 8px 28px rgba(0,0,0,.35);--glass-dim:rgba(0,0,0,.35);
   --glow1:rgba(93,182,171,.12);--glow2:rgba(181,204,94,.07);--glow3:rgba(93,182,171,.08);--pri-top:#79C7BD;--toast-bg:rgba(227,236,234,.88)}
 body{background:radial-gradient(900px 520px at 8% -6%,var(--glow1),transparent 60%),radial-gradient(760px 520px at 100% 30%,var(--glow2),transparent 62%),radial-gradient(820px 600px at 30% 110%,var(--glow3),transparent 60%),var(--bg);background-attachment:fixed}
-body::before,.topbar,.pg-nav,.bigdock .btn:not(.primary),.mini-tools .btn,.pres-btn,.find-box,.sync-box,.kw-win,.pres-pop,.kb-float,.web-upd,.live-bar,.mini-pad,.toast{-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
+body::before,.topbar,.pg-nav,.bigdock .btn:not(.primary),.mini-tools .btn,.pres-btn,.find-box,.sync-box,.kw-win,.pres-pop,.kb-float,.web-upd,.live-bar,.mini,.mini-pad,.toast{-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
 body::before{background:var(--glass)}
 .topbar{background:var(--glass);border-bottom-color:var(--glass-line);box-shadow:0 4px 18px rgba(14,124,112,.08)}
 .pg-nav{background:var(--glass);border-color:var(--glass-line);box-shadow:var(--glass-shadow)}
 .pg-nav .btn:not(.primary){background:var(--glass)}
 .bigdock .btn:not(.primary),.mini-tools .btn,.pres-btn{background:var(--glass);border-color:var(--glass-line);box-shadow:var(--glass-shadow)}
 .find,.sync-dlg{background:var(--glass-dim);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
-.find-box,.sync-box,.kw-win,.pres-pop,.kb-float,.web-upd,.live-bar{background:var(--glass-strong);border:1px solid var(--glass-line);box-shadow:var(--glass-shadow)}
+.find-box,.sync-box,.kw-win,.pres-pop,.kb-float,.web-upd,.live-bar,.mini{background:var(--glass-strong);border:1px solid var(--glass-line);box-shadow:var(--glass-shadow)}
 .find-in input{background:var(--glass-strong)}
 .mini-pad{background:var(--glass-strong)}
-.mini-mark{box-shadow:0 0 0 6px rgba(255,255,255,.45),0 10px 30px rgba(14,124,112,.35);background:linear-gradient(160deg,var(--pri-top),var(--accent))}
+.mini-mark{box-shadow:0 3px 10px rgba(14,124,112,.3);background:linear-gradient(160deg,var(--pri-top),var(--accent))}
 .btn.primary{background:linear-gradient(160deg,var(--pri-top),var(--accent));box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 4px 12px rgba(14,124,112,.25)}
 .btn.primary:hover{background:var(--accent-hover)}
 .toast{background:var(--toast-bg)}
 /* 흐림을 못 쓰는 기기·투명도 줄이기 설정: 불투명으로 */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  body::before,.topbar,.pg-nav,.bigdock .btn:not(.primary),.mini-tools .btn,.pres-btn,.find-box,.sync-box,.kw-win,.pres-pop,.kb-float,.web-upd,.live-bar,.mini-pad{background:var(--surface)}}
+  body::before,.topbar,.pg-nav,.bigdock .btn:not(.primary),.mini-tools .btn,.pres-btn,.find-box,.sync-box,.kw-win,.pres-pop,.kb-float,.web-upd,.live-bar,.mini,.mini-pad{background:var(--surface)}}
 @media (prefers-reduced-transparency: reduce){
-  body::before,.topbar,.pg-nav,.bigdock .btn:not(.primary),.mini-tools .btn,.pres-btn,.find-box,.sync-box,.kw-win,.pres-pop,.kb-float,.web-upd,.live-bar,.mini-pad{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
+  body::before,.topbar,.pg-nav,.bigdock .btn:not(.primary),.mini-tools .btn,.pres-btn,.find-box,.sync-box,.kw-win,.pres-pop,.kb-float,.web-upd,.live-bar,.mini,.mini-pad{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
 /* ---------- 배경 색 일렁임(.wave, <html>, 기본 꺼짐): 고정 층(html::after, 맨 뒤) 하나에 색 덩어리 셋을 놓고 transform만 천천히 움직인다.
    색은 앱 색을 따른다(--wave1 본색·--wave2 청록 쪽·--wave3 연두 쪽, huePal). 초당 몇 번만 움직여(steps) 유리 막대 다시 그리기를 줄인다.
    크기 --wa(배수)·속도 --wd(한 번 도는 시간)는 waveApply가 <html>에. 유리 효과를 끄거나 고대비·동작 줄이기면 멈춤 ---------- */
@@ -1126,9 +1130,11 @@ body.pg-body .gd{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 <div id="kw-ex" hidden></div>
 <div class="report" id="report" hidden></div>
 <div class="mini" id="mini" hidden>
-  <button type="button" class="mini-mark" id="mini-mark" aria-label="1 더하기"><span class="mini-plus">＋1</span><small id="mini-n">0</small></button>
-  <div class="mini-pad" id="mini-pad"><div class="mini-pad-bar" id="mini-pad-bar">≡ <span id="mini-pad-n">0회</span>&nbsp;· 그으면 ＋1</div><canvas id="mini-pad-cv" width="400" height="300" aria-label="그으면 1 더하기"></canvas></div>
-  <div class="mini-tools"><button type="button" class="btn" id="mini-dec" aria-label="1 빼기">−1</button><button type="button" class="btn" id="mini-out">펼치기</button></div>
+  <div class="mini-info" id="mini-info" title="끌어서 옮기기"><b id="mini-who">대기</b><span id="mini-n">0회</span></div>
+  <div class="mini-wait" id="mini-wait" aria-live="polite"><i></i>휴대폰 회기 대기 중</div>
+  <button type="button" class="mini-mark" id="mini-mark" aria-label="1 더하기">＋1</button>
+  <div class="mini-pad" id="mini-pad"><div class="mini-pad-bar" id="mini-pad-bar">≡ <span id="mini-pad-n">0회</span>&nbsp;· 그으면 ＋1</div><canvas id="mini-pad-cv" width="300" height="128" aria-label="그으면 1 더하기"></canvas></div>
+  <div class="mini-tools"><button type="button" class="btn" id="mini-dec" aria-label="1 빼기">−1</button><button type="button" class="btn" id="mini-out" aria-label="작은 창 닫기" title="닫기">✕</button></div>
 </div>
 <div class="live-bar" id="live-bar" role="status" hidden><span id="live-bar-t"></span><button type="button" class="btn small primary" data-act="live-inc" aria-label="1 더하기">＋1</button><button type="button" class="btn small" id="live-bar-pip" data-act="live-pip">작은 창</button></div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
@@ -6926,7 +6932,7 @@ function qmPcShow(){
 function qmArm(ph){
   const p=curProject();if(!p)return;
   const lr=liveActive();if(lr&&p.shared&&lr.pid===p.shared.projectId){liveMini(true);return;}
-  let r=qmPcCur(p);const fresh=!r||(r.tk&&r.tk!==ph);
+  let r=qmPcCur(p);const fresh=!r||(r.tk&&r.tk!==ph)||!(mini.on&&mini.qpc);/* 창이 닫혀 있으면 새 회기(0부터) */
   if(fresh){r=qmPcStart(p,ph);if(!r)return;saveNow();const y=window.scrollY;render();window.scrollTo(0,y);}
   qmPcShow();
   toast(fresh?'회기 시작 · ＋1을 누르세요':'이어서 세요');
@@ -8287,6 +8293,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-26-12',d:'2026-11-26',k:'web',t:'휴대폰 회기 ＋1 창 정리',items:['휴대폰 회기가 시작되면 가로 한 줄 작은 ＋1 창(큰 동그라미 창은 없앰)','새 회기는 늘 0부터(이전 횟수에 이어 세지 않음)','간편 측정 창을 닫으면 그 회기는 끝, 다시 열면 0부터']},
   {id:'2026-11-26-11',d:'2026-11-26',k:'web',t:'색 일렁임 크기·속도',items:['일렁이는 범위를 더 넓게','크기·속도를 4단계로 고르기','유리 효과 아래로, 유리를 끄면 같이 꺼짐']},
   {id:'2026-11-26-10',d:'2026-11-26',k:'web',t:'배경 색 일렁임',items:['배경 색이 천천히 흐르는 장식','설정 → 화면 → 색 일렁임(기본 꺼짐)','앱 색을 따라가요, 고대비면 꺼짐']},
   {id:'2026-11-26-9',d:'2026-11-26',k:'web',t:'회기 길이 기본 15분',items:['\'시작\'을 누르면 시각은 지금, 길이는 기본값','기본 15분, 설정 → 측정 → 기본 회기 길이','지난 회기 길이가 있으면 그 값']},
@@ -8488,9 +8495,19 @@ function padBind(cv,onHit){
 }
 const mini={on:false,live:false,qpc:false,ph:null,id:null,pip:null,tuck:false,x:0,y:0};/* qpc: 이 PC에서 단축키로 연 간편 측정 *//* live: 다른 기기(휴대폰) 회기를 함께 세는 창 */
 function miniSes(){const p=curProject();if(!p||!mini.id)return null;const s=sesList(p,mini.ph).find(x=>x.id===mini.id);return s?{p,s}:null;}
+/* 대기 창 상태 한 벌(화면 안 창·작은 창 같이): 상태 글·켜짐·대기 중인지 */
+function miniWho(){
+  if(mini.qpc)return {t:'● 간편 측정',on:true,idle:false,title:''};
+  if(!mini.live)return {t:'',on:false,idle:false,title:''};
+  const r=liveActive();if(!r)return {t:'대기',on:false,idle:true,title:''};
+  return {t:Date.now()-(Number(r.v.at)||0)>90000?'소식 없음':`● ${r.v.st||'진행 중'}`,on:true,idle:false,title:r.v.title||''};
+}
 function miniCount(){
   let t;if(mini.qpc){t=qmPcCount()+'회';}else if(mini.live){const n=liveCount();t=n==null?'대기':n+'회';}else{const r=miniSes();t=(r?(blNum(r.s.value)||0):0)+'회';}
-  $('#mini-n').textContent=t;$('#mini-pad-n').textContent=t;if(mini.pip){const e=mini.pip.document.getElementById('mini-n');if(e)e.textContent=t;
+  $('#mini-n').textContent=t==='대기'?'—':t;$('#mini-pad-n').textContent=t;
+  {const W=miniWho(),w=$('#mini-who'),m=$('#mini');w.textContent=W.t||'＋1';w.classList.toggle('on',W.on);m.title=W.title;
+    const was=m.classList.contains('idle');m.classList.toggle('idle',W.idle);if(was!==W.idle&&mini.on&&!m.hidden)requestAnimationFrame(miniPlace);}
+  if(mini.pip){const e=mini.pip.document.getElementById('mini-n');if(e)e.textContent=t;
     const w=mini.pip.document.getElementById('mini-who');if(w&&mini.qpc){w.textContent='● 간편 측정';w.classList.add('on');mini.pip.document.body.classList.remove('idle');w.title='';}else if(w){const r=mini.live&&liveActive();w.textContent=r?(Date.now()-(Number(r.v.at)||0)>90000?'소식 없음':`● ${r.v.st||'진행 중'}`):'대기';mini.pip.document.body.classList.toggle('idle',!r);w.title=r?(r.v.title||''):'';w.classList.toggle('on',!!r);}
     const c=mini.pip.document.getElementById('mini-cnt');if(c){const n=mini.qpc?qmPcCount():mini.live?liveCount():null;c.textContent=n==null?'—':n+'회';}}
 }
@@ -8506,14 +8523,14 @@ function miniInc(d){
 }
 function miniPlace(){
   const m=$('#mini');const w=m.offsetWidth||104,h=m.offsetHeight||160;const W=innerWidth,H=innerHeight;
-  if(mini.tuck){mini.x=mini.x+w/2<W/2?0:W-44;m.style.left=mini.x+'px';}
+  if(mini.tuck){mini.x=mini.x+w/2<W/2?0:W-w;m.style.left=mini.x+'px';}
   else{mini.x=Math.min(Math.max(8,mini.x),W-w-8);m.style.left=mini.x+'px';}
   mini.y=Math.min(Math.max(8,mini.y),H-h-8);m.style.top=mini.y+'px';
   m.classList.toggle('tuck',mini.tuck);
   try{localStorage.setItem(MINI_POS,JSON.stringify({x:mini.x,y:mini.y,t:mini.tuck}));}catch(e){}
 }
 function miniOff(){
-  if(!mini.on)return;mini.on=false;mini.qpc=false;$('#mini').hidden=true;if(mini.live){mini.live=false;setTimeout(liveBar,0);}
+  if(!mini.on)return;if(mini.qpc)qmPcSet(null);/* 간편 측정 창을 닫으면 그 회기는 끝(다시 열면 0부터) */mini.on=false;mini.qpc=false;$('#mini').hidden=true;if(mini.live){mini.live=false;setTimeout(liveBar,0);}
   if(mini.pip){const w=mini.pip;mini.pip=null;try{w.close();}catch(e){}}
   const r=miniSes();if(r&&ui.view==='proc'){const el=$('#ses-'+mini.id);if(el){pgReveal(el);el.scrollIntoView({block:'center'});}}
 }
@@ -8576,25 +8593,25 @@ async function miniShow(tryPip){
     }catch(e){mini.pip=null;}
   }
   $('#mini').hidden=false;$('#mini').classList.toggle('draw',miniTrig()==='draw');
-  try{const o=JSON.parse(localStorage.getItem(MINI_POS)||'null');if(o){mini.x=o.x;mini.y=o.y;mini.tuck=!!o.t;}else{mini.x=innerWidth-140;mini.y=innerHeight-260;mini.tuck=false;}}catch(e){mini.x=innerWidth-140;mini.y=innerHeight-260;}
+  try{const o=JSON.parse(localStorage.getItem(MINI_POS)||'null');if(o){mini.x=o.x;mini.y=o.y;mini.tuck=!!o.t;}else{mini.x=innerWidth-260;mini.y=innerHeight-180;mini.tuck=false;}}catch(e){mini.x=innerWidth-260;mini.y=innerHeight-180;}
   miniCount();miniPlace();
 }
 (function(){
-  const m=$('#mini'),mk=$('#mini-mark'),bar=$('#mini-pad-bar');if(!m)return;
+  const m=$('#mini'),mk=$('#mini-mark'),bar=$('#mini-pad-bar'),inf=$('#mini-info'),wt=$('#mini-wait');if(!m)return;
   let d=null;
   padBind($('#mini-pad-cv'),()=>miniInc(1));
   const grab=el=>{
-  el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId);}catch(x){}d={id:e.pointerId,sx:e.clientX,sy:e.clientY,x:mini.x,y:mini.y,moved:false,bar:el===bar};});
+  el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId);}catch(x){}d={id:e.pointerId,sx:e.clientX,sy:e.clientY,x:mini.x,y:mini.y,moved:false,bar:el!==mk};});
   el.addEventListener('pointermove',e=>{if(!d||e.pointerId!==d.id)return;const dx=e.clientX-d.sx,dy=e.clientY-d.sy;
     if(!d.moved&&Math.hypot(dx,dy)<10)return;
     if(!d.moved){d.moved=true;m.classList.add('drag');if(mini.tuck){mini.tuck=false;m.classList.remove('tuck');}}
     mini.x=d.x+dx;mini.y=Math.min(Math.max(8,d.y+dy),innerHeight-60);m.style.left=mini.x+'px';m.style.top=mini.y+'px';});
   const end=e=>{if(!d||e.pointerId!==d.id)return;const was=d;d=null;m.classList.remove('drag');
     if(e.type==='pointercancel')return miniPlace();
-    if(!was.moved){if(mini.tuck){mini.tuck=false;mini.x=mini.x<innerWidth/2?12:innerWidth-(was.bar?220:120);miniPlace();}else if(!was.bar)miniInc(1);return;}
+    if(!was.moved){if(mini.tuck){mini.tuck=false;m.classList.remove('tuck');mini.x=mini.x<innerWidth/2?12:innerWidth-m.offsetWidth-12;miniPlace();}else if(!was.bar)miniInc(1);return;}
     const w=m.offsetWidth;mini.tuck=mini.x<-w*0.3||mini.x+w>innerWidth+w*0.3;miniPlace();};
   el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);};
-  grab(mk);grab(bar);
+  grab(mk);grab(bar);grab(inf);grab(wt);
   mk.addEventListener('click',e=>e.preventDefault());
   mk.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();miniInc(1);}});
   $('#mini-dec').addEventListener('click',()=>miniInc(-1));
@@ -8766,6 +8783,10 @@ function liveEnded(){
 /* 화면 안 ＋1 또는 작은 창(PiP) */
 async function liveMini(gesture){
   if(acctGate()&&!acctUid())return;
+  if(mini.on&&mini.qpc){/* 이 기기 간편 측정 창이 열려 있으면 그 회기는 끝내고 휴대폰 회기 창으로 바꾼다(이전 횟수에 이어 세지 않게) */
+    qmPcSet(null);Object.assign(mini,{live:true,qpc:false,ph:null,id:null});
+    if(mini.pip)miniFill(mini.pip);
+    miniCount();liveShow();return;}
   if(mini.on&&!mini.live){if(gesture)toast('작은 ＋1 창을 먼저 닫으세요');return;}
   if(mini.on&&mini.pip){try{mini.pip.focus();}catch(e){}return;}
   if(live.opening)return;

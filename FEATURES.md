@@ -50,7 +50,7 @@
 - 학생별 회기 시작 방법(p.startWay) · SW_WAYS·swStrip·swGoStart·swSet·swPrepList·swRecWay·swExtras · 측정 화면 요약, 정의 한 줄, 첫날 안내, 앱 밖 측정, 작은 ＋1 창
 - 간편 측정(앱) · qmStart·qmFinish·qmEvent·qmCard·qmZone·QM_* · 위젯·떠 있는 아이콘·음량, ABC
 - 간편 측정(PC 단축키) · qmPcStart·qmPcInc·qkDown·QPC_KEY·QK_KEY · 작은 ＋1 창
-- 작은 ＋1 창(PC) · miniShow·miniInc·miniTrig·padBind · 간편 측정 PC, 함께 ＋1
+- 작은 ＋1 창(PC, 화면 안도 가로 한 줄) · miniShow·miniInc·miniCount·miniWho·miniTrig·padBind · 간편 측정 PC, 함께 ＋1
 - 휴대폰 회기 ↔ PC 함께 ＋1 · liveHostTick·liveWatch·liveInc·liveShow·liveArmRow·LIVE_* · 공유(~live), 작은 ＋1 창, 앱 회기
 - 앱 밖 측정(설치 앱) · natInit·natToggle·natTargetRow·natSync·natDrain·NAT_MODES·PCN · 안드로이드 PbsCounterPlugin·CounterStore, 설정 '앱 밖 측정'
 - 앱 밖 측정 고르기 창 · npOpen·npList·npDraw·NP_PH · 앱 밖 측정
