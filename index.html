@@ -5838,7 +5838,7 @@ function syncJoinCard(){
     <div class="new-form">
       <label class="field"><span>공유 ID</span><input id="sync-join-id" autocomplete="off" maxlength="80"></label>
       <label class="field"><span>공유 코드</span><input id="sync-join-code" autocomplete="off" maxlength="60"></label>
-      <button type="button" class="btn primary" data-act="sync-join">받기</button>
+      <button type="button" class="btn primary" data-act="sync-join">프로젝트 받기</button>
     </div></section>`;
 }
 function syncRefreshCards(){
@@ -6153,11 +6153,11 @@ function durEd(p,ph,s){
     const tag=[e.f.includes('a')?'<b>자동 끝 · 확인</b>':'',e.f.includes('b')?'<span>시작 당김</span>':''].filter(Boolean).join(' ');
     return `<div class="dur-ep${e.f.includes('a')?' auto':''}">
       <span class="dur-n">${i+1}</span>${t24(`data-dur="${ph}|${s.id}|${i}|a"`,e.a,true,`${i+1}번 시작`)}<span class="dur-to" aria-hidden="true">~</span>${e.b?t24(`data-dur="${ph}|${s.id}|${i}|b"`,e.b,true,`${i+1}번 끝`):'<span class="muted dur-run">진행 중</span>'}
-      <div class="dur-meta"><span class="muted">${e.b?durFmt(durLen(e)):''}</span>${tag}<button type="button" class="btn small ghost danger" data-act="dur-del" data-ph="${ph}" data-id="${s.id}" data-i="${i}" aria-label="${i+1}번 에피소드 지우기">지우기</button></div>
+      <div class="dur-meta"><span class="muted">${e.b?durFmt(durLen(e)):''}</span>${tag}<button type="button" class="btn small ghost danger" data-act="dur-del" data-ph="${ph}" data-id="${s.id}" data-i="${i}" aria-label="${i+1}번째 행동 지우기">지우기</button></div>
     </div>`;}).join('');
   const open=durOpen.has(s.id)||warn;
-  return `<details class="dur-ed${warn?' warn':''}" id="ses-${s.id}-dur" data-dur-box="${s.id}"${open?' open':''}><summary>에피소드 ${esc(sum)}${warn?' · 확인 필요':''}</summary>${rows}
-    <div class="dur-foot"><button type="button" class="btn small" data-act="dur-add" data-ph="${ph}" data-id="${s.id}">+ 에피소드</button><span class="muted">${warn?'자동 끝은 시각 확인':'고치면 값도 바뀌어요'}</span></div></details>`;
+  return `<details class="dur-ed${warn?' warn':''}" id="ses-${s.id}-dur" data-dur-box="${s.id}"${open?' open':''}><summary>행동 기록 ${esc(sum)}${warn?' · 확인 필요':''}</summary>${rows}
+    <div class="dur-foot"><button type="button" class="btn small" data-act="dur-add" data-ph="${ph}" data-id="${s.id}">+ 행동 한 번</button><span class="muted">${warn?'자동 끝은 시각 확인':'고치면 값도 바뀌어요'}</span></div></details>`;
 }
 function durApply(p,ph,s,L){
   s.durLog=durStr(L);s.value=natDurValue(p,s);
@@ -6181,13 +6181,13 @@ function durEdit(el){
 function durAdd(el){
   const p=curProject();if(!p)return;const ph=el.dataset.ph;const s=sesList(p,ph).find(x=>x.id===el.dataset.id);if(!s)return;
   const L=durParse(s.durLog);const last=L[L.length-1];
-  if(last&&!last.b){toast('진행 중인 에피소드의 끝을 먼저 적으세요');return;}
+  if(last&&!last.b){toast('진행 중인 행동의 끝을 먼저 적으세요');return;}
   const a=last?last.b:(/^\d\d:\d\d$/.test(s.time||'')?s.time+':00':natHms(Date.now()));
   L.push({a,b:durHms(durSec(a)+60),f:''});durOpen.add(s.id);durApply(p,ph,s,L);
 }
 function durDel(el){
   const p=curProject();if(!p)return;const ph=el.dataset.ph;const s=sesList(p,ph).find(x=>x.id===el.dataset.id);if(!s)return;
-  const L=durParse(s.durLog);L.splice(Number(el.dataset.i),1);durOpen.add(s.id);durApply(p,ph,s,L);toast('에피소드를 지웠습니다');
+  const L=durParse(s.durLog);L.splice(Number(el.dataset.i),1);durOpen.add(s.id);durApply(p,ph,s,L);toast('행동 기록을 지웠습니다');
 }
 /* ---------- 지연시간 · 강도 · 간격 기록: 회기 안 기록 ----------
    지연시간 latLog: durLog와 같은 꼴 '지시-반응'(시:분:초). 뒤에 '/m'(최대 대기까지 반응 없음: 반응 = 지시+최대, 값은 최대로 셈)·
@@ -6486,13 +6486,13 @@ function natChkBox(){
   const opt=(arr,v)=>arr.map(([x,l])=>`<option value="${x}"${String(x)===String(v)?' selected':''}>${l}</option>`).join('');
   const ml=(CHK_MODES.find(x=>x[0]===k.mode)||CHK_MODES[0])[1];
   const sl=(secs.find(x=>x[0]===Number(k.sec))||[0,k.sec+'초'])[1].replace('(기본)','');
-  return `<details class="nat-chk" data-nat-chk${nat.chkOpen?' open':''}><summary>끝 확인 · ${k.mode==='off'?'끔':`${esc(sl)}마다 ${esc(ml)}`}</summary>
+  return `<details class="nat-chk" data-nat-chk${nat.chkOpen?' open':''}><summary>행동 끝났는지 묻기 · ${k.mode==='off'?'끔':`${esc(sl)}마다 ${esc(ml)}`}</summary>
     <div class="nat-chk-grid">
-      <label class="field"><span>확인 간격</span><select data-chk="sec">${opt(secs,k.sec)}</select></label>
+      <label class="field"><span>묻는 간격</span><select data-chk="sec">${opt(secs,k.sec)}</select></label>
       <label class="field"><span>알림 방식</span><select data-chk="mode">${opt(CHK_MODES,k.mode)}</select></label>
       <label class="field"><span>응답 없을 때</span><select data-chk="miss">${opt(misses,k.miss)}</select></label>
     </div>
-    <div class="dur-foot"><label class="check"><input type="checkbox" data-chk="adj"${k.adj?' checked':''}> <span>늦은 시작 보정 버튼</span></label><span class="muted">끝 시각은 마지막 확인</span></div>
+    <div class="dur-foot"><label class="check"><input type="checkbox" data-chk="adj"${k.adj?' checked':''}> <span>늦게 누른 시작 고치기</span></label><span class="muted">끝 시각은 마지막 확인</span></div>
   </details>`;
 }
 /* 음량 버튼 기록: 회기가 열려 있을 때 화면이 꺼진 채 음량 버튼을 정한 횟수(1~3번, 기본 1번)만큼 누르면 방법별 기본 버튼(＋1·시작/끝·지시/반응). 값은 기기(앱)에 저장된다 */
@@ -6503,11 +6503,11 @@ function natTimerBox(){
   const opt=mins.map(x=>`<option value="${x}"${x===Number(t.min)?' selected':''}>${x?x+'분':'없음'}</option>`).join('');
   const sum=!t.min?'없음':`${t.min}분 · ${t.renew?(t.reset?'자동 새 회기':'자동 이어 세기'):'끝나면 닫기'}`;
   const end=t.end?` · ${new Date(t.end).toTimeString().slice(0,5)}까지`:'';
-  return `<details class="nat-chk" data-nat-timer${nat.timerOpen?' open':''}><summary>측정 시간 · ${esc(sum)}${end}</summary>
+  return `<details class="nat-chk" data-nat-timer${nat.timerOpen?' open':''}><summary>회기 길이 · ${esc(sum)}${end}</summary>
     <div class="dur-foot">
-      <label class="field"><span>측정 시간</span><select data-tmr="min">${opt}</select></label>
-      <label class="check"><input type="checkbox" data-tmr="renew"${t.renew?' checked':''}${t.min?'':' disabled'}> <span>끝나면 자동 갱신</span></label>
-      <label class="check"><input type="checkbox" data-tmr="reset"${t.reset?' checked':''}${t.min&&t.renew?'':' disabled'}> <span>갱신 때 횟수 0으로</span></label>
+      <label class="field"><span>회기 길이</span><select data-tmr="min">${opt}</select></label>
+      <label class="check"><input type="checkbox" data-tmr="renew"${t.renew?' checked':''}${t.min?'':' disabled'}> <span>끝나면 새 회기 이어서</span></label>
+      <label class="check"><input type="checkbox" data-tmr="reset"${t.reset?' checked':''}${t.min&&t.renew?'':' disabled'}> <span>새 회기는 0부터</span></label>
     </div>
     <div class="dur-foot muted"><span>회기 시작부터 잼</span><span>0으로=새 회기</span><span>끄면 같은 회기</span></div>
   </details>`;
@@ -6517,7 +6517,7 @@ async function natTimerSet(b){
   const g=n=>box.querySelector(`[data-tmr="${n}"]`);
   try{
     const r=await PCN.setTimer({min:Number(g('min').value),renew:!!g('renew').checked,reset:!!g('reset').checked});
-    nat.timer=r.timer||nat.timer;toast(nat.timer&&nat.timer.min?`측정 시간 ${nat.timer.min}분`:'측정 시간 없음');natPrefMark('tmr');
+    nat.timer=r.timer||nat.timer;toast(nat.timer&&nat.timer.min?`회기 길이 ${nat.timer.min}분`:'회기 길이 없음');natPrefMark('tmr');
   }catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
   if(document.activeElement)document.activeElement.blur();
   natUI();
@@ -6534,9 +6534,9 @@ function natBtnBox(m,on){
   return `<details class="nat-chk" data-nat-btn${nat.btnOpen?' open':''}><summary>음량 버튼 · ${b.on?(lv?'누른 수=강도':`${k}번=${next}`):'끔'}</summary>
     <div class="dur-foot">
       <label class="check"><input type="checkbox" data-btn3="on"${b.on?' checked':''}> <span>${v13?'음량 버튼으로 기록':'회기 중 음량 버튼'}</span></label>
-      ${lv?'':`<label class="field"><span>누를 횟수</span><select data-btn3="count"${b.on?'':' disabled'}>${cnt}</select></label>`}
-      <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}${b.on?'':' disabled'}> <span>누를 때마다 진동(시험)</span></label>
-      ${v13&&!lv?`<label class="check"><input type="checkbox" data-btn3="start"${b.start!==false?' checked':''}${b.on?'':' disabled'}> <span>회기 시작도</span></label>`:''}
+      ${lv?'':`<label class="field"><span>몇 번 눌러 기록</span><select data-btn3="count"${b.on?'':' disabled'}>${cnt}</select></label>`}
+      <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}${b.on?'':' disabled'}> <span>누르면 진동(잘 되나 확인)</span></label>
+      ${v13&&!lv?`<label class="check"><input type="checkbox" data-btn3="start"${b.start!==false?' checked':''}${b.on?'':' disabled'}> <span>음량으로 회기 시작도</span></label>`:''}
     </div>
     <div class="dur-foot muted"><span>${v13&&!lv&&b.start!==false?`회기 없으면 ${k}번=시작`:'회기는 타일·위젯으로'}</span>${lv?'<span>1·2·3번=강도 1·2·3</span><span>1.5초 뒤 기록</span>':`<span>${k}번=${next}</span><span>${k>1?`${k+1}번째 누름=취소`:'잘못 누르면 −1'}</span>`}<span>재생·통화 중엔 안 셈</span><span>화면 꺼졌을 때만</span></div>
     ${b.on&&'alive' in b?`<div class="dur-foot"><strong>${b.alive?'누름 세는 중':'회기 열면 셈'}</strong><button type="button" class="btn small" data-act="nat-btn-refresh">기록 새로 보기</button></div>
@@ -6746,7 +6746,7 @@ async function qmStart(){
   }
   const at=Date.now();
   qmRunSet({pid:p.id,at,sid:'q'+at,tk:tgt.k,main,items:items.map(x=>({k:x.k,c:x.c})),prev,co:[],base:0});
-  toast(items.length>1?`${QM_NAME[main]} 기준으로 함께 기록`:'트리거로 바로 기록');
+  toast(items.length>1?`${QM_NAME[main]} 기준으로 함께 기록`:'위젯·음량 버튼으로 바로 기록');
   const y=window.scrollY;render();window.scrollTo(0,y);
 }
 /* 끄기: 기준 ABC는 지금까지 관찰지를 채우고, 동시 진행한 회기의 관찰 시간은 실제 걸린 시간으로. 측정 시간 설정은 되돌린다 */
@@ -6773,7 +6773,7 @@ function qmOpts(p){
   const slot=(x,i)=>{
     const opts=['bl','iv','abc'].map(k=>`<option value="${k}"${k===x.k?' selected':''}>${QM_NAME[k]}${k!=='abc'&&natMode(p,k)?' · '+NAT_MODE_NAME[natMode(p,k)]:''}</option>`).join('');
     const t=qmTime(p,x.k);const tt=x.k==='abc'?`${t}분 간격`:(t?`${t}분 회기`:'관찰 시간 없음');
-    const role=cfg.n>1?(x.k===main?'<span class="qm-role main">기준 · 자동 갱신</span>':'<span class="qm-role">동시 진행</span>'):'';
+    const role=cfg.n>1?(x.k===main?'<span class="qm-role main">기준 · 끝나면 새 회기</span>':'<span class="qm-role">동시 진행</span>'):'';
     return `<div class="qm-slot" style="--qc:${x.c}">
       <div class="qm-top"><span class="qm-dot" aria-hidden="true"></span><label class="field"><span>측정 ${i+1}</span><select data-qm="k:${i}"${on?' disabled':''}>${opts}</select></label></div>
       <div class="qm-meta"><span class="mono">${esc(tt)}</span>${role}</div>
@@ -6798,7 +6798,7 @@ function qmCard(p){
     <div class="qm-head"><span class="qm-sum">${items.map(chip).join('<span class="muted">+</span>')}</span><button type="button" class="btn small" data-act="set-open-qm">옵션은 설정에서</button></div>
     <div class="qm-go">${PCN?`<button type="button" class="btn${on?'':' primary'}" data-act="${on?'qm-off':'qm-on'}"${ok||on?'':' disabled'}>${on?'간편 측정 끄기':'간편 측정 켜기'}</button>
       ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>${nat.ver>=6?`<button type="button" class="btn small${nat.bub&&nat.bub.on&&nat.bub.perm?' primary':''}" data-act="nat-bub">${nat.bub&&nat.bub.on&&nat.bub.perm?'떠 있는 아이콘 끄기':'떠 있는 아이콘'}</button>`:''}`:''}
-      <span class="muted">${on?'위젯·음량으로 기록':ok?'켜면 트리거가 이쪽으로':'새 앱 설치 필요'}</span>`:qkRow(p)}</div>
+      <span class="muted">${on?'위젯·음량으로 기록':ok?'켜면 위젯·음량이 이 측정에':'새 앱 설치 필요'}</span>`:qkRow(p)}</div>
   </section>`;
 }
 function qmSave(p,cfg){p.quick={n:cfg.n,items:cfg.items.map(x=>({k:x.k,c:x.c}))};p.updatedAt=nowISO();saveNow();const y=window.scrollY;render();window.scrollTo(0,y);setRefresh();}
@@ -7316,7 +7316,7 @@ function swExtras(p,ph){
   const L=[];if(!PCN||!p)return L;const w=swWay(p);if(!w||!swDevOk(w))return L;
   const m=natMode(p,ph);
   if(m==='dur'&&nat.ver>=2&&setNatChk().mode==='off'){const ex=swExplicit('pbs-nat-chk');
-    L.push({id:'chk',t:'지속시간 끝 확인',now:'끔',to:'30초마다 진동',def:!ex,note:ex?'직접 끈 것':'끝 깜빡 방지',run:async()=>{const k=setNatChk();const r=await PCN.setCheck({sec:Number(k.sec)||30,mode:'vib',miss:Number(k.miss),adj:!!k.adj});nat.chk=r.chk||nat.chk;natPrefMark('chk');}});}
+    L.push({id:'chk',t:'행동 끝났는지 묻기',now:'끔',to:'30초마다 진동',def:!ex,note:ex?'직접 끈 것':'끝 깜빡 방지',run:async()=>{const k=setNatChk();const r=await PCN.setCheck({sec:Number(k.sec)||30,mode:'vib',miss:Number(k.miss),adj:!!k.adj});nat.chk=r.chk||nat.chk;natPrefMark('chk');}});}
   return L;
 }
 function swPrepList(p,ph){const k=swCheck(p,ph);return ['ok','fix'].includes(k.st)?k.chg.concat(swExtras(p,ph)):k.chg;}
@@ -7328,13 +7328,13 @@ const HELP={
   'set:hue':{w:'버튼·배경 색을 고르고 밝기를 맞춰요.',u:'그래프의 기초선·중재 색과 진행 중·완료·경고 색은 그대로예요.'},
   'set:pg':{w:'절차 화면을 묶음 한 장씩 나눠 보여 줘요. 위 띠나 아래 이전·다음으로 옮겨요.',u:'한 화면에 모두 보고 싶으면 끄세요. 아래 가운데 숫자를 눌러도 바뀌어요.'},
   'set:ink':{w:'S펜으로 칸에 바로 써요. 숫자 칸은 키보드로 입력해요.',u:'\'S펜만 쓰기\'를 켜면 손바닥·손가락 터치는 무시해요. 이 기기에만 저장돼요.'},
-  'set:qm':{w:'트리거 한 번으로 여러 측정(기초선·중재·ABC)을 함께 시작하고 기록해요.',u:'한 수업에서 빈도와 ABC를 같이 잴 때 써요. 개수·종류·색은 여기서 정해요.'},
+  'set:qm':{w:'위젯·음량 버튼 한 번으로 여러 측정(기초선·중재·ABC)을 함께 시작하고 기록해요.',u:'한 수업에서 빈도와 ABC를 같이 잴 때 써요. 개수·종류·색은 여기서 정해요.'},
   'set:qk':{w:'키보드 단축키로 간편 측정을 시작하고 ＋1 해요.',u:'같은 키 여러 번(연타)이나 조합키 중 고르고 \'커맨드 입력\'으로 키를 정해요.',d:'web'},
   'set:mini':{w:'작은 ＋1 창을 다른 프로그램 위에 띄워 ＋1 해요. 누르기·긋기 중 고를 수 있어요.',u:'회기 화면의 \'작은 ＋1 창 열기\'·\'휴대폰 회기 작은 창\'을 누르면 떠요.',d:'web'},
   'set:nat':{w:'앱이 뒤에 있거나 화면이 꺼져도 위젯·알림창·떠 있는 아이콘으로 기록해요.',u:'어느 학생의 어느 측정인지 먼저 고르세요. 켜면 아래 옵션이 열려요.',d:'app'},
   'set:bub':{w:'화면 옆 작은 아이콘 판에 고른 모양(기본 ○)을 그리면 회기가 시작돼요. 시작 모양은 ✓·Z·∧나 내가 그린 모양으로 바꿀 수 있어요.',u:'다른 앱을 쓰는 중에 회기를 시작할 때 써요. \'다른 앱 위 표시\' 권한이 필요해요. 내가 그린 모양은 판에 3번 그려 등록하고, 그려서 맞는지 시험해 보세요.',d:'app'},
-  'set:btn3':{w:'회기 중 화면이 꺼져 있을 때 음량 버튼을 누르면 ＋1 돼요.',u:'\'회기 시작도\'를 켜면 화면이 꺼진 채로 회기도 시작해요. 누를 횟수는 1~3번.',d:'app'},
-  'set:tmr':{w:'회기 시간을 정하면 그 시간이 지나 저절로 끝나요.',u:'\'끝나면 자동 갱신\'을 켜면 끝나자마자 다음 회기가 이어져요.',d:'app'},
+  'set:btn3':{w:'회기 중 화면이 꺼져 있을 때 음량 버튼을 누르면 ＋1 돼요.',u:'\'음량으로 회기 시작도\'를 켜면 화면이 꺼진 채로 회기도 시작해요. 누를 횟수는 1~3번.',d:'app'},
+  'set:tmr':{w:'회기 길이를 정하면 그 시간이 지나 저절로 끝나요.',u:'\'끝나면 새 회기 이어서\'를 켜면 끝나자마자 다음 회기가 이어져요.',d:'app'},
   'set:chk':{w:'지속시간을 재는 동안 정한 간격마다 진동·소리로 아직 하는지 물어요.',u:'끝을 깜빡 놓치지 않게 해요. 응답이 없으면 정한 횟수 뒤 저절로 끝나요.',d:'app'},
   'set:sw':{w:'이 학생의 회기를 무엇으로 시작할지 한 가지만 정해요.',u:'정하면 측정·회기 화면에 준비됐는지 보여요. \'준비하기\'는 바뀔 것을 먼저 보여 줘요.'},
   'set:abcauto':{w:'ABC 관찰 시작 시간이 되면 관찰이 저절로 시작돼요.',u:'켰을 때만 작동해요. 꺼 두면 시작은 버튼으로만 해요.'},
@@ -7487,46 +7487,46 @@ const SET_ROWS=[
   {id:'glass',g:'화면',t:'유리 효과',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:()=>glassOn()&&!hcOn(),dis:()=>hcOn(),hint:()=>hcOn()?'고대비면 꺼져요':'막대·창 뒤가 흐리게 비침'},
   {id:'hc',g:'화면',t:'고대비',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:()=>hcOn(),hint:()=>'진한 글자·굵은 테두리'},
   {id:'hue',g:'화면',t:'앱 색',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:null,ctl:()=>`<button type="button" class="btn small${setUI.hue?' primary':''}" data-act="hue-fold" aria-expanded="${!!setUI.hue}">${setUI.hue?'접기':'색 고르기'}</button><button type="button" class="btn small" data-act="hue-reset"${hueGet()===null&&hueLGet()===null?' disabled':''}>기본색으로</button>`,hint:()=>hcOn()?'고대비면 기본색':syncMe()?'버튼·배경 색이 함께 바뀜':'로그인하면 계정에 저장',more:()=>setUI.hue?hueMore():''},
-  {id:'pg',g:'화면',t:'절차 한 장씩 보기',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['profile','define','qabf','rating','hypo','plan','evaluate'],on:()=>!pgAll(),hint:()=>pgAll()?'지금은 한 화면에 모두':''},
+  {id:'pg',g:'화면',t:'절차 한 장씩 보기',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['profile','define','qabf','rating','hypo','plan','evaluate'],on:()=>!pgAll(),hint:()=>pgAll()?'지금은 한 화면에 모두':'묶음마다 한 화면씩'},
   {id:'ink',g:'입력',t:'손글씨 모드',sc:'이 기기',rel:['profile','define','rating','abc','hypo','plan','evaluate'],on:()=>inkUI.mode==='ink',
     more:()=>`<label class="check"><input type="checkbox" data-set="pen"${inkUI.penSeen?' checked':''}> <span>S펜만 쓰기</span></label><span class="muted">손바닥·손가락은 무시 · 숫자 칸은 키보드</span>`},
-  {id:'qm',g:'측정',t:'간편 측정',sc:'이 학생',sw:['qm'],rel:['baseline','intervene','abc','measure'],show:()=>!!curProject(),on:null,ctl:()=>'',hint:()=>'트리거 한 번에 함께 기록',more:()=>qmOpts(curProject())},
+  {id:'qm',g:'측정',t:'간편 측정',sc:'이 학생',sw:['qm'],rel:['baseline','intervene','abc','measure'],show:()=>!!curProject(),on:null,ctl:()=>'',hint:()=>'한 번에 여러 측정 기록',more:()=>qmOpts(curProject())},
   {id:'qk',g:'측정',par:'qm',t:'간편 측정 단축키',sw:['qm'],get sc(){return syncMe()?'내 계정':'이 기기';},rel:['baseline','intervene','abc','measure'],show:()=>!PCN,on:()=>qkGet().on,ck:'data-qk="on"',more:()=>{
     const o=qkGet();const ns=[2,3,4,5].map(n=>`<option value="${n}"${n===o.n?' selected':''}>${n}번</option>`).join('');
     return `<span class="trig-seg" role="group" aria-label="단축키 방식"><button type="button" class="seg-btn" data-act="qk-mode" data-v="tap" aria-pressed="${o.mode!=='combo'}">연타</button><button type="button" class="seg-btn" data-act="qk-mode" data-v="combo" aria-pressed="${o.mode==='combo'}">조합</button></span>
       ${o.mode==='combo'?'':`<label class="field qm-key-n"><span class="sr-only">연타 횟수</span><select data-qk="n">${ns}</select></label>`}
       <button type="button" class="btn small${qk.cap?' primary':''}" data-act="qk-cap">${qk.cap?(o.mode==='combo'?'조합키를 누르세요':'키를 누르세요'):'커맨드 입력'}</button>
       <span class="mono">${esc(qkLabel(o))}</span><span class="muted">누르면 대기 창 + ＋1</span>`;}},
-  {id:'mini',g:'칠판·PC',t:'작은 ＋1 창',get sc(){return syncMe()?'내 계정':'이 기기';},show:()=>!PCN,rel:['baseline','intervene'],on:null,ctl:()=>'',hint:()=>'＋1을 누를지 그을지',more:()=>trigSeg('mini-trig',miniTrig())},
+  {id:'mini',g:'칠판·PC',t:'작은 ＋1 창',get sc(){return syncMe()?'내 계정':'이 기기';},show:()=>!PCN,rel:['baseline','intervene'],on:null,ctl:()=>'',hint:()=>'다른 화면 위 작게 세기',more:()=>trigSeg('mini-trig',miniTrig())},
   /* 앱 밖 측정(상위): 켜고 어느 측정인지 고르면 아래 하위 옵션(○ 그려·음량·측정 시간·끝 확인)이 열린다 */
   {id:'nat',g:'앱 밖 측정',t:'앱 밖 측정',sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN,on:()=>!!nat.target||setUI.nat,
     hint:()=>nat.target?'위젯·알림창·아이콘으로 기록':'어느 측정인지 고르세요',more:()=>{const t=nat.target;const p=t&&projById(t.pid);
       return `${p?`<span><b>${esc(natTitle(p,t.ph,natMode(p,t.ph)||t.mode))}</b></span>`:'<span class="muted">아직 안 골랐어요</span>'}<button type="button" class="btn small${p?'':' primary'}" data-act="np-open">${p?'바꾸기':'측정 고르기'}</button>`;}},
   {id:'bub',g:'앱 밖 측정',par:'nat',t:'떠 있는 아이콘',sw:['bub'],sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN&&nat.ver>=14,on:()=>!!(nat.bub&&nat.bub.on),ck:'data-set="bub"',more:()=>shpMore(),
-    hint:()=>{const b=nat.bub||{};if(!b.on)return `옆 작은 아이콘 판에 ${shpMk()}`;if(!b.perm)return '다른 앱 위 표시 권한 필요';return b.alive?'아이콘이 떠 있어요':'곧 아이콘이 떠요';}},
+    hint:()=>{const b=nat.bub||{};if(!b.on)return `다른 앱 위에서 ${shpMk()}로 시작`;if(!b.perm)return '다른 앱 위 표시 권한 필요';return b.alive?'아이콘이 떠 있어요':'곧 아이콘이 떠요';}},
   {id:'btn3',g:'앱 밖 측정',par:'nat',t:'음량 버튼으로 기록',sw:['vol','qm'],get sc(){return syncMe()?'내 계정':'설치 앱';},rel:['baseline','intervene','abc','measure'],show:()=>!!PCN&&nat.ver>=4,on:()=>!!(nat.btn&&nat.btn.on),box:'data-nat-btn',ck:'data-btn3="on"',more:()=>{
     const b=nat.btn||{};const k=Number(b.count)||1;const p=curProject();const lv=!!(p&&natMode(p,'bl')==='lvl');
     const cnt=[1,2,3].map(x=>`<option value="${x}"${x===k?' selected':''}>${x}번${x===1?'(기본)':''}</option>`).join('');
-    return `${lv?'<span class="muted">누른 수=강도</span>':`<label class="field"><span>누를 횟수</span><select data-btn3="count">${cnt}</select></label>`}
-      <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}> <span>누를 때마다 진동(시험)</span></label>${nat.ver>=13&&!lv?`<label class="check"><input type="checkbox" data-btn3="start"${b.start!==false?' checked':''}> <span>회기 시작도</span></label><span class="muted">화면 꺼졌을 때만</span>`:'<span class="muted">회기 중·화면 꺼졌을 때만</span>'}`;}},
-  {id:'tmr',g:'앱 밖 측정',par:'nat',t:'측정 시간 정하기',get sc(){return syncMe()?'내 계정':'설치 앱';},rel:['baseline','intervene','measure'],show:()=>!!PCN&&nat.ver>=5,on:()=>setNatTimer().min>0||setUI.tmr,box:'data-nat-timer',more:()=>{
+    return `${lv?'<span class="muted">누른 수=강도</span>':`<label class="field"><span>몇 번 눌러 기록</span><select data-btn3="count">${cnt}</select></label>`}
+      <label class="check"><input type="checkbox" data-btn3="test"${b.test?' checked':''}> <span>누르면 진동(잘 되나 확인)</span></label>${nat.ver>=13&&!lv?`<label class="check"><input type="checkbox" data-btn3="start"${b.start!==false?' checked':''}> <span>음량으로 회기 시작도</span></label><span class="muted">화면 꺼졌을 때만</span>`:'<span class="muted">회기 중·화면 꺼졌을 때만</span>'}`;}},
+  {id:'tmr',g:'앱 밖 측정',par:'nat',t:'회기 길이 정하기',get sc(){return syncMe()?'내 계정':'설치 앱';},rel:['baseline','intervene','measure'],show:()=>!!PCN&&nat.ver>=5,on:()=>setNatTimer().min>0||setUI.tmr,box:'data-nat-timer',more:()=>{
     const t=setNatTimer();const mins=[5,10,15,20,30,40,45,60];if(t.min&&!mins.includes(Number(t.min)))mins.push(Number(t.min));
-    return `<label class="field"><span>측정 시간</span><select data-tmr="min">${t.min?'':'<option value="0" selected>고르세요</option>'}${mins.map(x=>`<option value="${x}"${x===Number(t.min)?' selected':''}>${x}분</option>`).join('')}</select></label>
-      <label class="check"><input type="checkbox" data-tmr="renew"${t.renew?' checked':''}${t.min?'':' disabled'}> <span>끝나면 자동 갱신</span></label>
-      <label class="check"><input type="checkbox" data-tmr="reset"${t.reset?' checked':''}${t.min&&t.renew?'':' disabled'}> <span>갱신 때 횟수 0으로</span></label>`;}},
-  {id:'chk',g:'앱 밖 측정',par:'nat',t:'지속시간 끝 확인',get sc(){return syncMe()?'내 계정':'설치 앱';},rel:['baseline','intervene'],show:()=>!!PCN&&nat.ver>=2,on:()=>setNatChk().mode!=='off',box:'data-nat-chk',more:()=>{
+    return `<label class="field"><span>회기 길이</span><select data-tmr="min">${t.min?'':'<option value="0" selected>고르세요</option>'}${mins.map(x=>`<option value="${x}"${x===Number(t.min)?' selected':''}>${x}분</option>`).join('')}</select></label>
+      <label class="check"><input type="checkbox" data-tmr="renew"${t.renew?' checked':''}${t.min?'':' disabled'}> <span>끝나면 새 회기 이어서</span></label>
+      <label class="check"><input type="checkbox" data-tmr="reset"${t.reset?' checked':''}${t.min&&t.renew?'':' disabled'}> <span>새 회기는 0부터</span></label>`;}},
+  {id:'chk',g:'앱 밖 측정',par:'nat',t:'행동 끝났는지 묻기',get sc(){return syncMe()?'내 계정':'설치 앱';},rel:['baseline','intervene'],show:()=>!!PCN&&nat.ver>=2,on:()=>setNatChk().mode!=='off',box:'data-nat-chk',more:()=>{
     const k=setNatChk();const opt=(arr,v)=>arr.map(([x,l])=>`<option value="${x}"${String(x)===String(v)?' selected':''}>${l}</option>`).join('');
     const secs=[[15,'15초'],[30,'30초(기본)'],[60,'1분'],[120,'2분'],[300,'5분']];if(!secs.some(x=>x[0]===Number(k.sec)))secs.push([Number(k.sec),`${k.sec}초`]);
     const misses=[[0,'계속 재기'],[2,'2번 뒤 자동 끝'],[3,'3번 뒤 자동 끝(기본)'],[5,'5번 뒤 자동 끝'],[10,'10번 뒤 자동 끝']];if(!misses.some(x=>x[0]===Number(k.miss)))misses.push([Number(k.miss),`${k.miss}번 뒤 자동 끝`]);
-    return `<label class="field"><span>확인 간격</span><select data-chk="sec">${opt(secs,k.sec)}</select></label>
+    return `<label class="field"><span>묻는 간격</span><select data-chk="sec">${opt(secs,k.sec)}</select></label>
       <label class="field"><span>알림 방식</span><select data-chk="mode">${opt(CHK_MODES.filter(x=>x[0]!=='off'),k.mode)}</select></label>
       <label class="field"><span>응답 없을 때</span><select data-chk="miss">${opt(misses,k.miss)}</select></label>
-      <label class="check"><input type="checkbox" data-chk="adj"${k.adj?' checked':''}> <span>늦은 시작 보정 버튼</span></label>`;}},
+      <label class="check"><input type="checkbox" data-chk="adj"${k.adj?' checked':''}> <span>늦게 누른 시작 고치기</span></label>`;}},
   {id:'sw',g:'이 학생',t:'회기 시작 방법',sc:'이 학생',rel:['baseline','intervene','measure'],show:()=>!!curProject(),on:null,ctl:()=>'',hint:()=>'학생마다 한 가지만',more:()=>swStrip(curProject(),swPh(curProject()),'set')},
   {id:'abcauto',g:'이 학생',t:'ABC 저절로 시작',sc:'이 학생',rel:['abc','measure'],show:()=>!!curProject(),on:()=>{const p=curProject();return !!(p&&abcData(p).plan.auto);},ck:'data-plan-auto',
     hint:()=>'시작 시간이 되면 관찰 시작',more:()=>{const a=abcData(curProject()).plan;const here=ui.view==='proc'&&ui.proc==='abc';
       return `<span>${a.start?`시작 <b class="mono">${esc(a.start)}</b>${a.end?` · 끝 <b class="mono">${esc(a.end)}</b>`:''}`:'<span class="muted">시작 시간이 없어요</span>'}</span>${here?'<span class="muted">ABC 화면에서 시간 정함</span>':'<button type="button" class="btn small" data-act="set-go" data-key="abc">시간 정하러 가기</button>'}`;}},
-  {id:'ai',g:'AI',t:'AI 도우미',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['plan','intervene','evaluate'],on:null,ctl:()=>`<button type="button" class="btn small" data-act="set-ai">모델·생각 수준</button>`},
+  {id:'ai',g:'AI',t:'AI 도우미',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['plan','intervene','evaluate'],on:null,ctl:()=>`<button type="button" class="btn small" data-act="set-ai">AI 고르기·설정</button>`},
 ];
 function setRow(o,sub){
   const on=o.on?!!o.on():null;const dis=o.dis&&o.dis();const hint0=o.hint?o.hint():'';
@@ -7575,7 +7575,7 @@ function setRefresh(){
 }
 async function setNatTimerOff(){
   const t=setNatTimer();setUI.tmr=false;
-  try{const r=await PCN.setTimer({min:0,renew:!!t.renew,reset:t.reset!==false});nat.timer=r.timer||nat.timer;toast('측정 시간 없음');natPrefMark('tmr');}catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
+  try{const r=await PCN.setTimer({min:0,renew:!!t.renew,reset:t.reset!==false});nat.timer=r.timer||nat.timer;toast('회기 길이 없음');natPrefMark('tmr');}catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
   natUI();
 }
 /* 설정 '○ 그려 회기 시작': 체크가 먼저(떠 있는 아이콘 켜기), 어느 측정(앱 밖 측정 대상)은 아래에서 고른다 */
@@ -7638,7 +7638,7 @@ async function shpDrawn(p,box){
   if(k==='mine'&&pts.length<SHP_MAX){const a=shpNorm(p);if(!a)return;const str=a.map(v=>Math.round(v*1000)/1000).join(',');const nx=pts.concat([str]);
     const o={k:'mine',pts:nx};lsPut('pbs-nat-shp',JSON.stringify(o));shp.k=null;
     try{await shpApply('mine',nx);natPrefMark('shp');}catch(e){toast('새 앱을 설치해야 쓸 수 있습니다');}
-    say(nx.length<SHP_MAX?`${nx.length}/${SHP_MAX} 등록 · 한 번 더`:`${SHP_MAX}/${SHP_MAX} 등록 · 그려서 시험`);setTimeout(setRefresh,900);return;}
+    say(nx.length<SHP_MAX?`${nx.length}/${SHP_MAX} 등록 · 한 번 더`:`${SHP_MAX}/${SHP_MAX} 등록 · 여기 그려 시험`);setTimeout(setRefresh,900);return;}
   say(shpMatch(p,k)?'맞아요 · 이 모양이면 시작':'다른 모양이에요');
 }
 async function shpReset(){lsPut('pbs-nat-shp',JSON.stringify({k:'mine',pts:[]}));shp.k='mine';
@@ -7647,8 +7647,8 @@ function shpMore(){
   if(nat.ver<15)return '<span class="muted">시작 모양 고르기 · 새 앱 설치 필요</span>';
   const k=shpCurK(),pts=shpPts(),mine=k==='mine';
   const opt=SHP.map(x=>`<option value="${x.k}"${x.k===k?' selected':''}>${esc(x.n)}</option>`).join('');
-  const st=mine?(pts.length<SHP_MAX?`${pts.length?`${pts.length}/${SHP_MAX} 등록 · `:''}판에 그려 등록`:`${SHP_MAX}/${SHP_MAX} 등록 · 그려서 시험`):`${(SHP.find(x=>x.k===k)||SHP[0]).m} 그려서 시험`;
-  return `<label class="field"><span>시작 모양</span><select data-shp="k">${opt}</select></label>
+  const st=mine?(pts.length<SHP_MAX?(pts.length?`${pts.length}/${SHP_MAX} 등록 · 한 번 더`:'칸에 3번 그려 등록'):`${SHP_MAX}/${SHP_MAX} 등록 · 여기 그려 시험`):`${(SHP.find(x=>x.k===k)||SHP[0]).m} 여기 그려 시험`;
+  return `<label class="field"><span>회기 시작 모양</span><select data-shp="k">${opt}</select></label>
     <div class="shp-box" data-shp-box><canvas class="shp-pad" data-shp-pad aria-label="모양 그려 보는 판"></canvas>
     <span class="muted" data-shp-st>${esc(st)}</span>${mine&&pts.length?'<button type="button" class="btn small" data-act="shp-reset">다시 등록</button>':''}</div>`;
 }
@@ -8216,7 +8216,8 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
-  {id:'2026-11-26-2',d:'2026-11-26',k:'apk',need:15,t:'회기 시작 모양 고르기',items:['설정 → 앱 밖 측정 → 떠 있는 아이콘 → 시작 모양','○(기본)·✓·Z·∧ 중 고르기','내가 그린 모양: 판에 3번 그려 등록','판에 그려서 맞는지 시험','대기 아이콘에 고른 모양 표시']},
+  {id:'2026-11-26-3',d:'2026-11-26',k:'web',t:'기능 이름·안내 쉽게',items:['측정 시간 → 회기 길이','지속시간 끝 확인 → 행동 끝났는지 묻기','자동 갱신 → 끝나면 새 회기 이어서','에피소드 → 행동 기록','트리거 → 위젯·음량 버튼','설정 안내 문구 다듬음']},
+  {id:'2026-11-26-2',d:'2026-11-26',k:'apk',need:15,t:'회기 시작 모양 고르기',items:['설정 → 앱 밖 측정 → 떠 있는 아이콘 → 회기 시작 모양','○(기본)·✓·Z·∧ 중 고르기','내가 그린 모양: 판에 3번 그려 등록','판에 그려서 맞는지 시험','대기 아이콘에 고른 모양 표시']},
   {id:'2026-11-26-1',d:'2026-11-26',k:'web',t:'쓰기 편하게 정리',items:['홈: 내 프로젝트 목록을 맨 위로','회기 시작: 이 기기 방법 위·추천 표시','이름 통일: 떠 있는 아이콘·작은 ＋1 창','추천 설정은 준비하기에 합침','작은 ＋1 창은 누르면 바로 뜸','공지는 최근 10개만, 나머지 접음']},
   {id:'2026-11-25-7',d:'2026-11-25',k:'web',t:'회기 칸 작게 띄워 세기 뺌',items:['회기마다 있던 작게 띄워 세기 줄 뺌','화면 가리고 세는 방식 없앰','지난 회기는 −·＋1로 고침']},
   {id:'2026-11-25-6',d:'2026-11-25',k:'web',t:'작게 띄워 세기 켜고 끄기',items:['설정 > 칠판·PC에 켜고 끄기','꺼 두면 대기 버튼 때 켤지 물음','켜고 띄우기 → 설정도 켜짐']},
