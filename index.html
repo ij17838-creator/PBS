@@ -928,6 +928,10 @@ body.pk-open{overflow:hidden}
 .hp-body p{margin:0;font-size:.93rem;line-height:1.55;color:var(--ink)}
 .hp-body p b{display:inline-block;min-width:2.6em;margin-right:6px;font-size:.78rem;color:var(--accent-tx,var(--accent))}
 .hp-box.sheet .hp-body{padding:10px 18px 18px}
+.pk-sub{display:block;margin-top:2px;font-size:.8rem;font-weight:400;color:var(--muted)}
+.hp-c{border-top:1px solid var(--line);padding-top:8px}.hp-c b{display:block;margin-bottom:4px;font-size:.78rem;color:var(--accent-tx,var(--accent))}
+.hp-c ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:4px}.hp-c li{font-size:.9rem;line-height:1.5;color:var(--ink)}
+.hp-box.sheet .hp-c li{font-size:.97rem}
 .hp-box.sheet .hp-body p{font-size:1rem}
 .gd{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:19;width:min(360px,calc(100% - 32px));color:var(--ink);background:var(--glass-strong);border:1px solid var(--glass-line);border-radius:16px;box-shadow:var(--glass-shadow),0 14px 40px rgba(0,0,0,.16);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
 body.pg-body .gd{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
@@ -1903,7 +1907,8 @@ function pkPlace(){
   if(pkSheet()){b.className='pk-box sheet';b.style.cssText='';return;}
   b.className='pk-box';
   const r=el.getBoundingClientRect(),vw=window.innerWidth,vh=window.innerHeight,m=8;
-  const w=Math.min(Math.max(r.width,pk.cal?300:pk.tm?(pk.tmSec?300:240):280),420,vw-2*m);
+  const wide=!!b.querySelector('.pk-orow,.pk-sub');/* ⓘ·설명 줄이 있으면 넓게(줄바꿈 줄이기) */
+  const w=Math.min(Math.max(r.width,pk.cal?300:pk.tm?(pk.tmSec?300:240):wide?360:280),wide?440:420,vw-2*m);
   b.style.width=w+'px';b.style.left=Math.max(m,Math.min(r.left,vw-w-m))+'px';
   const below=vh-r.bottom-m-6,above=r.top-m-6;b.style.maxHeight='';
   const h=Math.min(b.scrollHeight,Math.max(below,above));
@@ -1934,7 +1939,7 @@ function pkShell(el,inner,label){
 function pkOpenSel(el){
   let i=0,h='';const opts=[];
   const row=o=>{const k=opts.length;opts.push(o);const sel=o.selected;
-    const b=`<button type="button" class="pk-o${o.value===''?' ph':''}" role="option" tabindex="-1" data-k="${k}" aria-selected="${sel}"${o.disabled?' aria-disabled="true"':''}><span>${esc(o.label||o.text)}</span>${PK_CHK}</button>`;
+    const b=`<button type="button" class="pk-o${o.value===''?' ph':''}" role="option" tabindex="-1" data-k="${k}" aria-selected="${sel}"${o.disabled?' aria-disabled="true"':''}><span>${esc(o.label||o.text)}${o.dataset&&o.dataset.sub?`<small class="pk-sub">${esc(o.dataset.sub)}</small>`:''}</span>${PK_CHK}</button>`;
     /* <option data-help="HELP 키">면 줄 오른쪽에 ⓘ(누르면 그 방법 설명, 고르지는 않음) */
     const hk=o.dataset&&o.dataset.help;return hk&&hpGet(hk)?`<div class="pk-orow">${b}${hpBtn(hk)}</div>`:b;};
   Array.from(el.children).forEach(c=>{
@@ -7252,7 +7257,7 @@ function swStrip(p,ph,where){
   const w=swWay(p);const k=swCheck(p,ph);const key=where||ph;const open=swUI.open===key;
   /* 이 기기에서 되는 방법을 위에, 다른 기기용은 아래 묶음으로(고를 수는 있음) */
   /* 2026-11-26 간략화: 줄마다 기기 이름을 빼고 '무엇을 하나'만. 추천은 맨 위, 다른 기기용은 아래 묶음 이름에만 기기를 적는다 */
-  const rw=swRecWay(p);const o1=([v,n,,ds])=>`<option value="${v}" data-help="sw:${v}"${v===w?' selected':''}>${v===rw?'★ ':''}${n} · ${ds}</option>`;
+  const rw=swRecWay(p);const o1=([v,n,,ds])=>`<option value="${v}" data-help="sw:${v}" data-sub="${esc(ds)}"${v===w?' selected':''}>${v===rw?'★ ':''}${n}</option>`;/* 설명(ds)은 고르는 창에서 이름 아래 작은 줄로 */
   const here=SW_WAYS.filter(x=>swDevOk(x[0])).sort((a,b)=>(b[0]===rw)-(a[0]===rw)),there=SW_WAYS.filter(x=>!swDevOk(x[0]));
   const opts=`<optgroup label="이 기기${rw&&swDevOk(rw)?' · ★ 추천':''}">${here.map(o1).join('')}</optgroup>${there.length?`<optgroup label="다른 기기용 · ${PCN?'칠판·PC':'휴대폰·탭 앱'}">${there.map(o1).join('')}</optgroup>`:''}`;
   const st={ok:['ok','준비됨'],fix:['warn','준비 필요'],no:['warn','안 돼요'],other:['muted','이 기기 아님'],none:['muted','안 정함']}[k.st]||['muted',''];
@@ -7342,11 +7347,11 @@ const HELP={
   'set:tmr':{w:'회기 길이를 정하면 그 시간이 지나 저절로 끝나요.',u:'\'끝나면 새 회기 이어서\'를 켜면 끝나자마자 다음 회기가 이어져요.',d:'app'},
   'set:chk':{w:'지속시간을 재는 동안 정한 간격마다 진동·소리로 아직 하는지 물어요.',u:'끝을 깜빡 놓치지 않게 해요. 응답이 없으면 정한 횟수 뒤 저절로 끝나요.',d:'app'},
   /* 회기 시작 방법 고르는 창의 줄마다 ⓘ(swStrip의 option data-help) */
-  'sw:tap':{t:'화면 버튼',w:'측정 화면의 \'＋ 회기 추가\'로 회기를 열고, 행동이 나올 때마다 회기 칸의 ＋1을 눌러요.',u:'앱이든 칠판·PC 브라우저든 어디서나 돼요. 화면을 보고 있을 수 있을 때 가장 간단해요.',c:'정의에서 측정 방법을 정해 두면 어느 기기에서나 돼요. ＋1은 회기를 연 뒤에 눌러요.'},
-  'sw:vol':{t:'음량 버튼',w:'화면이 꺼진 채로 휴대폰·탭 옆 음량 버튼을 눌러 ＋1 해요. \'음량으로 회기 시작도\'를 켜면 회기 시작도 음량 버튼으로 해요.',u:'수업하며 화면을 볼 수 없을 때 써요. 설정 → 앱 밖 측정에서 어느 측정인지 먼저 골라요.',d:'app',c:'설치 앱에서 화면이 꺼져 있을 때만 받아요. 설정 앱 밖 측정에서 이 측정을 고르고 \'음량 버튼으로 기록\'·\'음량으로 회기 시작도\'를 켜 두세요. 강도 측정은 음량으로 시작할 수 없어요.'},
-  'sw:bub':{t:'떠 있는 아이콘',w:'다른 앱 위 화면 옆에 작은 아이콘이 떠요. 아이콘을 눌러 열린 판에 고른 모양(기본 ○)을 그리면 회기가 시작되고, 그 뒤엔 판을 눌러 ＋1 해요.',u:'수업 자료 앱을 띄운 채 기록할 때 써요.',d:'app',c:'설치 앱에서 앱 밖 측정으로 이 측정을 고르고, 떠 있는 아이콘을 켜고, \'다른 앱 위 표시\' 권한을 주세요. 열린 회기가 없을 때만 그려서 시작되고 다른 모양은 무시해요.'},
-  'sw:qm':{t:'간편 측정',w:'위젯·음량 버튼을 한 번 누르면 미리 고른 여러 측정(기초선·중재·ABC)이 함께 시작되고 기록돼요.',u:'한 수업에서 빈도와 ABC처럼 두 가지를 같이 잴 때 써요. 측정 화면 아래 \'간편 측정\'에서 고르세요.',c:'설치 앱은 위젯·음량 버튼으로, 칠판·PC는 \'간편 측정 단축키\'를 켜야 해요. PC 단축키는 빈도·ABC 측정만 돼요.'},
-  'sw:live':{t:'작은 ＋1 창',w:'칠판·PC에서 다른 프로그램 위에 작은 ＋1 창을 띄워 눌러 세요. 휴대폰에서 연 회기를 같이 셀 수도 있어요.',u:'전자칠판에 수업 자료를 띄운 채 셀 때 써요. 크롬·엣지 브라우저에서 돼요.',d:'web',c:'빈도 측정이고, 가로가 넓은 화면(900px 이상)의 크롬·엣지에서 \'작은 ＋1 창 열기\'를 누르면 떠요.'},
+  'sw:tap':{t:'화면 버튼',w:'측정 화면의 \'＋ 회기 추가\'로 회기를 열고, 행동이 나올 때마다 회기 칸의 ＋1을 눌러요.',u:'앱이든 칠판·PC 브라우저든 어디서나 돼요. 화면을 보고 있을 수 있을 때 가장 간단해요.',c:['정의에서 측정 방법을 정해 두기','어느 기기에서나 됨','＋1은 회기를 연 뒤에 누르기']},
+  'sw:vol':{t:'음량 버튼',w:'화면이 꺼진 채로 휴대폰·탭 옆 음량 버튼을 눌러 ＋1 해요. \'음량으로 회기 시작도\'를 켜면 회기 시작도 음량 버튼으로 해요.',u:'수업하며 화면을 볼 수 없을 때 써요. 설정 → 앱 밖 측정에서 어느 측정인지 먼저 골라요.',d:'app',c:['설치 앱에서만, 화면이 꺼져 있을 때만','설정 → 앱 밖 측정에서 이 측정 고르기','\'음량 버튼으로 기록\'·\'음량으로 회기 시작도\' 켜기','강도 측정은 음량으로 시작 안 됨']},
+  'sw:bub':{t:'떠 있는 아이콘',w:'다른 앱 위 화면 옆에 작은 아이콘이 떠요. 아이콘을 눌러 열린 판에 고른 모양(기본 ○)을 그리면 회기가 시작되고, 그 뒤엔 판을 눌러 ＋1 해요.',u:'수업 자료 앱을 띄운 채 기록할 때 써요.',d:'app',c:['설치 앱에서만','설정 → 앱 밖 측정에서 이 측정 고르기','\'떠 있는 아이콘\' 켜고 \'다른 앱 위 표시\' 권한 주기','열린 회기가 없을 때만 그려서 시작(다른 모양은 무시)']},
+  'sw:qm':{t:'간편 측정',w:'위젯·음량 버튼을 한 번 누르면 미리 고른 여러 측정(기초선·중재·ABC)이 함께 시작되고 기록돼요.',u:'한 수업에서 빈도와 ABC처럼 두 가지를 같이 잴 때 써요. 측정 화면 아래 \'간편 측정\'에서 고르세요.',c:['설치 앱: 위젯·음량 버튼으로','칠판·PC: \'간편 측정 단축키\' 켜기','PC 단축키는 빈도·ABC 측정만']},
+  'sw:live':{t:'작은 ＋1 창',w:'칠판·PC에서 다른 프로그램 위에 작은 ＋1 창을 띄워 눌러 세요. 휴대폰에서 연 회기를 같이 셀 수도 있어요.',u:'전자칠판에 수업 자료를 띄운 채 셀 때 써요.',d:'web',c:['빈도 측정일 때만','가로가 넓은 화면(900px 이상)','크롬·엣지에서 \'작은 ＋1 창 열기\' 누르기']},
   'set:sw':{w:'이 학생의 회기를 무엇으로 시작할지 한 가지만 정해요.',u:'정하면 측정·회기 화면에 준비됐는지 보여요. \'준비하기\'는 바뀔 것을 먼저 보여 줘요.'},
   'set:abcauto':{w:'ABC 관찰 시작 시간이 되면 관찰이 저절로 시작돼요.',u:'켰을 때만 작동해요. 꺼 두면 시작은 버튼으로만 해요.'},
   'set:ai':{w:'중재 제안·흐름 읽기·보고서 문장을 AI가 도와요. 누를 때만 보내요.',u:'모델과 생각 수준을 고를 수 있어요. 결과는 참고용이고 판단은 교사가 해요.'},
@@ -7410,8 +7415,13 @@ function hpPlace(){
   const ov=$('#hp-ov');const box=ov&&ov.firstChild;const b=hp.btn;if(!box)return;
   if(pkSheet()||!b||!b.isConnected){box.className='pk-box hp-box sheet';box.style.cssText='';return;}
   box.className='pk-box hp-box';
-  const r=b.getBoundingClientRect(),vw=window.innerWidth,vh=window.innerHeight,m=8;const w=Math.min(340,vw-2*m);
-  box.style.width=w+'px';box.style.left=Math.max(m,Math.min(r.left+r.width/2-w/2,vw-w-m))+'px';
+  const r=b.getBoundingClientRect(),vw=window.innerWidth,vh=window.innerHeight,m=8;const w=Math.min(box.querySelector('.hp-c')?400:340,vw-2*m);
+  box.style.width=w+'px';
+  /* 고르는 창 안의 ⓘ: 오른쪽(없으면 왼쪽)에 자리가 있으면 목록을 가리지 않게 옆에 */
+  const pb=b.closest('.pk-box');if(pb){const q=pb.getBoundingClientRect();const rr=vw-m-q.right-8,lr=q.left-8-m;
+    const ww=rr>=300?Math.min(w,rr):lr>=300?Math.min(w,lr):0;const x=!ww?null:rr>=300?q.right+8:q.left-8-ww;
+    if(x!==null){box.style.width=ww+'px';box.style.left=x+'px';box.style.bottom='';box.style.maxHeight=(vh-2*m)+'px';box.style.top=Math.max(m,Math.min(r.top-20,vh-m-box.scrollHeight))+'px';return;}}
+  box.style.left=Math.max(m,Math.min(r.left+r.width/2-w/2,vw-w-m))+'px';
   const below=vh-r.bottom-m-6,above=r.top-m-6;const h=box.scrollHeight;
   if(below>=h||below>=above){box.style.top=(r.bottom+6)+'px';box.style.bottom='';box.style.maxHeight=below+'px';}
   else{box.style.top='';box.style.bottom=(vh-r.top+6)+'px';box.style.maxHeight=above+'px';}
@@ -7422,7 +7432,7 @@ function hpOpen(k,btn){
   const dev=h.d==='app'?'<span class="pill hp-dev">설치 앱에서만</span>':h.d==='web'?'<span class="pill hp-dev">칠판·PC에서만</span>':'';
   const ov=document.createElement('div');ov.id='hp-ov';ov.className='hp-ov';
   ov.innerHTML=`<div class="pk-box hp-box" role="dialog" aria-modal="true" aria-labelledby="hp-h"><div class="pk-head"><b id="hp-h">${esc(hpTitle(k))}</b>${dev}<button type="button" class="btn small ghost" data-hp="x">닫기</button></div>
-    <div class="hp-body"><p><b>무엇</b>${esc(h.w)}</p>${h.u?`<p><b>언제</b>${esc(h.u)}</p>`:''}${h.c?`<p><b>조건</b>${esc(h.c)}</p>`:''}</div></div>`;
+    <div class="hp-body"><p><b>무엇</b>${esc(h.w)}</p>${h.u?`<p><b>언제</b>${esc(h.u)}</p>`:''}${h.c?`<div class="hp-c"><b>조건</b><ul>${[].concat(h.c).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}</div></div>`;
   document.body.appendChild(ov);hp.on=true;hp.btn=btn||null;
   ov.addEventListener('click',e=>{if(e.target===ov||e.target.closest('[data-hp="x"]')){e.preventDefault();e.stopPropagation();hpClose();}});
   hpPlace();window.addEventListener('resize',hpPlace);
@@ -8227,6 +8237,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-26-7',d:'2026-11-26',k:'web',t:'회기 시작 목록·설명 보기 쉽게',items:['방법 이름 아래 작은 줄로 설명','고르는 창 넓혀 줄바꿈 줄임','ⓘ 설명은 목록 옆에 떠서 안 가림','조건은 항목별 점 목록']},
   {id:'2026-11-26-6',d:'2026-11-26',k:'web',t:'회기 시작 ⓘ에 조건',items:['ⓘ 설명에 \'조건\' 줄 추가','무엇을 켜고 골라야 작동하는지']},
   {id:'2026-11-26-5',d:'2026-11-26',k:'web',t:'회기 시작 방법 ⓘ 설명',items:['회기 시작 고르는 창 줄마다 ⓘ','누르면 어떻게 작동하는지·언제 쓰는지','ⓘ를 눌러도 방법은 안 바뀜']},
   {id:'2026-11-26-4',d:'2026-11-26',k:'web',t:'회기 시작 고르기 쉽게',items:['줄마다 무엇을 하는지 한마디','추천(★)은 맨 위','다른 기기용은 아래 묶음에만 기기 이름']},
