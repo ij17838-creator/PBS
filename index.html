@@ -4070,6 +4070,7 @@ const actions={
     const f=$(`#ses-${s.id}-value`);if(f)f.value=s.value;touch(p,sesProc(ph));refreshBl(p);natSync(p,ph,s);
   },
   'ses-nat':el=>natToggle(el),
+  'sw-go-start':el=>swGoStart(el.dataset.ph),
   'web-apply':()=>webApply(),
   'web-later':()=>{const b=$('#web-upd');if(b)b.hidden=true;},
   'nat-target':el=>natTargetToggle(el),
@@ -7194,7 +7195,7 @@ function swCheck(p,ph){
     chg.push({id:'tgt',t:'앱 밖 측정',now:t?natTitle(t,nat.target.ph,nat.target.mode):'안 고름',to:natTitle(p,ph,m),def:true,run:()=>swSetTarget(p,ph,m)});}};
   const bubOff=()=>{if(bub.on)chg.push({id:'bubOff',t:'떠 있는 아이콘',now:'켬',to:'끔',def:true,note:'한 가지 방법만',run:()=>swBub(false)});};
   const startOff=()=>{if(nat.ver>=13&&b.on&&b.start!==false&&m!=='lvl')chg.push({id:'startOff',t:'음량으로 회기 시작',now:'켬',to:'끔',def:true,note:'기록은 그대로',run:()=>swBtn({start:false})});};
-  if(w==='tap'){if(PCN){bubOff();startOff();}return {st:chg.length?'fix':'ok',msg:"'+ 회기 추가' 뒤 기록",chg};}
+  if(w==='tap'){if(PCN){bubOff();startOff();}return {st:chg.length?'fix':'ok',msg:"'시작'을 누르면 새 회기, ＋1로 기록",chg};}
   if(w==='vol'){
     if(!m||nat.ver<13)return {st:'no',msg:'새 앱 설치 필요',chg};
     if(m==='lvl')return {st:'no',msg:'강도는 음량 시작 안 됨',chg};
@@ -7202,7 +7203,7 @@ function swCheck(p,ph){
     if(!b.on)chg.push({id:'btn',t:'음량 버튼으로 기록',now:'끔',to:`켬 · ${Number(b.count)||1}번`,def:true,run:()=>swBtn({on:true,start:true})});
     else if(b.start===false)chg.push({id:'start',t:'음량으로 회기 시작',now:'끔',to:'켬',def:true,run:()=>swBtn({start:true})});
     bubOff();
-    return {st:chg.length?'fix':'ok',msg:chg.length?'준비가 더 필요해요':`화면 끈 채 음량 ${Number(b.count)||1}번`,chg};
+    return {st:chg.length?'fix':'ok',msg:chg.length?'준비가 더 필요해요':`'시작' 또는 화면 끈 채 음량 ${Number(b.count)||1}번`,chg};
   }
   if(w==='bub'){
     if(!m||nat.ver<14)return {st:'no',msg:'새 앱 설치 필요',chg};
@@ -7210,22 +7211,21 @@ function swCheck(p,ph){
     if(!bub.on)chg.push({id:'bub',t:'떠 있는 아이콘',now:'끔',to:'켬',def:true,run:()=>swBub(true)});
     startOff();
     if(bub.on&&!bub.perm&&!chg.length)return {st:'fix',msg:'다른 앱 위 표시 권한 필요',chg:[{id:'perm',t:'다른 앱 위 표시',now:'권한 없음',to:'권한 요청',def:true,run:()=>swBub(true)}]};
-    return {st:chg.length?'fix':'ok',msg:chg.length?'준비가 더 필요해요':`옆 아이콘 판에 ${shpMk()}`,chg};
+    return {st:chg.length?'fix':'ok',msg:chg.length?'준비가 더 필요해요':`'시작' 또는 옆 아이콘 판에 ${shpMk()}`,chg};
   }
   if(w==='qm'){
     if(PCN){const it=qmCfg(p).items.slice(0,qmCfg(p).n);const t=it.find(x=>x.k!=='abc')||it[0];
       if(!(t&&natMode(p,t.k)))return {st:'no',msg:'새 앱 설치 필요',chg};
-      const run=qmRun();return {st:'ok',msg:run&&run.pid===p.id?'간편 측정 켜져 있음':'측정에서 간편 측정 켜기',chg};}
+      const run=qmRun();return {st:'ok',msg:run&&run.pid===p.id?'간편 측정 켜져 있음':"'시작' 또는 위젯·음량",chg};}
     const o=qkGet();const hasAbc=qmCfg(p).items.slice(0,qmCfg(p).n).some(x=>x.k==='abc');
     if(d.measure!=='빈도'&&!hasAbc)return {st:'no',msg:'PC 단축키는 빈도·ABC만',chg};
     if(!o.on)chg.push({id:'qk',t:'간편 측정 단축키',now:'끔',to:`켬 · ${qkLabel(o)}`,def:true,run:()=>{qkSet(Object.assign(qkGet(),{on:true}));qkRefresh();}});
-    return {st:chg.length?'fix':'ok',msg:chg.length?'단축키를 켜야 해요':`단축키 ${qkLabel(o)}`,chg};
+    return {st:chg.length?'fix':'ok',msg:chg.length?'단축키를 켜야 해요':`'시작' 또는 단축키 ${qkLabel(o)}`,chg};
   }
   if(w==='live'){
     if(d.measure!=='빈도')return {st:'no',msg:'빈도일 때만 써요',chg};
     if(!matchMedia('(min-width:900px)').matches)return {st:'other',msg:'넓은 화면에서 써요',chg};
-    if(!p.shared)return {st:'ok',msg:"'작은 ＋1 창 열기' 누르기",chg};
-    return {st:'ok',msg:"'작은 ＋1 창 열기' 버튼",chg};
+    return {st:'ok',msg:"'시작'을 누르면 작은 ＋1 창",chg};
   }
   return {st:'none',msg:'',chg};
 }
@@ -7266,16 +7266,29 @@ function swStrip(p,ph,where){
   const pair=k.st==='other'&&!PCN&&w!=='live'&&liveReady(p)&&liveCanPip()?'<button type="button" class="btn small primary" data-act="live-pip">휴대폰 회기 작은 창</button>':'';
   /* 측정 화면: 정했으면 한 줄 요약 + 바꾸기(고르기는 회기 화면·설정) */
   if(where==='cat'&&w&&!swUI.catOpen)return `<div class="sw-strip sw-sum${k.st==='ok'?' ok':''}" data-sw-strip="cat" data-ph="${ph}">
-    <div class="sw-head"><span class="sw-t">${esc(p.code||'학생')} 회기 시작: <b>${esc(swName(w))}</b></span><span class="pill ${st[0]}">${st[1]}</span>${pair}<button type="button" class="btn small" data-act="sw-cat-open">바꾸기</button></div>
+    <div class="sw-head"><span class="sw-t">${esc(p.code||'학생')} 회기 시작: <b>${esc(swName(w))}</b></span><span class="pill ${st[0]}">${st[1]}</span>${pair}${swGoBtn(k,ph)}<button type="button" class="btn small" data-act="sw-cat-open">바꾸기</button></div>
     ${k.msg?`<p class="sw-msg">${esc(k.msg)}</p>`:''}</div>`;
   const btn=need&&!open&&k.st!=='other'?`<button type="button" class="btn small primary" data-act="sw-prep" data-key="${esc(key)}" data-ph="${ph}">준비하기</button>`
     :k.def&&where!=='set'?'<button type="button" class="btn small" data-act="open-proc" data-key="define">정의 열기</button>':'';
   return `<div class="sw-strip${k.st==='ok'?' ok':''}" data-sw-strip="${esc(key)}" data-ph="${ph}">
     <div class="sw-head"><span class="sw-t">회기 시작</span><label class="field sw-sel"><span class="sr-only">이 학생 회기 시작 방법</span><select data-sw="way">${w?'':'<option value="" selected>고르세요</option>'}${opts}</select></label>
-      <span class="pill ${st[0]}">${st[1]}</span>${btn}</div>
+      <span class="pill ${st[0]}">${st[1]}</span>${btn||swGoBtn(k,ph)}</div>
     ${k.msg?`<p class="sw-msg">${esc(k.msg)}${ph==='iv'&&w&&k.st!=='other'?' · 중재':''}</p>`:''}
     ${open&&(k.st==='fix'||ex.length)?chgBox(key,k.chg.concat(ex),'sw-go'):''}${pair&&where==='set'?`<div class="row">${pair}<span class="muted">이 기기는 함께 ＋1</span></div>`:pair?'<p class="sw-msg">이 기기는 아래 작은 창으로 함께 ＋1</p>':''}
   </div>`;
+}
+/* 회기 시작 칸 '시작'(2026-11-26): 고른 방법으로 그 자리에서 바로 시작. 준비됐을 때(ok)만 보인다.
+   화면 버튼=새 회기 열기, 음량·떠 있는 아이콘=새 회기를 열고 앱 밖(알림창·음량·아이콘) ＋1을 그 회기에 켬, 간편 측정=켜기(앱)/단축키와 같음(PC), 작은 ＋1 창=띄우기 */
+function swGoBtn(k,ph){return k&&k.st==='ok'?`<button type="button" class="btn small primary" data-act="sw-go-start" data-ph="${ph}">시작</button>`:'';}
+async function swGoStart(ph){
+  const p=curProject();if(!p)return;const w=swWay(p);
+  if(w==='live'){actions['live-arm']({dataset:{ph}});return;}
+  if(w==='qm'){if(PCN)await qmStart();else qmHot();return;}
+  const proc=sesProc(ph);if(!(ui.view==='proc'&&ui.proc===proc))go('proc',{proc});
+  actions['ses-add']({dataset:{ph}});
+  if((w==='vol'||w==='bub')&&PCN){const s=sesList(p,ph).slice(-1)[0];if(s)await natToggle({dataset:{ph,id:s.id}});
+    toast(w==='vol'?'회기 시작 · 화면 끄고 음량으로 ＋1':'회기 시작 · 옆 아이콘으로 ＋1');}
+  else toast('새 회기 · ＋1을 누르세요');
 }
 function swRefresh(){
   const p=curProject();if(!p)return;
@@ -7347,11 +7360,11 @@ const HELP={
   'set:tmr':{w:'회기 길이를 정하면 그 시간이 지나 저절로 끝나요.',u:'\'끝나면 새 회기 이어서\'를 켜면 끝나자마자 다음 회기가 이어져요.',d:'app'},
   'set:chk':{w:'지속시간을 재는 동안 정한 간격마다 진동·소리로 아직 하는지 물어요.',u:'끝을 깜빡 놓치지 않게 해요. 응답이 없으면 정한 횟수 뒤 저절로 끝나요.',d:'app'},
   /* 회기 시작 방법 고르는 창의 줄마다 ⓘ(swStrip의 option data-help) */
-  'sw:tap':{t:'화면 버튼',w:'측정 화면의 \'＋ 회기 추가\'로 회기를 열고, 행동이 나올 때마다 회기 칸의 ＋1을 눌러요.',u:'앱이든 칠판·PC 브라우저든 어디서나 돼요. 화면을 보고 있을 수 있을 때 가장 간단해요.',c:['정의에서 측정 방법을 정해 두기','어느 기기에서나 됨','＋1은 회기를 연 뒤에 누르기']},
-  'sw:vol':{t:'음량 버튼',w:'화면이 꺼진 채로 휴대폰·탭 옆 음량 버튼을 눌러 ＋1 해요. \'음량으로 회기 시작도\'를 켜면 회기 시작도 음량 버튼으로 해요.',u:'수업하며 화면을 볼 수 없을 때 써요. 설정 → 앱 밖 측정에서 어느 측정인지 먼저 골라요.',d:'app',c:['설치 앱에서만, 화면이 꺼져 있을 때만','설정 → 앱 밖 측정에서 이 측정 고르기','\'음량 버튼으로 기록\'·\'음량으로 회기 시작도\' 켜기','강도 측정은 음량으로 시작 안 됨']},
-  'sw:bub':{t:'떠 있는 아이콘',w:'다른 앱 위 화면 옆에 작은 아이콘이 떠요. 아이콘을 눌러 열린 판에 고른 모양(기본 ○)을 그리면 회기가 시작되고, 그 뒤엔 판을 눌러 ＋1 해요.',u:'수업 자료 앱을 띄운 채 기록할 때 써요.',d:'app',c:['설치 앱에서만','설정 → 앱 밖 측정에서 이 측정 고르기','\'떠 있는 아이콘\' 켜고 \'다른 앱 위 표시\' 권한 주기','열린 회기가 없을 때만 그려서 시작(다른 모양은 무시)']},
-  'sw:qm':{t:'간편 측정',w:'위젯·음량 버튼을 한 번 누르면 미리 고른 여러 측정(기초선·중재·ABC)이 함께 시작되고 기록돼요.',u:'한 수업에서 빈도와 ABC처럼 두 가지를 같이 잴 때 써요. 측정 화면 아래 \'간편 측정\'에서 고르세요.',c:['설치 앱: 위젯·음량 버튼으로','칠판·PC: \'간편 측정 단축키\' 켜기','PC 단축키는 빈도·ABC 측정만']},
-  'sw:live':{t:'작은 ＋1 창',w:'칠판·PC에서 다른 프로그램 위에 작은 ＋1 창을 띄워 눌러 세요. 휴대폰에서 연 회기를 같이 셀 수도 있어요.',u:'전자칠판에 수업 자료를 띄운 채 셀 때 써요.',d:'web',c:['빈도 측정일 때만','가로가 넓은 화면(900px 이상)','크롬·엣지에서 \'작은 ＋1 창 열기\' 누르기']},
+  'sw:tap':{t:'화면 버튼',w:'측정 화면의 \'＋ 회기 추가\'로 회기를 열고, 행동이 나올 때마다 회기 칸의 ＋1을 눌러요.',u:'앱이든 칠판·PC 브라우저든 어디서나 돼요. 화면을 보고 있을 수 있을 때 가장 간단해요.',c:['정의에서 측정 방법을 정해 두기','\'시작\'을 누르면 새 회기가 열리고 ＋1로 기록','어느 기기에서나 됨']},
+  'sw:vol':{t:'음량 버튼',w:'화면이 꺼진 채로 휴대폰·탭 옆 음량 버튼을 눌러 ＋1 해요. \'음량으로 회기 시작도\'를 켜면 회기 시작도 음량 버튼으로 해요.',u:'수업하며 화면을 볼 수 없을 때 써요. 설정 → 앱 밖 측정에서 어느 측정인지 먼저 골라요.',d:'app',c:['설치 앱에서만','설정 → 앱 밖 측정에서 이 측정 고르기, \'음량 버튼으로 기록\' 켜기','\'시작\'을 누르거나, 화면 끈 채 음량 버튼으로 시작(\'음량으로 회기 시작도\' 켬)','＋1은 화면이 꺼져 있을 때만 받음','강도 측정은 음량 방법을 쓸 수 없음']},
+  'sw:bub':{t:'떠 있는 아이콘',w:'다른 앱 위 화면 옆에 작은 아이콘이 떠요. 아이콘을 눌러 열린 판에 고른 모양(기본 ○)을 그리면 회기가 시작되고, 그 뒤엔 판을 눌러 ＋1 해요.',u:'수업 자료 앱을 띄운 채 기록할 때 써요.',d:'app',c:['설치 앱에서만','설정 → 앱 밖 측정에서 이 측정 고르기','\'떠 있는 아이콘\' 켜고 \'다른 앱 위 표시\' 권한 주기','\'시작\'을 누르거나, 열린 회기가 없을 때 아이콘 판에 고른 모양 그리기','그 뒤엔 아이콘 판을 눌러 ＋1']},
+  'sw:qm':{t:'간편 측정',w:'위젯·음량 버튼을 한 번 누르면 미리 고른 여러 측정(기초선·중재·ABC)이 함께 시작되고 기록돼요.',u:'한 수업에서 빈도와 ABC처럼 두 가지를 같이 잴 때 써요. 측정 화면 아래 \'간편 측정\'에서 고르세요.',c:['\'시작\'을 누르면 바로 켜짐','설치 앱: 위젯·음량 버튼으로도','칠판·PC: \'간편 측정 단축키\' 켜기(빈도·ABC만)']},
+  'sw:live':{t:'작은 ＋1 창',w:'칠판·PC에서 다른 프로그램 위에 작은 ＋1 창을 띄워 눌러 세요. 휴대폰에서 연 회기를 같이 셀 수도 있어요.',u:'전자칠판에 수업 자료를 띄운 채 셀 때 써요.',d:'web',c:['빈도 측정일 때만','가로가 넓은 화면(900px 이상)의 크롬·엣지','\'시작\'을 누르면 작은 ＋1 창이 뜨고 회기 시작']},
   'set:sw':{w:'이 학생의 회기를 무엇으로 시작할지 한 가지만 정해요.',u:'정하면 측정·회기 화면에 준비됐는지 보여요. \'준비하기\'는 바뀔 것을 먼저 보여 줘요.'},
   'set:abcauto':{w:'ABC 관찰 시작 시간이 되면 관찰이 저절로 시작돼요.',u:'켰을 때만 작동해요. 꺼 두면 시작은 버튼으로만 해요.'},
   'set:ai':{w:'중재 제안·흐름 읽기·보고서 문장을 AI가 도와요. 누를 때만 보내요.',u:'모델과 생각 수준을 고를 수 있어요. 결과는 참고용이고 판단은 교사가 해요.'},
@@ -8237,6 +8250,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-26-8',d:'2026-11-26',k:'web',t:'회기 시작 칸에 \'시작\' 버튼',items:['준비됨이면 옆에 \'시작\'','누르면 고른 방법으로 바로 시작','ⓘ 조건도 맞춰 고침']},
   {id:'2026-11-26-7',d:'2026-11-26',k:'web',t:'회기 시작 목록·설명 보기 쉽게',items:['방법 이름 아래 작은 줄로 설명','고르는 창 넓혀 줄바꿈 줄임','ⓘ 설명은 목록 옆에 떠서 안 가림','조건은 항목별 점 목록']},
   {id:'2026-11-26-6',d:'2026-11-26',k:'web',t:'회기 시작 ⓘ에 조건',items:['ⓘ 설명에 \'조건\' 줄 추가','무엇을 켜고 골라야 작동하는지']},
   {id:'2026-11-26-5',d:'2026-11-26',k:'web',t:'회기 시작 방법 ⓘ 설명',items:['회기 시작 고르는 창 줄마다 ⓘ','누르면 어떻게 작동하는지·언제 쓰는지','ⓘ를 눌러도 방법은 안 바뀜']},

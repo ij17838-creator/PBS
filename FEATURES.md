@@ -46,7 +46,7 @@
 - 녹음·받아쓰기 · startRecording·stopRecording·attachAudio·toggleDictation · ABC, 파일(기기에만)
 
 ## 회기 측정 보조
-- 학생별 회기 시작 방법(p.startWay) · SW_WAYS·swStrip·swSet·swPrepList·swRecWay·swExtras · 측정 화면 요약, 정의 한 줄, 첫날 안내, 앱 밖 측정, 작은 ＋1 창
+- 학생별 회기 시작 방법(p.startWay) · SW_WAYS·swStrip·swGoStart·swSet·swPrepList·swRecWay·swExtras · 측정 화면 요약, 정의 한 줄, 첫날 안내, 앱 밖 측정, 작은 ＋1 창
 - 간편 측정(앱) · qmStart·qmFinish·qmEvent·qmCard·qmZone·QM_* · 위젯·떠 있는 아이콘·음량, ABC
 - 간편 측정(PC 단축키) · qmPcStart·qmPcInc·qkDown·QPC_KEY·QK_KEY · 작은 ＋1 창
 - 작은 ＋1 창(PC) · miniShow·miniInc·miniTrig·padBind · 간편 측정 PC, 함께 ＋1
