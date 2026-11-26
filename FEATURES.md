@@ -53,6 +53,7 @@
 - 휴대폰 회기 ↔ PC 함께 ＋1 · liveHostTick·liveWatch·liveInc·liveShow·liveArmRow·LIVE_* · 공유(~live), 작은 ＋1 창, 앱 회기
 - 앱 밖 측정(설치 앱) · natInit·natToggle·natTargetRow·natSync·natDrain·NAT_MODES·PCN · 안드로이드 PbsCounterPlugin·CounterStore, 설정 '앱 밖 측정'
 - 앱 밖 측정 고르기 창 · npOpen·npList·npDraw·NP_PH · 앱 밖 측정
+- 기본 회기 길이 · SES_MIN_KEY·sesMinDef·blNew·SET_ROWS smin · 회기 기록, '시작' 버튼
 - 회기 시작 모양(떠 있는 아이콘) · SHP·shpMore·shpPick·shpDrawn·shpMatch·shpNorm·shpApply·pbs-nat-shp · 설정 '떠 있는 아이콘', 안드로이드 FloatBubble.shapeOk·setShape, PbsCounterPlugin.setBubShape
 - 화면 자동 업데이트(설치 앱) · webCheck·webApply·webInit · 안드로이드 WebUpdater
 

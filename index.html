@@ -3117,8 +3117,11 @@ function hypoSentence(p,h){
    입력칸 data-f: 기초선 칸 'base:칸', 회기 'ses:bl|iv:id:칸'. 측정 방법·단위는 표적행동 정의에서 가져온다. */
 const BL_MIN=3,BL_GOOD=5,BL_BAND=0.25;/* 최소·권장 회기 수, 안정 범위(중앙값 ±25%) */
 const BL_DIRS=['줄이기','늘리기'];
-function blNew(prev){return {id:uid('bs'),date:ymdLocal(),time:'',mins:prev?prev.mins:'',setting:prev?prev.setting:'',value:'',observer:prev?prev.observer:'',note:''};}
-function blFix(s){const d=blNew();for(const k in d)if(k!=='id'&&s[k]==null)s[k]=d[k];return s;}
+/* 기본 회기 길이(분, 2026-11-26): 관찰 시간을 따로 안 정했으면 새 회기에 이 값. 설정 '기본 회기 길이'(pbs-ses-min, 계정 저장), 기본 15 */
+const SES_MIN_KEY='pbs-ses-min',SES_MIN_DEF=15,SES_MINS=[5,10,15,20,30,40,45,60];
+function sesMinDef(){let v=NaN;try{v=Number(localStorage.getItem(SES_MIN_KEY));}catch(e){}return v>0&&v<=600?v:SES_MIN_DEF;}
+function blNew(prev){return {id:uid('bs'),date:ymdLocal(),time:'',mins:prev&&String(prev.mins||'').trim()?prev.mins:String(sesMinDef()),setting:prev?prev.setting:'',value:'',observer:prev?prev.observer:'',note:''};}
+function blFix(s){const d=blNew();d.mins='';/* 예전 자료에 기본 길이를 채우지 않음 */for(const k in d)if(k!=='id'&&s[k]==null)s[k]=d[k];return s;}
 function sesList(p,ph){return ph==='iv'?p.procs.intervene.data.sessions:p.procs.baseline.data.sessions;}
 function sesProc(ph){return ph==='iv'?'intervene':'baseline';}
 function blNum(v){const s=String(v==null?'':v).trim().replace(',','.');if(!s)return null;const n=Number(s);return isFinite(n)?n:null;}
@@ -6853,7 +6856,7 @@ function qmPcStart(p,ph){
   let sesId=null;
   if(tk){
     const list=sesList(p,tk);const prev=blSorted(list).slice(-1)[0]||(tk==='iv'?blSorted(p.procs.baseline.data.sessions).slice(-1)[0]:null);
-    const s=blNew(prev);s.id='bpc'+at;s.date=ymdLocal();s.time=natHms(at).slice(0,5);s.value='0';
+    const s=blNew(prev);s.id='bpc'+at;s.date=ymdLocal();s.time=natHms(at).slice(0,5);s.value='0';/* mins는 blNew가 지난 회기 또는 기본 회기 길이로 */
     if(main!==tk){const m=items.find(x=>x.k===tk);s.qco={w:QM_NAME[main],c:m?m.c:QM_COLORS[0]};}
     list.push(s);sesId=s.id;touch(p,sesProc(tk));
   }
@@ -7054,7 +7057,7 @@ function hueAcctApply(d,me,ad){
    설치 앱 옵션(음량 버튼·측정 시간·끝 확인)은 pbs-nat-* 에 그 값을 비춰 두고(natPrefMark) 받으면 앱에 보낸다(natPrefApply). 간편 측정이 잠깐 바꾼 측정 시간은 안 보낸다.
    기기에 남기는 것: 손글씨 모드·S펜 전용(기기마다 펜이 다름), 창 위치, 공지 본 것.
    앱 색(pbs-hue)은 따로 prefs/look(hueAcctLoad). 로그아웃해도 이 기기 값은 그대로 둔다. */
-const PREF_KEYS=['pbs-glass','pbs-contrast','pbs-pg-all','pbs-mini-trig','pbs-quick-key','pbs-ai','pbs-nat-btn','pbs-nat-tmr','pbs-nat-chk','pbs-nat-shp','pbs-guide'];
+const PREF_KEYS=['pbs-glass','pbs-contrast','pbs-pg-all','pbs-mini-trig','pbs-quick-key','pbs-ai','pbs-nat-btn','pbs-nat-tmr','pbs-nat-chk','pbs-nat-shp','pbs-ses-min','pbs-guide'];
 /* 자동 기능이 꺼진 값인가: 예전 값(시각 0)끼리 다르면 꺼진 쪽을 남긴다 */
 function prefIsOff(k,v){if(k==='pbs-cover-auto'||k==='pbs-live-auto')return v==='0';
   let o=null;try{o=JSON.parse(v||'null');}catch(e){}if(!o)return false;
@@ -7286,6 +7289,8 @@ async function swGoStart(ph){
   if(w==='qm'){if(PCN)await qmStart();else qmHot();return;}
   const proc=sesProc(ph);if(!(ui.view==='proc'&&ui.proc===proc))go('proc',{proc});
   actions['ses-add']({dataset:{ph}});
+  {const s=sesList(p,ph).slice(-1)[0];if(s&&!s.time){s.time=natHms(Date.now()).slice(0,5);touch(p,proc);saveNow();const y=window.scrollY;render();window.scrollTo(0,y);
+    const f=$(`#ses-${s.id}-value`);if(f){try{f.focus({preventScroll:true});}catch(e){}f.scrollIntoView({block:'center'});}}}/* 시작 시각=지금, 길이=기본(묻지 않음) */
   if((w==='vol'||w==='bub')&&PCN){const s=sesList(p,ph).slice(-1)[0];if(s)await natToggle({dataset:{ph,id:s.id}});
     toast(w==='vol'?'회기 시작 · 화면 끄고 음량으로 ＋1':'회기 시작 · 옆 아이콘으로 ＋1');}
   else toast('새 회기 · ＋1을 누르세요');
@@ -7365,6 +7370,7 @@ const HELP={
   'sw:bub':{t:'떠 있는 아이콘',w:'다른 앱 위 화면 옆에 작은 아이콘이 떠요. 아이콘을 눌러 열린 판에 고른 모양(기본 ○)을 그리면 회기가 시작되고, 그 뒤엔 판을 눌러 ＋1 해요.',u:'수업 자료 앱을 띄운 채 기록할 때 써요.',d:'app',c:['설치 앱에서만','설정 → 앱 밖 측정에서 이 측정 고르기','\'떠 있는 아이콘\' 켜고 \'다른 앱 위 표시\' 권한 주기','\'시작\'을 누르거나, 열린 회기가 없을 때 아이콘 판에 고른 모양 그리기','그 뒤엔 아이콘 판을 눌러 ＋1']},
   'sw:qm':{t:'간편 측정',w:'위젯·음량 버튼을 한 번 누르면 미리 고른 여러 측정(기초선·중재·ABC)이 함께 시작되고 기록돼요.',u:'한 수업에서 빈도와 ABC처럼 두 가지를 같이 잴 때 써요. 측정 화면 아래 \'간편 측정\'에서 고르세요.',c:['\'시작\'을 누르면 바로 켜짐','설치 앱: 위젯·음량 버튼으로도','칠판·PC: \'간편 측정 단축키\' 켜기(빈도·ABC만)']},
   'sw:live':{t:'작은 ＋1 창',w:'칠판·PC에서 다른 프로그램 위에 작은 ＋1 창을 띄워 눌러 세요. 휴대폰에서 연 회기를 같이 셀 수도 있어요.',u:'전자칠판에 수업 자료를 띄운 채 셀 때 써요.',d:'web',c:['빈도 측정일 때만','가로가 넓은 화면(900px 이상)의 크롬·엣지','\'시작\'을 누르면 작은 ＋1 창이 뜨고 회기 시작']},
+  'set:smin':{w:'새 회기의 관찰 시간(분)을 따로 정하지 않았을 때 이 길이로 적어요. 처음엔 15분이에요.',u:'\'시작\'·\'＋ 회기 추가\'로 회기를 열 때 묻지 않고 바로 쓰여요. 지난 회기에 적은 길이가 있으면 그 값을 이어 써요.'},
   'set:sw':{w:'이 학생의 회기를 무엇으로 시작할지 한 가지만 정해요.',u:'정하면 측정·회기 화면에 준비됐는지 보여요. \'준비하기\'는 바뀔 것을 먼저 보여 줘요.'},
   'set:abcauto':{w:'ABC 관찰 시작 시간이 되면 관찰이 저절로 시작돼요.',u:'켰을 때만 작동해요. 꺼 두면 시작은 버튼으로만 해요.'},
   'set:ai':{w:'중재 제안·흐름 읽기·보고서 문장을 AI가 도와요. 누를 때만 보내요.',u:'모델과 생각 수준을 고를 수 있어요. 결과는 참고용이고 판단은 교사가 해요.'},
@@ -7531,6 +7537,9 @@ const SET_ROWS=[
       ${o.mode==='combo'?'':`<label class="field qm-key-n"><span class="sr-only">연타 횟수</span><select data-qk="n">${ns}</select></label>`}
       <button type="button" class="btn small${qk.cap?' primary':''}" data-act="qk-cap">${qk.cap?(o.mode==='combo'?'조합키를 누르세요':'키를 누르세요'):'커맨드 입력'}</button>
       <span class="mono">${esc(qkLabel(o))}</span><span class="muted">누르면 대기 창 + ＋1</span>`;}},
+  {id:'smin',g:'측정',t:'기본 회기 길이',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['baseline','intervene','measure'],on:null,
+    ctl:()=>{const v=sesMinDef();const l=SES_MINS.includes(v)?SES_MINS:SES_MINS.concat([v]).sort((a,b)=>a-b);return `<label class="field"><span class="sr-only">기본 회기 길이</span><select data-smin>${l.map(x=>`<option value="${x}"${x===v?' selected':''}>${x}분${x===SES_MIN_DEF?'(기본)':''}</option>`).join('')}</select></label>`;},
+    hint:()=>'시간을 안 정하면 이 길이'},
   {id:'mini',g:'칠판·PC',t:'작은 ＋1 창',get sc(){return syncMe()?'내 계정':'이 기기';},show:()=>!PCN,rel:['baseline','intervene'],on:null,ctl:()=>'',hint:()=>'다른 화면 위 작게 세기',more:()=>trigSeg('mini-trig',miniTrig())},
   /* 앱 밖 측정(상위): 켜고 어느 측정인지 고르면 아래 하위 옵션(○ 그려·음량·측정 시간·끝 확인)이 열린다 */
   {id:'nat',g:'앱 밖 측정',t:'앱 밖 측정',sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN,on:()=>!!nat.target||setUI.nat,
@@ -7793,6 +7802,7 @@ document.addEventListener('change',e=>{
   else if(k==='bub'){setBubOn(v);return;}
   else if(el.matches('[data-bubtgt]')){setBubTarget(el.value);return;}
   else if(el.matches('[data-shp]')){el.blur();shpPick(el.value);return;}
+  else if(el.matches('[data-smin]')){try{localStorage.setItem(SES_MIN_KEY,String(Number(el.value)||SES_MIN_DEF));}catch(x){}el.blur();toast(`새 회기 기본 ${sesMinDef()}분`);}
   else if(k==='nat'){if(v){setUI.nat=true;if(!nat.target)setTimeout(npOpen,0);}else{setNatOff();return;}}
   else if(el.matches('[data-nattgt]')){setNatTgt(el.value);return;}
   else if(el.matches('[data-btn3],[data-tmr],[data-chk]'))return;/* 원래 처리(natBtnSet 등)가 앱에 보낸 뒤 natUI로 다시 그린다 */
@@ -8250,6 +8260,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-26-9',d:'2026-11-26',k:'web',t:'회기 길이 기본 15분',items:['\'시작\'을 누르면 시각은 지금, 길이는 기본값','기본 15분, 설정 → 측정 → 기본 회기 길이','지난 회기 길이가 있으면 그 값']},
   {id:'2026-11-26-8',d:'2026-11-26',k:'web',t:'회기 시작 칸에 \'시작\' 버튼',items:['준비됨이면 옆에 \'시작\'','누르면 고른 방법으로 바로 시작','ⓘ 조건도 맞춰 고침']},
   {id:'2026-11-26-7',d:'2026-11-26',k:'web',t:'회기 시작 목록·설명 보기 쉽게',items:['방법 이름 아래 작은 줄로 설명','고르는 창 넓혀 줄바꿈 줄임','ⓘ 설명은 목록 옆에 떠서 안 가림','조건은 항목별 점 목록']},
   {id:'2026-11-26-6',d:'2026-11-26',k:'web',t:'회기 시작 ⓘ에 조건',items:['ⓘ 설명에 \'조건\' 줄 추가','무엇을 켜고 골라야 작동하는지']},
