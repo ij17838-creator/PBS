@@ -21,6 +21,7 @@
 - 설정 창 · SET_ROWS·setRow·setOpen·setCtx·setRefresh · 거의 모든 켜고 끄기 옵션, 설정 계정 저장, 도움말 'set:'
 - 설정 계정 저장 · PREF_KEYS·prefPush·prefLoad·prefMerge·prefApply·natPrefApply · 설정 창, 로그인, 앱 밖 측정 옵션
 - 유리·고대비·앱 색 · GLASS_KEY·HC_KEY·lookApply·huePal·hueApply·hueSave·HUE_PRE · 설정, 계정 저장
+- 배경 색 일렁임 · WAVE_KEY(pbs-wave)·waveOn·lookApply(.wave)·CSS :root.wave::after·@keyframes bgwave·huePal --wave1~3 · 설정 화면, 계정 저장(PREF_KEYS), 기본 꺼짐
 - 도움말 ⓘ · HELP·hpBtn·hpOpen·hpProc · 설정, 절차, 묶음
 - 첫날 안내 · GD_KEY·gdSteps·gdPaint·gdAuto · 회기 시작 준비하기, 새 계정
 - 공지 · NOTICES·noticeUnseen·noticeOpen·noticeHome·noticeInit · 위 막대, 홈, apk 버전(PbsCounterPlugin ver)
