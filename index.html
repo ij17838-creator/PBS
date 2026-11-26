@@ -150,6 +150,12 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .confirm{background:var(--rec-soft);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;color:var(--ink);font-size:.9rem}
 
 /* home */
+.home-folds{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.home-fold{display:flex;flex-direction:column;gap:10px}
+.home-fold[open]{flex:1 1 100%;order:-1}
+.home-fold>summary{list-style:none;align-self:flex-start;cursor:pointer}
+.home-fold>summary::-webkit-details-marker{display:none}
+.home-fold[open]>summary{background:var(--accent-soft,transparent)}
 .new-form{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
 .new-form .field{flex:1 1 180px}
 .new-form .grow{flex:2 1 240px}
@@ -589,6 +595,7 @@ textarea.kw-drop-on,input.kw-drop-on{outline:3px dashed var(--accent);outline-of
 .notice-app{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-radius:10px;padding:10px 12px;background:var(--sunk);font-size:.9rem}
 .notice-app.warn{background:var(--warn-soft);color:var(--warn)}
 .card.notice-home{flex-direction:row;align-items:center;justify-content:flex-start;gap:8px;flex-wrap:wrap;padding:12px 16px;text-align:left}
+.notice-old>summary{cursor:pointer;font-weight:600;margin:10px 0 6px;color:var(--muted)}
 .notice-home p{margin:0;flex:1 1 auto;font-weight:600;text-align:left}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 18px;border-radius:10px;font-size:.9rem;font-weight:600;z-index:20;max-width:calc(100% - 32px);box-shadow:var(--shadow);text-align:center}
 
@@ -685,18 +692,9 @@ html.in-ink .ink-host{caret-color:transparent}
 .lg-other{border-top:1px solid var(--line);padding-top:10px;gap:8px;flex-wrap:wrap;align-items:center}
 .sync-flash{outline:3px solid var(--warn)!important;outline-offset:2px}
 @media (max-width:560px){.sync-state{white-space:normal;text-align:right;max-width:46vw}}
-/* 전자칠판·큰 화면: 아래쪽 버튼 모음, 화면 가리기 */
+/* 전자칠판·큰 화면: 아래쪽 버튼 모음 */
 .bigdock{display:none}
 @media (min-width:1240px){.bigdock{position:fixed;right:max(12px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:18;display:flex;flex-direction:column;gap:8px;width:108px}.bigdock .btn{width:100%;min-height:52px;padding:0 10px;box-shadow:var(--shadow)}.bigdock .btn[hidden]{display:none}}
-.cover{position:fixed;inset:0;z-index:200;background:var(--bg);color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;user-select:none;-webkit-user-select:none;touch-action:manipulation}
-.cover[hidden]{display:none}
-.cover-clock{font-family:var(--font-mono);font-weight:700;font-size:clamp(64px,16vw,240px);line-height:1;letter-spacing:.02em}
-.cover-date{font-size:clamp(18px,2.4vw,36px);color:var(--muted);font-weight:600}
-.cover-foot{position:absolute;left:0;right:0;bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 18px;padding:0 16px}
-.cover-open{position:relative;overflow:hidden;min-width:180px;min-height:56px}
-.cover-open .fill{position:absolute;inset:0 auto 0 0;width:0;background:var(--accent-soft);pointer-events:none}
-.cover-open.hold .fill{width:100%;transition:width .7s linear}
-.cover-open span{position:relative}
 /* 작게 띄워 세기: 화면은 가리고 ＋1 표시만 */
 .mini-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:8px}
 .mini{position:fixed;z-index:210;display:flex;flex-direction:column;align-items:center;gap:6px;touch-action:none;user-select:none;-webkit-user-select:none;transition:left .18s ease,top .18s ease}
@@ -1007,8 +1005,10 @@ body.pg-body .gd{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 .sw-t{font-weight:700}
 .sw-sel{min-width:0;flex:0 1 220px}.sw-sel select{width:100%}
 .sw-msg{margin:0;font-size:.86rem;color:var(--muted)}
-.sw-zone .sw-t,.set-more .sw-t{display:none}
+.sw-zone .sw-strip:not(.sw-sum) .sw-t,.set-more .sw-t{display:none}
 .set-more .sw-strip{flex:1 1 100%;margin:0;background:var(--surface)}
+.set-more:empty{display:none}
+.def-sw{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0 0;padding-top:10px;border-top:1px solid var(--line)}
 .sw-other{margin-top:8px}.sw-other>summary{cursor:pointer;font-size:.86rem;color:var(--muted);padding:4px 0}
 .chg-box{display:flex;flex-direction:column;gap:6px;border-left:3px solid var(--accent);padding:4px 0 2px 10px}
 .chg-h{margin:0;font-size:.82rem;font-weight:700;color:var(--muted)}
@@ -1095,13 +1095,6 @@ body.pg-body .gd{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
     <p id="sync-foot" hidden>공유 글자는 서버에도 저장</p>
     <p id="usage"></p>
   </footer>
-</div>
-<div class="cover" id="cover" hidden aria-label="화면 가림">
-  <div class="cover-clock" id="cover-clock">00:00</div>
-  <div class="cover-date" id="cover-date"></div>
-  <div class="cover-foot">
-    <button type="button" class="btn cover-open" id="cover-open"><span class="fill"></span><span>길게 눌러 열기</span></button>
-  </div>
 </div>
 <div class="pres" id="pres" hidden></div>
 <div class="find" id="find" hidden></div>
@@ -1649,7 +1642,6 @@ function navPush(){
 function vis(id){const d=$('#'+id);return !!(d&&!d.hidden);}
 function pbsBack(){
   try{
-    if(cover.on){if(mini.on)miniOff();else coverSet(false);return true;}
     if(Sync.dlg){syncDlgClose();return true;}
     if(vis('sig-pop')){sigClose();return true;}
     if(vis('set-dlg')){setClose();return true;}
@@ -2113,8 +2105,21 @@ function confirmBox(msg,act,id,extra){
 function chip(g,v,on,color){return `<button type="button" class="chip c-${color}${on?' on':''}" data-act="chip" data-g="${g}" data-v="${esc(v)}" aria-pressed="${on}">${esc(v)}</button>`;}
 
 /* home */
+/* 내 프로젝트(예시 말고)가 있으면 목록을 맨 위에, 새 프로젝트·공유 코드로 받기는 접어 둔다. 처음 쓰는 사람은 예전 순서 그대로 */
+const homeOpen={};
+function homeFold(k,label,fold,inner){
+  if(!inner)return '';if(!fold)return inner;
+  return `<details class="home-fold" data-home-fold="${k}"${homeOpen[k]?' open':''}><summary class="btn">${esc(label)}</summary>${inner}</details>`;
+}
+document.addEventListener('toggle',e=>{const el=e.target;if(el&&el.dataset&&el.dataset.homeFold)homeOpen[el.dataset.homeFold]=el.open;},true);
 function viewHome(){
   const ps=visibleProjects().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));
+  const mine=ps.some(p=>!p.example);
+  const listSec=`<section>
+    <div class="sec-head"><h2 class="h3">프로젝트 ${ps.length}개</h2></div>
+    ${acctGate()&&!acctUid()?`<p class="hint">로그인하면 내 프로젝트</p>`:''}
+    ${ps.length?`<div class="proj-grid" style="margin-top:10px">${ps.map(projCard).join('')}</div>`:`<div class="empty" style="margin-top:10px">아직 프로젝트가 없습니다. 위에서 학생 코드를 입력해 첫 프로젝트를 만드세요.</div>`}
+  </section>`;
   return `
   <section>
     <p class="eyebrow">긍정적 행동지원 · 기능적 행동평가</p>
@@ -2122,8 +2127,9 @@ function viewHome(){
     <p class="lede">학생별 프로젝트로 기록</p>
   </section>
   ${noticeHome()}
-  ${syncAcctCard()}
-  <section class="card">
+  ${mine?listSec:''}
+  ${mine?'':syncAcctCard()}
+  ${mine?'<div class="home-folds">':''}${homeFold('new','＋ 새 프로젝트',mine,`<section class="card">
     <h2 class="h3">새 프로젝트</h2>
     <form id="new-form" class="new-form" novalidate>
       <label class="field"><span>학생 코드</span><input id="new-code" autocomplete="off" maxlength="40" placeholder="예: 3-2-A"></label>
@@ -2134,13 +2140,9 @@ function viewHome(){
       <button class="btn primary" type="submit">만들기</button>
     </form>
     <p class="hint" id="new-code-hint">실명 대신 코드 사용 <button type="button" class="linkish" data-act="priv-open">개인정보 안내</button></p>
-  </section>
-  ${syncJoinCard()}
-  <section>
-    <div class="sec-head"><h2 class="h3">프로젝트 ${ps.length}개</h2></div>
-    ${acctGate()&&!acctUid()?`<p class="hint">로그인하면 내 프로젝트</p>`:''}
-    ${ps.length?`<div class="proj-grid" style="margin-top:10px">${ps.map(projCard).join('')}</div>`:`<div class="empty" style="margin-top:10px">아직 프로젝트가 없습니다. 위에서 학생 코드를 입력해 첫 프로젝트를 만드세요.</div>`}
-  </section>
+  </section>`)}
+  ${homeFold('join','공유 코드로 받기',mine,syncJoinCard())}${mine?'</div>':''}
+  ${mine?syncAcctCard():listSec}
   <section class="card tools">
     <div><h2 class="h3">전체 백업</h2><p class="hint">전체 내보내기·불러오기</p></div>
     <div class="tool-row">
@@ -2251,7 +2253,7 @@ function viewCat(p,c){
     ${c.key==='measure'?mAddBox(p):''}
   </section>
   ${c.key==='measure'?`<section class="cat-zone sw-zone"><h2 class="zone-title">회기 시작</h2>${swStrip(p,swPh(p),'cat')}</section>`:''}
-  ${c.key==='measure'?`<section class="cat-zone qm-zone"><h2 class="zone-title">간편 측정</h2>${qmCard(p)}</section>`:''}`;
+  ${c.key==='measure'?qmZone(p):''}`;
 }
 /* 측정 카테고리: 아직 넣지 않은 측정 방법 추가(절차 순서 자리에 들어감) */
 function mAddBox(p){
@@ -2486,6 +2488,7 @@ function viewDefine(p){
       <label class="field"><span>이 방법을 고른 이유</span><textarea rows="1" class="one" id="def-mwhy" data-f="define:measureWhy" placeholder="예: 한 번 일어나면 짧게 끝나서 횟수로 셀 수 있음">${esc(d.measureWhy)}</textarea></label>
     </div>
     <label class="check"><input type="checkbox" id="def-mfixed" data-f="defbool:measureFixed" ${d.measureFixed?'checked':''}> <span>관찰해 보고 이 측정 방법으로 확정했다</span></label>
+    ${d.measure&&(procOn(p,'baseline')||procOn(p,'intervene'))?`<p class="def-sw"><span>회기 시작: <b>${swWay(p)?esc(swName(swWay(p))):'안 정함'}</b></span><button type="button" class="btn small" data-act="def-sw">${swWay(p)?'바꾸기':'고르기'}</button></p>`:''}
   </section>
   ${String(d.setting||'').trim()?`<details class="card later">
     <summary>예전에 적은 내용<small>주로 나타나는 상황</small></summary>
@@ -3190,8 +3193,8 @@ function sesRow(p,ph,s,i){
 }
 function sesSection(p,ph){
   const list=blSorted(sesList(p,ph));
-  return `${swStrip(p,ph)}<div class="r-list" id="ses-list-${ph}">${list.length?list.map((s,i)=>sesRow(p,ph,s,i)).join(''):'<p class="rows-empty">아직 회기 기록이 없습니다.</p>'}</div>
-    <button type="button" class="btn small" data-act="ses-add" data-ph="${ph}">+ 회기 추가</button>${swRows(p,ph)}`;
+  return `${swStrip(p,ph)}${swRows(p,ph)}<div class="r-list" id="ses-list-${ph}">${list.length?list.map((s,i)=>sesRow(p,ph,s,i)).join(''):'<p class="rows-empty">아직 회기 기록이 없습니다.</p>'}</div>
+    <button type="button" class="btn small" data-act="ses-add" data-ph="${ph}">+ 회기 추가</button>`;
 }
 function measureLine(p){
   const d=p.procs.define.data;
@@ -3960,7 +3963,7 @@ function exampleProject(){
 const actions={
   'go-home':()=>go('home',{projectId:null,proc:null}),
   'go-project':()=>go('project',{proc:null,cat:null}),
-  'open-cat':el=>go('project',{proc:null,cat:el.dataset.key}),
+  'open-cat':el=>{swUI.catOpen=false;go('project',{proc:null,cat:el.dataset.key});},
   'open-proj':el=>go('project',{projectId:el.dataset.id,proc:null,cat:null}),
   'open-proc':el=>go('proc',{proc:el.dataset.key}),
   'dup-proj':el=>{const p=projById(el.dataset.id);if(p)duplicateProject(p);},
@@ -4074,7 +4077,7 @@ const actions={
     const cur=!!(nat.bub&&nat.bub.on&&nat.bub.perm);
     try{const r=await PCN.setBubble({on:!cur,trig:(nat.bub&&nat.bub.trig)||'tap'});nat.bub=r.bub||null;
       if(!cur&&r.bub&&!r.bub.perm)toast('다른 앱 위 표시를 켜 주세요');
-      else toast(cur?'떠 있는 ＋1을 껐습니다':nat.ver>=14?'대기 중엔 ○를 그리면 회기 시작':'회기 중에만 ＋1이 떠요');}
+      else toast(cur?'떠 있는 아이콘을 껐습니다':nat.ver>=14?'대기 중엔 ○를 그리면 회기 시작':'회기 중에만 ＋1이 떠요');}
     catch(e){toast('이 앱에서는 안 됩니다');}
     natUI();
   },
@@ -6463,7 +6466,7 @@ function natTargetRow(p,ph){
   return `<div class="bl-nat nat-target" id="nat-target-${ph}">${lst}
     <button type="button" class="btn small${on?' primary':''}" data-act="nat-target" data-ph="${ph}" aria-pressed="${on}">${on?'앱 밖 측정 끄기':'앱 밖 측정 켜기'}</button>
     ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>`:''}
-    ${on&&nat.ver>=6?`<button type="button" class="btn small${nat.bub&&nat.bub.on&&nat.bub.perm?' primary':''}" data-act="nat-bub" aria-pressed="${!!(nat.bub&&nat.bub.on&&nat.bub.perm)}">${nat.bub&&nat.bub.on&&nat.bub.perm?'떠 있는 ＋1 끄기':'떠 있는 ＋1'}</button>${nat.ver>=8?trigSeg('nat-bub-trig',nat.bub&&nat.bub.trig):''}`:''}
+    ${on&&nat.ver>=6?`<button type="button" class="btn small${nat.bub&&nat.bub.on&&nat.bub.perm?' primary':''}" data-act="nat-bub" aria-pressed="${!!(nat.bub&&nat.bub.on&&nat.bub.perm)}">${nat.bub&&nat.bub.on&&nat.bub.perm?'떠 있는 아이콘 끄기':'떠 있는 아이콘'}</button>${nat.ver>=8?trigSeg('nat-bub-trig',nat.bub&&nat.bub.trig):''}`:''}
     <span class="muted">${on?(ph==='abc'?'＋1마다 시각 한 행':({lat:'지시·반응을 눌러요',lvl:'1·2·3을 눌러요',int:'신호 때 있음·없음'}[m]||'앱이 꺼져도 기록돼요')):'위젯·알림창에서 기록'}</span>
     ${on&&m==='dur'&&nat.ver>=2?natChkBox():''}
     ${on&&nat.ver>=5?natTimerBox():''}
@@ -6778,6 +6781,12 @@ function qmOpts(p){
   return `<div class="qm-n"><span>동시에</span><span class="trig-seg" role="group" aria-label="동시에 할 측정 수">${[1,2].map(n=>`<button type="button" class="seg-btn" data-act="qm-n" data-v="${n}" aria-pressed="${cfg.n===n}"${on?' disabled':''}>${n}개</button>`).join('')}</span><span class="muted">${on?'끈 뒤 바꿀 수 있음':cfg.n>1?'긴 측정 기준':'고른 측정만'}</span></div>
     <div class="qm-slots">${items.map(slot).join('')}</div>`;
 }
+/* 측정 화면 간편 측정: 회기 시작 방법을 간편 측정이 아닌 다른 것으로 정했으면 접어 둔다(켜져 있으면 펼침) */
+function qmZone(p){
+  const w=swWay(p);const run=qmRun();const fold=w&&w!=='qm'&&!(run&&run.pid===p.id);
+  if(!fold)return `<section class="cat-zone qm-zone"><h2 class="zone-title">간편 측정</h2>${qmCard(p)}</section>`;
+  return `<section class="cat-zone qm-zone"><details class="sw-other qm-fold"><summary>간편 측정 · 다른 방법</summary>${qmCard(p)}</details></section>`;
+}
 function qmCard(p){
   const cfg=qmCfg(p);const items=cfg.items.slice(0,cfg.n);const run=qmRun();const on=!!(run&&run.pid===p.id&&nat.target);
   const main=on?run.main:qmMain(p,items);
@@ -6786,7 +6795,7 @@ function qmCard(p){
   return `<section class="card qm-card" id="qm-card">
     <div class="qm-head"><span class="qm-sum">${items.map(chip).join('<span class="muted">+</span>')}</span><button type="button" class="btn small" data-act="set-open-qm">옵션은 설정에서</button></div>
     <div class="qm-go">${PCN?`<button type="button" class="btn${on?'':' primary'}" data-act="${on?'qm-off':'qm-on'}"${ok||on?'':' disabled'}>${on?'간편 측정 끄기':'간편 측정 켜기'}</button>
-      ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>${nat.ver>=6?`<button type="button" class="btn small${nat.bub&&nat.bub.on&&nat.bub.perm?' primary':''}" data-act="nat-bub">${nat.bub&&nat.bub.on&&nat.bub.perm?'떠 있는 ＋1 끄기':'떠 있는 ＋1'}</button>`:''}`:''}
+      ${on?`<button type="button" class="btn small" data-act="nat-pin">위젯 놓기</button><button type="button" class="btn small" data-act="nat-tile">빠른 설정 추가</button>${nat.ver>=6?`<button type="button" class="btn small${nat.bub&&nat.bub.on&&nat.bub.perm?' primary':''}" data-act="nat-bub">${nat.bub&&nat.bub.on&&nat.bub.perm?'떠 있는 아이콘 끄기':'떠 있는 아이콘'}</button>`:''}`:''}
       <span class="muted">${on?'위젯·음량으로 기록':ok?'켜면 트리거가 이쪽으로':'새 앱 설치 필요'}</span>`:qkRow(p)}</div>
   </section>`;
 }
@@ -7034,7 +7043,7 @@ function hueAcctApply(d,me,ad){
    설치 앱 옵션(음량 버튼·측정 시간·끝 확인)은 pbs-nat-* 에 그 값을 비춰 두고(natPrefMark) 받으면 앱에 보낸다(natPrefApply). 간편 측정이 잠깐 바꾼 측정 시간은 안 보낸다.
    기기에 남기는 것: 손글씨 모드·S펜 전용(기기마다 펜이 다름), 창 위치, 공지 본 것.
    앱 색(pbs-hue)은 따로 prefs/look(hueAcctLoad). 로그아웃해도 이 기기 값은 그대로 둔다. */
-const PREF_KEYS=['pbs-glass','pbs-contrast','pbs-pg-all','pbs-live-auto','pbs-mini-trig','pbs-mini-on','pbs-quick-key','pbs-ai','pbs-nat-btn','pbs-nat-tmr','pbs-nat-chk','pbs-guide'];
+const PREF_KEYS=['pbs-glass','pbs-contrast','pbs-pg-all','pbs-mini-trig','pbs-quick-key','pbs-ai','pbs-nat-btn','pbs-nat-tmr','pbs-nat-chk','pbs-guide'];
 /* 자동 기능이 꺼진 값인가: 예전 값(시각 0)끼리 다르면 꺼진 쪽을 남긴다 */
 function prefIsOff(k,v){if(k==='pbs-cover-auto'||k==='pbs-live-auto')return v==='0';
   let o=null;try{o=JSON.parse(v||'null');}catch(e){}if(!o)return false;
@@ -7124,7 +7133,6 @@ function prefApply(ch){
   lookApply();
   if(ch.includes('pbs-pg-all'))setTimeout(render,0);
   ch.filter(k=>k.startsWith('pbs-nat-')).forEach(k=>natPrefApply(k.slice(8)));
-  if(ch.includes('pbs-live-auto'))liveAutoOff();
   if(ch.includes('pbs-guide'))gdPaint();
   setRefresh();
 }
@@ -7155,8 +7163,8 @@ function setNatTimer(){return Object.assign({min:0,renew:false,reset:true},nat.t
 /* ---- 학생별 회기 시작 방법(p.startWay): 학생마다 한 가지만 정해 두고 그것이 이 기기에서 준비됐는지 보여 준다.
    '준비하기'·'추천 설정'은 누를 때만, 바뀌는 것을 먼저 보여 주고(체크로 뺄 수 있음) '이대로 바꾸기'를 눌러야 바꾼다.
    다른 방법은 지우지 않고 회기 화면에서 '세부 설정·다른 방법' 안에 접어 둔다. 직접 끈 옵션은 추천에서 체크를 빼 둔다. */
-const SW_WAYS=[['tap','화면 버튼','모든 기기'],['vol','음량 버튼','설치 앱'],['bub','○ 그리기','설치 앱'],['qm','간편 측정','설치 앱·PC'],['live','칠판 ＋1 창','칠판·PC']];
-const swUI={open:'',pick:{},more:{},busy:false};
+const SW_WAYS=[['tap','화면 버튼','모든 기기'],['vol','음량 버튼','설치 앱'],['bub','떠 있는 아이콘','설치 앱'],['qm','간편 측정','설치 앱·PC'],['live','작은 ＋1 창','칠판·PC']];
+const swUI={open:'',pick:{},more:{},busy:false,catOpen:false};
 function swWay(p){const w=p&&p.startWay;return SW_WAYS.some(x=>x[0]===w)?w:'';}
 function swName(w){return (SW_WAYS.find(x=>x[0]===w)||[])[1]||'';}
 function swDevOk(w){return w==='vol'||w==='bub'?!!PCN:w==='live'?!PCN:true;}
@@ -7171,7 +7179,7 @@ function swCheck(p,ph){
   const m=natMode(p,ph);const b=nat.btn||{};const bub=nat.bub||{};
   const tgt=()=>{if(!natTargetOn(p,ph)){const t=nat.target&&projById(nat.target.pid);
     chg.push({id:'tgt',t:'앱 밖 측정',now:t?natTitle(t,nat.target.ph,nat.target.mode):'안 고름',to:natTitle(p,ph,m),def:true,run:()=>swSetTarget(p,ph,m)});}};
-  const bubOff=()=>{if(bub.on)chg.push({id:'bubOff',t:'○ 그려 회기 시작',now:'켬',to:'끔',def:true,note:'한 가지 방법만',run:()=>swBub(false)});};
+  const bubOff=()=>{if(bub.on)chg.push({id:'bubOff',t:'떠 있는 아이콘',now:'켬',to:'끔',def:true,note:'한 가지 방법만',run:()=>swBub(false)});};
   const startOff=()=>{if(nat.ver>=13&&b.on&&b.start!==false&&m!=='lvl')chg.push({id:'startOff',t:'음량으로 회기 시작',now:'켬',to:'끔',def:true,note:'기록은 그대로',run:()=>swBtn({start:false})});};
   if(w==='tap'){if(PCN){bubOff();startOff();}return {st:chg.length?'fix':'ok',msg:"'+ 회기 추가' 뒤 기록",chg};}
   if(w==='vol'){
@@ -7186,7 +7194,7 @@ function swCheck(p,ph){
   if(w==='bub'){
     if(!m||nat.ver<14)return {st:'no',msg:'새 앱 설치 필요',chg};
     tgt();
-    if(!bub.on)chg.push({id:'bub',t:'○ 그려 회기 시작',now:'끔',to:'켬',def:true,run:()=>swBub(true)});
+    if(!bub.on)chg.push({id:'bub',t:'떠 있는 아이콘',now:'끔',to:'켬',def:true,run:()=>swBub(true)});
     startOff();
     if(bub.on&&!bub.perm&&!chg.length)return {st:'fix',msg:'다른 앱 위 표시 권한 필요',chg:[{id:'perm',t:'다른 앱 위 표시',now:'권한 없음',to:'권한 요청',def:true,run:()=>swBub(true)}]};
     return {st:chg.length?'fix':'ok',msg:chg.length?'준비가 더 필요해요':'옆 아이콘 판에 ○',chg};
@@ -7203,8 +7211,8 @@ function swCheck(p,ph){
   if(w==='live'){
     if(d.measure!=='빈도')return {st:'no',msg:'빈도일 때만 써요',chg};
     if(!matchMedia('(min-width:900px)').matches)return {st:'other',msg:'넓은 화면에서 써요',chg};
-    if(!p.shared)return {st:'ok',msg:"'＋1 창 대기' 누르기",chg};
-    return {st:'ok',msg:"'＋1 창 대기' 버튼",chg};
+    if(!p.shared)return {st:'ok',msg:"'작은 ＋1 창 열기' 누르기",chg};
+    return {st:'ok',msg:"'작은 ＋1 창 열기' 버튼",chg};
   }
   return {st:'none',msg:'',chg};
 }
@@ -7234,15 +7242,25 @@ async function chgRun(key,list){
 }
 function swStrip(p,ph,where){
   const w=swWay(p);const k=swCheck(p,ph);const key=where||ph;const open=swUI.open===key;
-  const opts=SW_WAYS.map(([v,n,dv])=>`<option value="${v}"${v===w?' selected':''}>${n} · ${dv}</option>`).join('');
+  /* 이 기기에서 되는 방법을 위에, 다른 기기용은 아래 묶음으로(고를 수는 있음) */
+  const rw=swRecWay(p);const o1=([v,n,dv])=>`<option value="${v}"${v===w?' selected':''}>${n} · ${dv}${v===rw?' · 추천':''}</option>`;
+  const here=SW_WAYS.filter(x=>swDevOk(x[0])),there=SW_WAYS.filter(x=>!swDevOk(x[0]));
+  const opts=`<optgroup label="이 기기에서">${here.map(o1).join('')}</optgroup>${there.length?`<optgroup label="${PCN?'칠판·PC에서':'휴대폰·탭 앱에서'}">${there.map(o1).join('')}</optgroup>`:''}`;
   const st={ok:['ok','준비됨'],fix:['warn','준비 필요'],no:['warn','안 돼요'],other:['muted','이 기기 아님'],none:['muted','안 정함']}[k.st]||['muted',''];
-  const btn=k.st==='fix'&&!open?`<button type="button" class="btn small primary" data-act="sw-prep" data-key="${esc(key)}" data-ph="${ph}">준비하기</button>`
+  const ex=['ok','fix'].includes(k.st)?swExtras(p,ph):[];const need=k.st==='fix'||ex.some(c=>c.def);
+  /* 칠판·PC에서 휴대폰 회기 학생을 볼 때: 이 기기에서 함께 세는 짝 버튼 */
+  const pair=k.st==='other'&&!PCN&&w!=='live'&&liveReady(p)&&liveCanPip()?'<button type="button" class="btn small primary" data-act="live-pip">휴대폰 회기 작은 창</button>':'';
+  /* 측정 화면: 정했으면 한 줄 요약 + 바꾸기(고르기는 회기 화면·설정) */
+  if(where==='cat'&&w&&!swUI.catOpen)return `<div class="sw-strip sw-sum${k.st==='ok'?' ok':''}" data-sw-strip="cat" data-ph="${ph}">
+    <div class="sw-head"><span class="sw-t">${esc(p.code||'학생')} 회기 시작: <b>${esc(swName(w))}</b></span><span class="pill ${st[0]}">${st[1]}</span>${pair}<button type="button" class="btn small" data-act="sw-cat-open">바꾸기</button></div>
+    ${k.msg?`<p class="sw-msg">${esc(k.msg)}</p>`:''}</div>`;
+  const btn=need&&!open&&k.st!=='other'?`<button type="button" class="btn small primary" data-act="sw-prep" data-key="${esc(key)}" data-ph="${ph}">준비하기</button>`
     :k.def&&where!=='set'?'<button type="button" class="btn small" data-act="open-proc" data-key="define">정의 열기</button>':'';
   return `<div class="sw-strip${k.st==='ok'?' ok':''}" data-sw-strip="${esc(key)}" data-ph="${ph}">
     <div class="sw-head"><span class="sw-t">회기 시작</span><label class="field sw-sel"><span class="sr-only">이 학생 회기 시작 방법</span><select data-sw="way">${w?'':'<option value="" selected>고르세요</option>'}${opts}</select></label>
       <span class="pill ${st[0]}">${st[1]}</span>${btn}</div>
     ${k.msg?`<p class="sw-msg">${esc(k.msg)}${ph==='iv'&&w&&k.st!=='other'?' · 중재':''}</p>`:''}
-    ${open&&k.st==='fix'?chgBox(key,k.chg,'sw-go'):''}
+    ${open&&(k.st==='fix'||ex.length)?chgBox(key,k.chg.concat(ex),'sw-go'):''}${pair&&where==='set'?`<div class="row">${pair}<span class="muted">이 기기는 함께 ＋1</span></div>`:pair?'<p class="sw-msg">이 기기는 아래 작은 창으로 함께 ＋1</p>':''}
   </div>`;
 }
 function swRefresh(){
@@ -7266,52 +7284,41 @@ document.addEventListener('change',e=>{
   const el=e.target;if(!el.matches)return;
   if(el.matches('[data-sw="way"]')){const p=curProject();if(!p)return;swSet(p,el.value);try{el.blur();}catch(x){}
     const s=el.closest('[data-sw-strip]');const key=s?s.dataset.swStrip:'set';const ph=s?s.dataset.ph:swPh(p);
-    delete swUI.pick[key];swUI.open=swCheck(p,ph).st==='fix'?key:'';/* 바꿀 것이 있으면 목록만 펼친다(아직 안 바꿈) */
+    delete swUI.pick[key];{const k=swCheck(p,ph);swUI.open=k.st==='fix'||(['ok','fix'].includes(k.st)&&swExtras(p,ph).some(c=>c.def))?key:'';}/* 바꿀 것이 있으면 목록만 펼친다(아직 안 바꿈) */
     toast(`${p.code||'학생'} 회기 시작: ${swName(el.value)}`);
     const y=window.scrollY;render();window.scrollTo(0,y);setTimeout(setRefresh,0);return;}
   if(el.matches('[data-chg]')){const b=el.closest('[data-chg-key]');if(!b)return;const k=b.dataset.chgKey;(swUI.pick[k]||(swUI.pick[k]={}))[el.dataset.chg]=el.checked;}
 });
 Object.assign(actions,{
+  /* 정의 '측정 방법' 아래 한 줄: 회기 화면의 회기 시작 줄로 데려간다(저절로 정하지 않음) */
+  'def-sw':()=>{const p=curProject();if(!p)return;const pr=procOn(p,'baseline')&&!p.procs.baseline.data.fixed?'baseline':procOn(p,'intervene')?'intervene':'baseline';
+    go('proc',{projectId:p.id,proc:pr,cat:''});setTimeout(()=>{const el=$('#main [data-sw-strip]');if(el){pgReveal(el);gdFlash(el);}},80);},
+  'sw-cat-open':()=>{swUI.catOpen=true;swRefresh();},
   'sw-prep':el=>{swUI.open=el.dataset.key;delete swUI.pick[el.dataset.key];swRefresh();},
-  'chg-cancel':el=>{const k=el.dataset.key;delete swUI.pick[k];if(k==='rec')setUI.rec=false;else swUI.open='';swRefresh();setRefresh();},
+  'chg-cancel':el=>{const k=el.dataset.key;delete swUI.pick[k];swUI.open='';swRefresh();setRefresh();},
   'sw-go':async el=>{const p=curProject();if(!p)return;const key=el.dataset.key;
     const s=el.closest('[data-sw-strip]');const ph=s?s.dataset.ph:(key==='set'?swPh(p):key);
-    const n=await chgRun(key,swCheck(p,ph).chg);swUI.open='';
+    const n=await chgRun(key,swPrepList(p,ph));swUI.open='';
     const k=swCheck(p,ph);toast(k.st==='ok'?`${swName(swWay(p))} 준비됨`:n?`${n}개 바꿈`:'바꾼 것 없음');natUI();swRefresh();},
 });
-/* ---- 추천 설정 한 번에: 이 기기(설치 앱/브라우저)에 맞는 묶음. 지금과 다른 것만, 직접 끈 것은 체크를 빼 둔다 ---- */
-function recList(){
-  const p=curProject();const L=[];
-  if(PCN){
-    const b=nat.btn||{};const m=p&&natMode(p,swPh(p));
-    if(nat.ver>=4&&!b.on){const ex=swExplicit('pbs-nat-btn');L.push({id:'btn',t:'음량 버튼으로 기록',now:'끔',to:'켬 · 1번',def:!ex,note:ex?'직접 끈 것':'',run:()=>swBtn({on:true})});}
-    const sw=p&&swWay(p);/* 이 학생에 다른 방법을 정해 두었으면 그 방법과 부딪히는 것은 권하지 않는다 */
-    if(nat.ver>=13&&b.on&&b.start===false&&(!sw||sw==='vol'))L.push({id:'start',t:'음량으로 회기 시작',now:'끔',to:'켬',def:false,note:'직접 끈 것',run:()=>swBtn({start:true})});
-    if(p&&m&&!nat.target)L.push({id:'tgt',t:'앱 밖 측정',now:'안 고름',to:natTitle(p,swPh(p),m),def:true,run:()=>swSetTarget(p,swPh(p),m)});
-    if(p&&!swWay(p)&&nat.ver>=13&&m&&m!=='lvl')L.push({id:'sw',t:`${p.code||'학생'} 회기 시작`,now:'안 정함',to:'음량 버튼',def:true,run:()=>swSet(p,'vol')});
-    if(p&&m==='dur'&&nat.ver>=2&&setNatChk().mode==='off'){const ex=swExplicit('pbs-nat-chk');L.push({id:'chk',t:'지속시간 끝 확인',now:'끔',to:'30초마다 진동',def:!ex,note:ex?'직접 끈 것':'끝 깜빡 방지',run:async()=>{const k=setNatChk();const r=await PCN.setCheck({sec:Number(k.sec)||30,mode:'vib',miss:Number(k.miss),adj:!!k.adj});nat.chk=r.chk||nat.chk;natPrefMark('chk');}});}
-    if(nat.bub&&nat.bub.on&&sw!=='bub')L.push({id:'bubOff',t:'○ 그려 회기 시작',now:'켬',to:'끔',def:false,note:'한 가지 방법만',run:()=>swBub(false)});
-  }else{
-    if(!qkGet().on)L.push({id:'qk',t:'간편 측정 단축키',now:'끔',to:`켬 · ${qkLabel(qkGet())}`,def:false,note:'직접 끈 것',run:()=>{qkSet(Object.assign(qkGet(),{on:true}));qkRefresh();}});
-    if(p&&!swWay(p)&&p.shared&&p.procs.define.data.measure==='빈도')L.push({id:'sw',t:`${p.code||'학생'} 회기 시작`,now:'안 정함',to:'칠판 ＋1 창',def:true,run:()=>swSet(p,'live')});
-  }
-  if(pgAll())L.push({id:'pg',t:'절차 한 장씩 보기',now:'한 화면에 모두',to:'한 장씩',def:false,note:'직접 바꾼 것',run:()=>{pgAllSet(false);setTimeout(render,0);}});
+/* ---- 추천(2026-11-26: '추천 설정 한 번에'를 회기 시작 '준비하기'에 합침) ----
+   swRecWay: 고르기 목록에 '추천'으로 표시할 방법. swExtras: 고른 방법과 함께 권하는 옵션(준비하기 목록에 같이, 직접 끈 것은 체크 빠짐) */
+function swRecWay(p){
+  if(!p)return '';const m=natMode(p,swPh(p));
+  if(PCN)return nat.ver>=13&&m&&m!=='lvl'?'vol':'tap';
+  return p.shared&&p.procs.define.data.measure==='빈도'?'live':'tap';
+}
+function swExtras(p,ph){
+  const L=[];if(!PCN||!p)return L;const w=swWay(p);if(!w||!swDevOk(w))return L;
+  const m=natMode(p,ph);
+  if(m==='dur'&&nat.ver>=2&&setNatChk().mode==='off'){const ex=swExplicit('pbs-nat-chk');
+    L.push({id:'chk',t:'지속시간 끝 확인',now:'끔',to:'30초마다 진동',def:!ex,note:ex?'직접 끈 것':'끝 깜빡 방지',run:async()=>{const k=setNatChk();const r=await PCN.setCheck({sec:Number(k.sec)||30,mode:'vib',miss:Number(k.miss),adj:!!k.adj});nat.chk=r.chk||nat.chk;natPrefMark('chk');}});}
   return L;
 }
-function recBox(){
-  const L=recList();
-  return `<section class="set-g rec"><h3>추천 설정 · ${PCN?'설치 앱':'칠판·PC'}${hpBtn('set:rec')}</h3>
-    <p class="set-hint" style="margin:0">${PCN?'음량 1번으로 시작·기록':'단축키'}</p>
-    ${L.length?chgBox('rec',L,'rec-go'):'<p class="muted chg-none">이미 추천 설정이에요</p><div class="row"><button type="button" class="btn small" data-act="chg-cancel" data-key="rec">닫기</button></div>'}</section>`;
-}
-Object.assign(actions,{
-  'rec-open':()=>{setUI.rec=!setUI.rec;delete swUI.pick.rec;setRefresh();const b=$('#set-dlg .set-g.rec');if(b)b.scrollIntoView({block:'nearest'});},
-  'rec-go':async()=>{const n=await chgRun('rec',recList());setUI.rec=false;toast(n?`추천 설정 ${n}개 바꿈`:'바꾼 것 없음');lookApply();natUI();const y=window.scrollY;render();window.scrollTo(0,y);setRefresh();},
-});
+function swPrepList(p,ph){const k=swCheck(p,ph);return ['ok','fix'].includes(k.st)?k.chg.concat(swExtras(p,ph)):k.chg;}
 /* ---- 그 자리 도움말(ⓘ): 누르면 '무엇인지·언제 쓰는지' 두세 줄을 유리 창으로. 키 'set:옵션 id'(설정 창 SET_ROWS), 'proc:절차', 'pg:절차/묶음 이름'(QABF 문항 묶음은 'pg:qabf/문항').
    d: 'app'(설치 앱에서만)·'web'(칠판·PC 브라우저에서만). 새 옵션·묶음은 여기 한 줄만 넣으면 ⓘ가 저절로 붙는다(SET_ROWS 줄에 help:{w,u,d}를 직접 넣어도 됨) ---- */
 const HELP={
-  'set:rec':{t:'추천 설정 한 번에',w:'이 기기(설치 앱 또는 칠판·PC)에 맞는 추천 옵션을 한 번에 켜요.',u:'바뀔 것을 먼저 보여 주고, 체크한 것만 바꿔요. 직접 끈 옵션은 체크가 빠져 있어요.'},
   'set:glass':{w:'위·아래 막대와 창 뒤가 흐리게 비쳐 보여요.',u:'글자가 잘 안 보이거나 화면이 버벅이면 끄세요.'},
   'set:hc':{w:'글자를 진하게, 테두리를 굵게 보여 줘요.',u:'밝은 교실이나 칠판에서 잘 안 보일 때 켜세요. 켜면 유리 효과·앱 색은 꺼져요.'},
   'set:hue':{w:'버튼·배경 색을 고르고 밝기를 맞춰요.',u:'그래프의 기초선·중재 색과 진행 중·완료·경고 색은 그대로예요.'},
@@ -7319,7 +7326,7 @@ const HELP={
   'set:ink':{w:'S펜으로 칸에 바로 써요. 숫자 칸은 키보드로 입력해요.',u:'\'S펜만 쓰기\'를 켜면 손바닥·손가락 터치는 무시해요. 이 기기에만 저장돼요.'},
   'set:qm':{w:'트리거 한 번으로 여러 측정(기초선·중재·ABC)을 함께 시작하고 기록해요.',u:'한 수업에서 빈도와 ABC를 같이 잴 때 써요. 개수·종류·색은 여기서 정해요.'},
   'set:qk':{w:'키보드 단축키로 간편 측정을 시작하고 ＋1 해요.',u:'같은 키 여러 번(연타)이나 조합키 중 고르고 \'커맨드 입력\'으로 키를 정해요.',d:'web'},
-  'set:mini':{w:'세기 창을 작게 띄워 다른 프로그램 위에서 ＋1 해요. 켜면 누르기·긋기 중 고를 수 있어요.',u:'켜 두면 \'＋1 창 대기\'·\'휴대폰 회기 대기\'를 누를 때 바로 떠요. 꺼 두면 누를 때 켤지 물어요.',d:'web'},
+  'set:mini':{w:'작은 ＋1 창을 다른 프로그램 위에 띄워 ＋1 해요. 누르기·긋기 중 고를 수 있어요.',u:'회기 화면의 \'작은 ＋1 창 열기\'·\'휴대폰 회기 작은 창\'을 누르면 떠요.',d:'web'},
   'set:nat':{w:'앱이 뒤에 있거나 화면이 꺼져도 위젯·알림창·떠 있는 아이콘으로 기록해요.',u:'어느 학생의 어느 측정인지 먼저 고르세요. 켜면 아래 옵션이 열려요.',d:'app'},
   'set:bub':{w:'화면 옆 작은 아이콘 판에 ○를 그리면 회기가 시작돼요.',u:'다른 앱을 쓰는 중에 회기를 시작할 때 써요. \'다른 앱 위 표시\' 권한이 필요해요.',d:'app'},
   'set:btn3':{w:'회기 중 화면이 꺼져 있을 때 음량 버튼을 누르면 ＋1 돼요.',u:'\'회기 시작도\'를 켜면 화면이 꺼진 채로 회기도 시작해요. 누를 횟수는 1~3번.',d:'app'},
@@ -7435,8 +7442,7 @@ function gdSteps(){
   const g=gdGet()||{};const mine=gdMine();
   return [
     {t:'학생 프로젝트 만들기',s:'학생 코드로 하나 만들어요',ok:mine.length>0,act:'gd-proj'},
-    {t:'회기 시작 방법 고르기',s:'학생마다 한 가지만 정해요',ok:mine.some(p=>swWay(p)),act:'gd-sw',need:mine.length?'':'1번 먼저'},
-    {t:'추천 설정 한 번에',s:'바뀔 것을 보고 골라 켜요',ok:!!g.rec,act:'gd-rec'},
+    {t:'회기 시작 방법 고르고 준비',s:'학생마다 한 가지, 준비하기로 맞춰요',ok:mine.some(p=>swWay(p)),act:'gd-sw',need:mine.length?'':'1번 먼저'},
   ];
 }
 function gdPaint(){
@@ -7462,26 +7468,21 @@ function gdAuto(){
 }
 function gdGoFold(){if(window.innerWidth<=560){gd.fold=true;gdPaint();}}/* 휴대폰: 하러 가면 안내는 접어 둔다(위 알약으로 다시 펼침) */
 function gdFlash(el){if(!el)return;el.scrollIntoView({block:'center'});el.classList.add('find-flash');setTimeout(()=>el.classList.remove('find-flash'),2000);}
-function gdRecMark(){const g=gdGet();if(g&&g.st==='run'&&!g.rec){g.rec=1;gdPut(g);gdPaint();}}
 Object.assign(actions,{
   'gd-fold':()=>{gd.fold=!gd.fold;gdPaint();},
   'gd-end':el=>{const g=gdGet()||{};g.st=el.dataset.v==='done'?'done':'skip';gdPut(g);gdPaint();toast(g.st==='done'?'안내를 마쳤어요':'설정에서 다시 볼 수 있어요');},
   'gd-open':()=>{const g=gdGet()||{};g.st='run';gd.fold=false;gdPut(g);setClose();gdPaint();},
-  'gd-proj':()=>{setClose();gdGoFold();go('home');setTimeout(()=>{const f=$('#new-form');gdFlash(f&&f.closest('.card'));const c=$('#new-code');if(c&&!matchMedia('(pointer:coarse)').matches)try{c.focus({preventScroll:true});}catch(e){}},50);},
+  'gd-proj':()=>{setClose();gdGoFold();homeOpen.new=true;go('home');setTimeout(()=>{const f=$('#new-form');gdFlash(f&&f.closest('.card'));const c=$('#new-code');if(c&&!matchMedia('(pointer:coarse)').matches)try{c.focus({preventScroll:true});}catch(e){}},50);},
   'gd-sw':()=>{const cp=curProject();const mine=gdMine();
     const p=cp&&!cp.example?cp:mine.slice().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''))[0];if(!p)return;
     setClose();gdGoFold();go('proc',{projectId:p.id,proc:procOn(p,'baseline')?'baseline':'intervene',cat:''});
     setTimeout(()=>{const s=$('#main [data-sw-strip]');if(s){pgReveal(s);gdFlash(s);}},80);},
-  'gd-rec':()=>{if(!$('#set-dlg')||$('#set-dlg').hidden)setOpen();setUI.rec=true;delete swUI.pick.rec;setRefresh();
-    const b=$('#set-dlg .set-g.rec');if(b)b.scrollIntoView({block:'nearest'});if(!recList().length)gdRecMark();},
 });
-/* 추천 설정을 바꾸거나 이미 추천 설정이면 안내 3번 완료 */
-{const a=actions['rec-go'],b=actions['rec-open'];actions['rec-go']=async el=>{await a(el);gdRecMark();};actions['rec-open']=el=>{b(el);if(setUI.rec&&!recList().length)gdRecMark();};}
 /* g: 묶음, sc: 저장 범위, rel: 관련 절차·카테고리, show: 보일 때, on: 체크 상태(null이면 고르기 줄), more: 켰을 때 세부 설정 */
 const SET_ROWS=[
   {id:'glass',g:'화면',t:'유리 효과',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:()=>glassOn()&&!hcOn(),dis:()=>hcOn(),hint:()=>hcOn()?'고대비면 꺼져요':'막대·창 뒤가 흐리게 비침'},
   {id:'hc',g:'화면',t:'고대비',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:()=>hcOn(),hint:()=>'진한 글자·굵은 테두리'},
-  {id:'hue',g:'화면',t:'앱 색',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:null,ctl:()=>`<button type="button" class="btn small" data-act="hue-reset"${hueGet()===null&&hueLGet()===null?' disabled':''}>기본색으로</button>`,hint:()=>hcOn()?'고대비면 기본색':syncMe()?'버튼·배경 색이 함께 바뀜':'로그인하면 계정에 저장',more:()=>hueMore()},
+  {id:'hue',g:'화면',t:'앱 색',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:null,ctl:()=>`<button type="button" class="btn small${setUI.hue?' primary':''}" data-act="hue-fold" aria-expanded="${!!setUI.hue}">${setUI.hue?'접기':'색 고르기'}</button><button type="button" class="btn small" data-act="hue-reset"${hueGet()===null&&hueLGet()===null?' disabled':''}>기본색으로</button>`,hint:()=>hcOn()?'고대비면 기본색':syncMe()?'버튼·배경 색이 함께 바뀜':'로그인하면 계정에 저장',more:()=>setUI.hue?hueMore():''},
   {id:'pg',g:'화면',t:'절차 한 장씩 보기',get sc(){return syncMe()?'내 계정':'이 기기';},rel:['profile','define','qabf','rating','hypo','plan','evaluate'],on:()=>!pgAll(),hint:()=>pgAll()?'지금은 한 화면에 모두':''},
   {id:'ink',g:'입력',t:'손글씨 모드',sc:'이 기기',rel:['profile','define','rating','abc','hypo','plan','evaluate'],on:()=>inkUI.mode==='ink',
     more:()=>`<label class="check"><input type="checkbox" data-set="pen"${inkUI.penSeen?' checked':''}> <span>S펜만 쓰기</span></label><span class="muted">손바닥·손가락은 무시 · 숫자 칸은 키보드</span>`},
@@ -7492,12 +7493,12 @@ const SET_ROWS=[
       ${o.mode==='combo'?'':`<label class="field qm-key-n"><span class="sr-only">연타 횟수</span><select data-qk="n">${ns}</select></label>`}
       <button type="button" class="btn small${qk.cap?' primary':''}" data-act="qk-cap">${qk.cap?(o.mode==='combo'?'조합키를 누르세요':'키를 누르세요'):'커맨드 입력'}</button>
       <span class="mono">${esc(qkLabel(o))}</span><span class="muted">누르면 대기 창 + ＋1</span>`;}},
-  {id:'mini',g:'칠판·PC',t:'작게 띄워 세기',get sc(){return syncMe()?'내 계정':'이 기기';},show:()=>!PCN,rel:['baseline','intervene'],on:()=>miniEnabled(),hint:()=>miniEnabled()?'＋1을 누를지 그을지':'끄면 대기 버튼 때 물어요',more:()=>trigSeg('mini-trig',miniTrig())},
+  {id:'mini',g:'칠판·PC',t:'작은 ＋1 창',get sc(){return syncMe()?'내 계정':'이 기기';},show:()=>!PCN,rel:['baseline','intervene'],on:null,ctl:()=>'',hint:()=>'＋1을 누를지 그을지',more:()=>trigSeg('mini-trig',miniTrig())},
   /* 앱 밖 측정(상위): 켜고 어느 측정인지 고르면 아래 하위 옵션(○ 그려·음량·측정 시간·끝 확인)이 열린다 */
   {id:'nat',g:'앱 밖 측정',t:'앱 밖 측정',sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN,on:()=>!!nat.target||setUI.nat,
     hint:()=>nat.target?'위젯·알림창·아이콘으로 기록':'어느 측정인지 고르세요',more:()=>{const t=nat.target;const p=t&&projById(t.pid);
       return `${p?`<span><b>${esc(natTitle(p,t.ph,natMode(p,t.ph)||t.mode))}</b></span>`:'<span class="muted">아직 안 골랐어요</span>'}<button type="button" class="btn small${p?'':' primary'}" data-act="np-open">${p?'바꾸기':'측정 고르기'}</button>`;}},
-  {id:'bub',g:'앱 밖 측정',par:'nat',t:'○ 그려 회기 시작',sw:['bub'],sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN&&nat.ver>=14,on:()=>!!(nat.bub&&nat.bub.on),ck:'data-set="bub"',
+  {id:'bub',g:'앱 밖 측정',par:'nat',t:'떠 있는 아이콘',sw:['bub'],sc:'설치 앱',rel:['baseline','intervene','measure'],show:()=>!!PCN&&nat.ver>=14,on:()=>!!(nat.bub&&nat.bub.on),ck:'data-set="bub"',
     hint:()=>{const b=nat.bub||{};if(!b.on)return '옆 작은 아이콘 판에 ○';if(!b.perm)return '다른 앱 위 표시 권한 필요';return b.alive?'아이콘이 떠 있어요':'곧 아이콘이 떠요';}},
   {id:'btn3',g:'앱 밖 측정',par:'nat',t:'음량 버튼으로 기록',sw:['vol','qm'],get sc(){return syncMe()?'내 계정':'설치 앱';},rel:['baseline','intervene','abc','measure'],show:()=>!!PCN&&nat.ver>=4,on:()=>!!(nat.btn&&nat.btn.on),box:'data-nat-btn',ck:'data-btn3="on"',more:()=>{
     const b=nat.btn||{};const k=Number(b.count)||1;const p=curProject();const lv=!!(p&&natMode(p,'bl')==='lvl');
@@ -7545,8 +7546,7 @@ function setInner(){
   const groups=[];rest.forEach(o=>{let g=groups.find(x=>x.g===o.g);if(!g)groups.push(g={g:o.g,rows:[]});g.rows.push(o);});
   return `<div class="sync-box set-box" role="dialog" aria-modal="true" aria-labelledby="set-h">
     <div class="sec-head"><h2 class="h3" id="set-h">설정</h2><button type="button" class="btn small primary" data-act="set-close">닫기</button></div>
-    <p class="set-ctx">켜면 세부 설정이 열려요 <button type="button" class="btn small${setUI.rec?' primary':''}" data-act="rec-open" aria-expanded="${!!setUI.rec}">추천 설정 한 번에</button></p>
-    ${setUI.rec?recBox():''}
+    <p class="set-ctx">켜면 세부 설정이 열려요</p>
     ${top.length?`<section class="set-g rel"><h3>${esc(setCtxName(ctx))} 관련</h3>${top.map(tree).join('')}</section>`:''}
     ${groups.map(g=>`<section class="set-g"><h3>${esc(g.g)}</h3>${g.rows.map(tree).join('')}</section>`).join('')}
     ${PCN?'':'<p class="hint">음량 버튼·측정 시간은 설치 앱에서</p>'}
@@ -7557,7 +7557,7 @@ function setOpen(){
   let d=$('#set-dlg');
   if(!d){d=document.createElement('div');d.id='set-dlg';d.className='sync-dlg';document.body.appendChild(d);
     d.addEventListener('click',e=>{if(e.target===d)setClose();});}
-  setUI.tmr=false;setUI.rec=false;d.innerHTML=setInner();d.hidden=false;
+  setUI.tmr=false;setUI.hue=false;d.innerHTML=setInner();d.hidden=false;
   const h=d.querySelector('h2');if(h){h.tabIndex=-1;h.focus();}
 }
 function setClose(){const d=$('#set-dlg');if(d){d.hidden=true;d.innerHTML='';}if(qk.cap){qk.cap=false;qkRefresh();}}
@@ -7670,7 +7670,6 @@ document.addEventListener('change',e=>{
   if(k==='glass'){try{localStorage.setItem(GLASS_KEY,v?'1':'0');}catch(x){}lookApply();toast(v?'유리 효과를 켰습니다':'유리 효과를 껐습니다');}
   else if(k==='hc'){try{if(v)localStorage.setItem(HC_KEY,'1');else localStorage.removeItem(HC_KEY);}catch(x){}lookApply();toast(v?'고대비를 켰습니다':'고대비를 껐습니다');}
   else if(k==='pg'){if(v===pgAll()){if(ui.view==='proc')actions['pg-all']();else{pgAllSet(!v);toast(v?'한 장씩 보기':'전체 보기: 한 화면에 모두');}}}
-  else if(k==='mini'){lsPut(MINI_ON,v?'1':'0');if(!v&&mini.on&&!(mini.live&&liveActive()))miniOff();toast(v?'작게 띄워 세기를 켰습니다':'작게 띄워 세기를 껐습니다');}
   else if(k==='ink'){inputModeSet(v?'ink':'kb');toast(v?'손글씨 모드':'키보드 모드');}
   else if(k==='pen'){inkUI.penSeen=v;inkModeSet(v?'pen':'finger');toast(v?'S펜만 씁니다':'손가락도 씁니다');}
   else if(k==='tmr'){if(v){setUI.tmr=true;}else{setNatTimerOff();return;}}
@@ -7680,11 +7679,12 @@ document.addEventListener('change',e=>{
   else if(k==='nat'){if(v){setUI.nat=true;if(!nat.target)setTimeout(npOpen,0);}else{setNatOff();return;}}
   else if(el.matches('[data-nattgt]')){setNatTgt(el.value);return;}
   else if(el.matches('[data-btn3],[data-tmr],[data-chk]'))return;/* 원래 처리(natBtnSet 등)가 앱에 보낸 뒤 natUI로 다시 그린다 */
-  /* data-qk·data-live-auto·data-plan-auto는 원래 처리가 값을 바꾼 뒤에 다시 그린다 */
+  /* data-qk·data-plan-auto는 원래 처리가 값을 바꾼 뒤에 다시 그린다 */
   setTimeout(setRefresh,0);
 });
 Object.assign(actions,{
   'set-open':()=>setOpen(),
+  'hue-fold':()=>{setUI.hue=!setUI.hue;setRefresh();},
   'set-open-qm':()=>{setOpen();const r=$('#set-dlg [data-row="qm"]');if(r)r.scrollIntoView({block:'center'});},'set-close':()=>setClose(),'hue-pre':el=>hueSave(Number(el.dataset.v)),'hue-reset':()=>{hueSave(null,null);toast('기본색으로 되돌렸습니다');},
   'set-ai':()=>{setClose();aiDlgOpen();},
   'set-go':el=>{setClose();go('proc',{proc:el.dataset.key});},
@@ -8132,6 +8132,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-26-1',d:'2026-11-26',k:'web',t:'쓰기 편하게 정리',items:['홈: 내 프로젝트 목록을 맨 위로','회기 시작: 이 기기 방법 위·추천 표시','이름 통일: 떠 있는 아이콘·작은 ＋1 창','추천 설정은 준비하기에 합침','작은 ＋1 창은 누르면 바로 뜸','공지는 최근 10개만, 나머지 접음']},
   {id:'2026-11-25-7',d:'2026-11-25',k:'web',t:'회기 칸 작게 띄워 세기 뺌',items:['회기마다 있던 작게 띄워 세기 줄 뺌','화면 가리고 세는 방식 없앰','지난 회기는 −·＋1로 고침']},
   {id:'2026-11-25-6',d:'2026-11-25',k:'web',t:'작게 띄워 세기 켜고 끄기',items:['설정 > 칠판·PC에 켜고 끄기','꺼 두면 대기 버튼 때 켤지 물음','켜고 띄우기 → 설정도 켜짐']},
   {id:'2026-11-25-5',d:'2026-11-25',k:'web',t:'작은 대기 창·시작 알림',items:['대기 중엔 \'대기 중\' 한 줄만','회기 시작하면 ＋1로 바뀌고 반짝','회기 줄에 \'알림 켜기\' 버튼','회기 시작 알림 누르면 ＋1 창']},
@@ -8217,7 +8218,7 @@ const NOTICE_KEY='pbs-notice-seen';
 const NOTICE_NEED=Math.max(...NOTICES.map(n=>n.need||0));/* 최신 apk의 단계 */
 const notice={lvl:null,u:null};/* 설치된 apk의 단계(설치형 앱에서만, 모르면 null) */
 function noticeSeen(){try{return localStorage.getItem(NOTICE_KEY)||'';}catch(e){return '';}}
-function noticeUnseen(){const s=noticeSeen();if(!s)return NOTICES.length;const i=NOTICES.findIndex(n=>n.id===s);return i<0?NOTICES.length:i;}
+function noticeUnseen(){const s=noticeSeen();const i=s?NOTICES.findIndex(n=>n.id===s):-1;return i<0?Math.min(NOTICES.length,10):i;}/* 본 기록이 없거나 너무 오래되면 최근 10개만 새 소식 */
 function noticeOld(){return notice.lvl!=null&&notice.lvl<NOTICE_NEED;}
 function noticeKind(n){
   if(n.k!=='apk')return '<span class="pill ok">앱 재시작만</span>';
@@ -8240,13 +8241,18 @@ function noticeHome(){
 function noticeDot(){const d=$('#notice-dot');if(!d)return;const u=noticeUnseen();d.hidden=!u&&!noticeOld();d.textContent=u?String(u):'!';}
 function noticeOpen(){
   const u=notice.u!=null?notice.u:noticeUnseen();notice.u=u;
+  /* 위에는 새 소식(없으면 최근 10개)과 아직 안 깔린 apk 공지만, 나머지는 '지난 공지'로 접는다 */
+  const nTop=Math.max(10,Math.min(u,20));const keep=(n,i)=>i<nTop||(n.k==='apk'&&notice.lvl!=null&&notice.lvl<(n.need||0));
+  const L=NOTICES.map((n,i)=>({n,i}));const top=L.filter(x=>keep(x.n,x.i)),rest=L.filter(x=>!keep(x.n,x.i));
+  const li=({n,i})=>`<li class="notice-item${i<u?' new':''}"><div class="notice-head">${i<u?'<span class="pill">새 소식</span>':''}<b>${esc(n.t)}</b><span class="meta">${esc(n.d.slice(5).replace('-','/'))}</span>${noticeKind(n)}</div><ul>${n.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></li>`;
   let d=$('#notice-dlg');
   if(!d){d=document.createElement('div');d.id='notice-dlg';d.className='sync-dlg';document.body.appendChild(d);
     d.addEventListener('click',e=>{if(e.target===d)noticeClose();});}
   d.innerHTML=`<div class="sync-box" role="dialog" aria-modal="true" aria-labelledby="notice-h">
     <h2 class="h3" id="notice-h">공지 · 바뀐 점</h2>
     ${noticeAppLine()}
-    <ul class="notice-list">${NOTICES.map((n,i)=>`<li class="notice-item${i<u?' new':''}"><div class="notice-head">${i<u?'<span class="pill">새 소식</span>':''}<b>${esc(n.t)}</b><span class="meta">${esc(n.d.slice(5).replace('-','/'))}</span>${noticeKind(n)}</div><ul>${n.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></li>`).join('')}</ul>
+    <ul class="notice-list">${top.map(li).join('')}</ul>
+    ${rest.length?`<details class="notice-old"><summary>지난 공지 ${rest.length}개</summary><ul class="notice-list">${rest.map(li).join('')}</ul></details>`:''}
     <p class="hint">apk는 지우지 말고 덮어 설치</p>
     <div class="row end"><button type="button" class="btn small primary" data-act="notice-close">닫기</button></div>
   </div>`;
@@ -8297,31 +8303,6 @@ function noticeInit(){
   }).catch(()=>{});
 }
 
-/* ---------- 전자칠판·큰 화면: 작게 띄워 세기의 가린 배경(시계) ---------- */
-const cover={on:false,title:'',t:null};
-function coverClock(){if(!cover.on)return;const d=new Date();$('#cover-clock').textContent=pad(d.getHours())+':'+pad(d.getMinutes());$('#cover-date').textContent=`${d.getMonth()+1}월 ${d.getDate()}일 ${WD[d.getDay()]}요일`;}
-function coverSet(on){
-  const c=$('#cover');if(!c||cover.on===on)return;cover.on=on;c.hidden=!on;
-  $$('body > .topbar, body > .wrap, #bigdock, #toast, #web-upd, .sync-dlg, .kb-float').forEach(el=>{try{el.inert=on;}catch(e){}if(on)el.setAttribute('aria-hidden','true');else el.removeAttribute('aria-hidden');});
-  if(on){try{document.activeElement&&document.activeElement.blur&&document.activeElement.blur();}catch(e){}cover.title=document.title;document.title='시계';coverClock();cover.t=setInterval(coverClock,5000);}
-  else{clearInterval(cover.t);cover.t=null;document.title=cover.title||document.title;}
-}
-(function(){
-  const b=$('#cover-open');if(!b)return;
-  let tm=null;
-  const stop=()=>{clearTimeout(tm);tm=null;b.classList.remove('hold');};
-  b.addEventListener('pointerdown',e=>{e.preventDefault();stop();void b.offsetWidth;b.classList.add('hold');tm=setTimeout(()=>{stop();if(mini.on)miniOff();else coverSet(false);},700);});
-  ['pointerup','pointerleave','pointercancel'].forEach(t=>b.addEventListener(t,stop));
-  b.addEventListener('contextmenu',e=>e.preventDefault());
-  b.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();if(mini.on)miniOff();else coverSet(false);}});
-  /* 가린 화면(작게 띄워 세기 뒤)에서 Esc·B·. 으로 닫기. 혼자 쓰는 '화면 가리기'(버튼·B 키·나갔다 오면 가리기)는 2026-11-25 사용자 요청으로 뺐다 */
-  const hot=k=>k==='b'||k==='B'||k==='.'||k==='ㅠ';
-  document.addEventListener('keydown',e=>{
-    if(e.ctrlKey||e.metaKey||e.altKey||e.isComposing)return;
-    if(cover.on){if(e.key==='Escape'||hot(e.key)){e.preventDefault();e.stopPropagation();if(mini.on)miniOff();else coverSet(false);}return;}
-  },true);
-})();
-
 /* ---------- 작게 띄워 세기: 회기 하나를 골라 화면은 가리고 ＋1 표시만 띄운다 ----------
    표시는 끌어 옮길 수 있고, 화면 밖으로 밀면 가장자리에 손잡이만 남는다(누르면 다시 나옴).
    크롬(윈도우 등)에서 '다른 창 위에 띄우기'(Document Picture-in-Picture)가 되면 작은 창으로 띄워 수업 자료 위에도 보인다. */
@@ -8369,15 +8350,7 @@ function miniPlace(){
 function miniOff(){
   if(!mini.on)return;mini.on=false;mini.qpc=false;$('#mini').hidden=true;if(mini.live){mini.live=false;setTimeout(liveBar,0);}
   if(mini.pip){const w=mini.pip;mini.pip=null;try{w.close();}catch(e){}}
-  coverSet(false);
   const r=miniSes();if(r&&ui.view==='proc'){const el=$('#ses-'+mini.id);if(el){pgReveal(el);el.scrollIntoView({block:'center'});}}
-}
-async function miniOn(el){
-  const p=curProject();if(!p)return;const s=sesList(p,el.dataset.ph).find(x=>x.id===el.dataset.id);if(!s)return;
-  if(mini.on&&mini.live)miniOff();/* 함께 세기 창은 닫고 이 회기로 */
-  Object.assign(mini,{on:true,live:false,qpc:false,ph:el.dataset.ph,id:s.id});
-  coverSet(true);
-  return miniShow(true);
 }
 /* tryPip: 사용자가 누른 직후에만 작은 창(PiP)을 열 수 있다(브라우저 규칙). 아니면 화면 안에 띄운다 */
 /* 함께 세기 작은 창: 가로 한 줄로 작게(왼쪽 상태·횟수, 가운데 ＋1, 오른쪽 −1·닫기). 대기 중엔 흐리게 */
@@ -8463,25 +8436,7 @@ async function miniShow(tryPip){
   $('#mini-out').addEventListener('click',()=>miniOff());
   addEventListener('resize',()=>{if(mini.on&&!m.hidden)miniPlace();});
 })();
-/* 작게 띄워 세기 켜고 끄기(설정). 꺼져 있으면 대기·띄우기 버튼을 누를 때 켤지 묻고, '켜고 띄우기'면 설정을 켜고 바로 띄운다(2026-11-25 사용자 요청) */
-const MINI_ON='pbs-mini-on';
-function miniEnabled(){return lsRaw(MINI_ON)==='1';}
-function miniAsk(run){
-  if(miniEnabled())return run();
-  const old=$('#mq-ov');if(old)old.remove();
-  const ov=document.createElement('div');ov.id='mq-ov';ov.className='hp-ov mq-ov';
-  ov.innerHTML=`<div class="pk-box hp-box mq-box" role="alertdialog" aria-modal="true" aria-labelledby="mq-h"><div class="pk-head"><b id="mq-h">작게 띄워 세기가 꺼져 있어요</b></div>
-    <div class="hp-body"><p>설정에서 켤까요? 켜면 다음부터는 묻지 않고 바로 떠요.</p></div>
-    <div class="pk-foot"><button type="button" class="btn small" data-mq="no">취소</button><button type="button" class="btn small primary" data-mq="yes">켜고 띄우기</button></div></div>`;
-  document.body.appendChild(ov);
-  const close=()=>{ov.remove();document.removeEventListener('keydown',esc,true);};
-  const esc=e=>{if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();close();}};
-  document.addEventListener('keydown',esc,true);
-  ov.addEventListener('click',e=>{const b=e.target.closest('[data-mq]');if(e.target!==ov&&!b)return;e.preventDefault();e.stopPropagation();close();
-    if(b&&b.dataset.mq==='yes'){lsPut(MINI_ON,'1');prefScan();setRefresh();toast('작게 띄워 세기를 켰습니다');try{const r=run();if(r&&r.catch)r.catch(()=>{});}catch(x){}}});
-  const y=ov.querySelector('[data-mq="yes"]');if(y)try{y.focus();}catch(e){}
-}
-Object.assign(actions,{'mini-on':el=>miniAsk(()=>miniOn(el)),
+Object.assign(actions,{
   'mini-trig':el=>{try{localStorage.setItem(MINI_TRIG,el.dataset.v);}catch(e){}$$('[data-act="mini-trig"]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===el.dataset.v)));toast(el.dataset.v==='draw'?'작은 판에 그으면 ＋1':'눌러서 ＋1');}});
 
 /* ---------- 실시간 함께 세기: 휴대폰 앱에서 연 빈도 회기를 다른 기기(컴퓨터·전자칠판)에서도 ＋1 ----------
@@ -8640,13 +8595,13 @@ function liveEnded(){
   if(mini.pip&&mini.live){try{mini.pip.document.title='＋1 함께 세기';}catch(e){}}
   if(live.note){try{live.note.close();}catch(e){}live.note=null;}
   if(PCN&&live.mkey){const k=live.mkey;live.mkey=null;live.mcount=null;if(nat.key===k)PCN.stop().then(()=>{nat.key=null;natUI();}).catch(()=>{});}
-  if(mini.on&&mini.live&&(!mini.pip||!liveAuto()))miniOff();/* 작은 창은 남겨 두고 다음 회기를 기다린다(자동 띄우기를 껐으면 닫음) */
+  if(mini.on&&mini.live&&!mini.pip)miniOff();/* 작은 창은 남겨 두고 다음 회기를 기다린다 */
   toast('휴대폰 회기가 끝났습니다');
 }
 /* 화면 안 ＋1 또는 작은 창(PiP) */
 async function liveMini(gesture){
   if(acctGate()&&!acctUid())return;
-  if(mini.on&&!mini.live){if(gesture)toast('작게 띄워 세기를 먼저 닫으세요');return;}
+  if(mini.on&&!mini.live){if(gesture)toast('작은 ＋1 창을 먼저 닫으세요');return;}
   if(mini.on&&mini.pip){try{mini.pip.focus();}catch(e){}return;}
   if(live.opening)return;
   if(mini.on){if(!gesture)return;$('#mini').hidden=true;}
@@ -8657,23 +8612,7 @@ async function liveMini(gesture){
 }
 /* 큰 화면 크롬: 작은 창은 누른 직후에만 열 수 있다. 그래서 공유 프로젝트가 있으면 화면을 처음 누를 때(또는 회기가 시작된 뒤 처음 누를 때) 바로 연다 */
 function liveCanPip(){return !PCN&&!!window.documentPictureInPicture&&matchMedia('(min-width:900px)').matches;}
-function liveAuto(){try{return localStorage.getItem('pbs-live-auto')!=='0';}catch(e){return true;}}
-/* 자동 띄우기를 끄면(이 기기·다른 기기 설정) 떠 있는 대기 창을 닫는다. 휴대폰 회기 중이면 회기가 끝날 때 닫는다(기록은 휴대폰이 가짐) */
-function liveAutoOff(){
-  if(liveAuto()||!(mini.on&&mini.live))return;
-  if(liveActive()){toast('휴대폰 회기가 끝나면 대기 창을 닫아요');return;}
-  miniOff();live.closed=Date.now();toast('대기 창을 닫았습니다');
-}
-function liveGesture(e){
-  if(!liveCanPip()||(mini.on&&(mini.pip||!mini.live))||live.opening||cover.on)return;
-  if(e.target&&e.target.closest&&e.target.closest('[data-act="live-arm"],[data-act="live-pip"],#mini'))return;
-  if(!Sync.user)return;
-  const r=liveActive();
-  if(Date.now()-(live.closed||0)<3000)return;
-  if(!r&&(!liveAuto()||!store.projects.some(liveReady)))return;/* 측정 방법을 '빈도'로 고른 공유 프로젝트가 있을 때만 대기 */
-  liveMini(true);setTimeout(liveNotePerm,600);
-}
-/* 2026-11-25 사용자 결정: 아무 데나 눌러 대기 창이 뜨면 기록하기 방해 → 대기 창은 '＋1 창 대기'·위 막대 '작은 창' 버튼으로만(liveGesture는 안 씀) */
+/* 2026-11-25 사용자 결정: 아무 데나 눌러 대기 창이 뜨면 기록하기 방해 → 대기 창은 버튼으로만('＋1 창 자동 띄우기' 옵션·처리 코드는 2026-11-26 정리) */
 /* 다른 창 뒤에 있을 때: 탭 제목을 깜빡여 알린다 */
 function liveFlash(on){
   clearInterval(live.flashT);live.flashT=null;
@@ -8741,19 +8680,20 @@ function liveNoteBtn(){
 function liveArmRow(p,ph){
   if(ph==='abc'||p.procs.define.data.measure!=='빈도'||!matchMedia('(min-width:900px)').matches)return '';
   const lr=!PCN&&liveReady(p)&&!!window.documentPictureInPicture;
-  return `<div class="bl-nat"><button type="button" class="btn small" data-act="live-arm" data-ph="${ph}">＋1 창 대기</button><span class="muted">누르면 회기 시작</span>${lr?`<button type="button" class="btn small" data-act="live-pip">휴대폰 회기 대기</button>${liveNoteBtn()}<span class="muted live-st" data-pid="${esc(p.shared.projectId)}">${esc(liveSt(p.shared.projectId))}</span>`:''}</div>`;
+  return `<div class="bl-nat"><button type="button" class="btn small" data-act="live-arm" data-ph="${ph}">작은 ＋1 창 열기</button><span class="muted">누르면 회기 시작</span>${lr?`<button type="button" class="btn small" data-act="live-pip">휴대폰 회기 작은 창</button>${liveNoteBtn()}<span class="muted live-st" data-pid="${esc(p.shared.projectId)}">${esc(liveSt(p.shared.projectId))}</span>`:''}</div>`;
 }
 Object.assign(actions,{
-  'live-arm':el=>miniAsk(()=>{liveNotePerm();qmArm(el.dataset.ph);}),
-  'live-pip':()=>miniAsk(()=>{liveNotePerm();liveMini(true);}),
+  'live-arm':el=>{liveNotePerm();qmArm(el.dataset.ph);},
+  'live-pip':()=>{liveNotePerm();liveMini(true);},
   'live-note':async()=>{try{const r=await Notification.requestPermission();toast(r==='granted'?'휴대폰 회기가 시작되면 알림이 떠요':'알림이 허용되지 않았어요');}catch(e){}const y=window.scrollY;render();window.scrollTo(0,y);},
   'live-inc':()=>{liveInc(1);}
 });
-document.addEventListener('change',e=>{if(e.target.matches&&e.target.matches('[data-live-auto]')){try{localStorage.setItem('pbs-live-auto',e.target.checked?'1':'0');}catch(x){}toast(e.target.checked?'화면을 누르면 대기 창이 떠요':'대기 창은 버튼으로만');if(!e.target.checked)setTimeout(liveAutoOff,0);}});
 setInterval(()=>{liveRemote();liveHostTick();},10000);
 
 /* ---------- boot ---------- */
 if(firstRun&&!store.projects.length){store.projects.push(exampleProject());}
+/* 처음 여는 기기는 지난 공지를 모두 읽은 것으로(개발하며 쌓인 '새 소식 80개'가 뜨지 않게). 이후 새 공지만 새 소식 */
+if(firstRun&&!noticeSeen()){try{localStorage.setItem(NOTICE_KEY,NOTICES[0].id);}catch(e){}noticeDot();}
 AudioDB.open().then(()=>{audioOK=true;}).catch(()=>{audioOK=false;});
 updateStorageBanner();
 render();
