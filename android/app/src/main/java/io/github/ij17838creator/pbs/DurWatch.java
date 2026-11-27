@@ -24,6 +24,7 @@ public class DurWatch extends Service {
     private static volatile DurWatch inst;
     private final Handler h = new Handler(Looper.getMainLooper());
     private final Runnable tick = this::onTick;
+    private final Runnable ring = this::onRing; // 위젯 ＋1 둘레 남은 시간 고리를 10초마다 다시 그림
     private PressWatch press;
 
     /** 음량 버튼 기록 감시가 지금 돌고 있는지 (진단용) */
@@ -101,9 +102,20 @@ public class DurWatch extends Service {
             press.stop();
             press = null;
         }
+        h.removeCallbacks(ring);
         if (!CounterStore.watching(c)) { if (!pr) stopSelf(); return; }
+        if (CounterStore.sesEnd(c) > 0 && CounterWidget.has(c)) h.postDelayed(ring, RING_MS);
         long wait = CounterStore.nextCheck(c) - System.currentTimeMillis();
         h.postDelayed(tick, Math.max(500L, wait));
+    }
+
+    private static final long RING_MS = 10000L;
+
+    private void onRing() {
+        Context c = getApplicationContext();
+        if (CounterStore.sesEnd(c) <= 0) return;
+        CounterWidget.updateAll(c);
+        h.postDelayed(ring, RING_MS);
     }
 
     private void onTick() {
@@ -116,6 +128,7 @@ public class DurWatch extends Service {
         alive = false;
         if (inst == this) inst = null;
         h.removeCallbacks(tick);
+        h.removeCallbacks(ring);
         if (press != null) { press.stop(); press = null; }
         try {
             if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_DETACH);

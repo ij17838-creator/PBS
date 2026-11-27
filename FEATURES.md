@@ -13,7 +13,7 @@
 
 ## 화면
 - 홈·프로젝트 카드 · viewHome·homeFold·projCard·viewProject·viewCat·procCard · 계정별 목록, 공유 카드, 공지 점
-- 절차 한 장씩(묶음) · pgBuild·pgGo·pgPaint·pgAll·PG_* · 모든 절차, 찾기, 도움말 'pg:', 마지막 절차 아래 '종합 결과'(rep-open)
+- 절차 한 장씩(묶음) · pgBuild·pgGo·pgPaint·pgAll·PG_* · 모든 절차, 찾기, 도움말 'pg:', 마지막 절차 아래 '종합 결과'(rep-open). 아래 이동 바 pgNav·pgNavProcs·pgNextBtn(전체 보기·묶음 하나면 .pg-nav.slim, body.pg-slim)
 - 찾기 · findIndex·findRun·findOpen·findGo · 묶음 나누기
 - 고르는 창(select·날짜·시각) · pkOpen·pkOpenSel·pkOpenDate·pkOpenTime·pkKey · 모든 입력 칸 자동
 - 상태·완료·저장 버튼 · statusInfo·setDone·saveSend·doneBar·refreshStatus · 공유 보내기
@@ -79,6 +79,7 @@
 
 ## 안드로이드(android/app/src/main/java/.../pbs)
 - PbsCounterPlugin(ver) · 웹↔앱 다리 · 앱 밖 측정, 공지 need
+- 위젯 남은 시간 고리 · CounterWidget.ring·ringBitmap·has, layout w_mainbox·w_ring, DurWatch.onRing(10초) · 빈도 위젯, 측정 시간 sesMin·sesEnd
 - CounterStore·CounterReceiver·CounterNotifier·CounterWidget·CounterTile · 알림 ＋1·위젯·빠른 설정 · 앱 밖 측정
 - PressWatch(음량)·FloatBubble(떠 있는 아이콘)·DurWatch(지속시간) · 회기 시작·기록 · 회기 시작 방법
 - LiveSync · 앱 회기를 서버 ~live로 · 함께 ＋1

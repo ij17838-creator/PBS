@@ -45,18 +45,34 @@
             android:visibility="gone" />
     </LinearLayout>
 
-    <Button
-        android:id="@+id/w_main"
+    <!-- 큰 버튼 + 남은 측정 시간 고리(빈도, 측정 시간이 있을 때만 보임. 누르면 버튼과 같은 ＋1) -->
+    <FrameLayout
+        android:id="@+id/w_mainbox"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="6dp"
-        android:layout_weight="1"
-        android:background="@drawable/widget_btn"
-        android:minHeight="48dp"
-        android:text="앱 열기"
-        android:textColor="#FFFFFF"
-        android:textSize="24sp"
-        android:textStyle="bold" />
+        android:layout_weight="1">
+
+        <Button
+            android:id="@+id/w_main"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/widget_btn"
+            android:minHeight="48dp"
+            android:text="앱 열기"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/w_ring"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="3dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="남은 측정 시간"
+            android:visibility="gone" />
+    </FrameLayout>
 
     <!-- 강도 1·2·3단계 / 간격 기록 있음·없음: 큰 버튼 줄 (그때는 w_main을 숨김) -->
     <LinearLayout

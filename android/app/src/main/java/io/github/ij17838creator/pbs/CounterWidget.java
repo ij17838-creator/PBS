@@ -6,6 +6,10 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.os.SystemClock;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -45,6 +49,49 @@ public class CounterWidget extends AppWidgetProvider {
         v.setOnClickPendingIntent(id, CounterNotifier.action(c, act, req));
     }
 
+    /** ＋1 둘레에 남은 측정 시간 고리: 시계 방향으로 줄어들고, 끝나면 빨간 한 바퀴. 측정 시간(sesMin)이 있을 때만 */
+    private static void ring(Context c, RemoteViews v) {
+        long end = CounterStore.sesEnd(c);
+        int min = CounterStore.sesMin(c);
+        if (end <= 0 || min <= 0) return;
+        long total = min * 60000L;
+        float left = Math.max(0f, Math.min(1f, (end - System.currentTimeMillis()) / (float) total));
+        v.setImageViewBitmap(R.id.w_ring, ringBitmap(left));
+        v.setViewVisibility(R.id.w_ring, View.VISIBLE);
+        v.setOnClickPendingIntent(R.id.w_ring, CounterNotifier.action(c, CounterReceiver.INC, 1));
+    }
+
+    static Bitmap ringBitmap(float left) {
+        int n = 160;
+        float sw = 12f;
+        Bitmap b = Bitmap.createBitmap(n, n, Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(b);
+        RectF r = new RectF(sw / 2 + 1, sw / 2 + 1, n - sw / 2 - 1, n - sw / 2 - 1);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(sw);
+        p.setStrokeCap(Paint.Cap.BUTT);
+        if (left <= 0f) {
+            p.setColor(0xFFFF8A7A); // 끝: 빨간 한 바퀴
+            cv.drawOval(r, p);
+            return b;
+        }
+        p.setColor(0x55FFFFFF); // 지나간 시간
+        cv.drawOval(r, p);
+        p.setColor(0xFFFFFFFF); // 남은 시간: 12시에서 지나간 만큼 시계 방향으로 밀려 줄어듦
+        float gone = 360f * (1f - left);
+        cv.drawArc(r, -90f + gone, 360f * left, false, p);
+        return b;
+    }
+
+    static boolean has(Context c) {
+        try {
+            AppWidgetManager m = AppWidgetManager.getInstance(c);
+            int[] ids = m == null ? null : m.getAppWidgetIds(new ComponentName(c, CounterWidget.class));
+            return ids != null && ids.length > 0;
+        } catch (Exception e) { return false; }
+    }
+
     static RemoteViews views(Context c) {
         RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.widget_counter);
         v.setOnClickPendingIntent(R.id.w_head, openApp(c));
@@ -53,7 +100,8 @@ public class CounterWidget extends AppWidgetProvider {
         v.setViewVisibility(R.id.w_sub2, View.GONE);
         v.setViewVisibility(R.id.w_adj, View.GONE);
         v.setViewVisibility(R.id.w_lvl, View.GONE);
-        v.setViewVisibility(R.id.w_main, View.VISIBLE);
+        v.setViewVisibility(R.id.w_mainbox, View.VISIBLE);
+        v.setViewVisibility(R.id.w_ring, View.GONE);
         if (!CounterStore.anything(c)) {
             v.setTextViewText(R.id.w_title, "PBS 기록");
             v.setTextViewText(R.id.w_status, "앱에서 측정 대상을 고르세요");
@@ -83,7 +131,7 @@ public class CounterWidget extends AppWidgetProvider {
                 button(c, v, R.id.w_sub1, "회기 시작", CounterReceiver.BEGIN, 6);
             }
         } else if (CounterStore.LVL.equals(um)) {
-            v.setViewVisibility(R.id.w_main, View.GONE);
+            v.setViewVisibility(R.id.w_mainbox, View.GONE);
             v.setViewVisibility(R.id.w_lvl, View.VISIBLE);
             button(c, v, R.id.w_l1, "1 약", CounterReceiver.LV1, 17);
             button(c, v, R.id.w_l2, "2 중", CounterReceiver.LV2, 18);
@@ -96,7 +144,7 @@ public class CounterWidget extends AppWidgetProvider {
             }
         } else if (CounterStore.INT.equals(um)) {
             if (on) {
-                v.setViewVisibility(R.id.w_main, View.GONE);
+                v.setViewVisibility(R.id.w_mainbox, View.GONE);
                 v.setViewVisibility(R.id.w_lvl, View.VISIBLE);
                 button(c, v, R.id.w_l1, "있음", CounterReceiver.IV_YES, 21);
                 button(c, v, R.id.w_l2, "없음", CounterReceiver.IV_NO, 22);
@@ -124,6 +172,7 @@ public class CounterWidget extends AppWidgetProvider {
             else button(c, v, R.id.w_sub1, "회기 시작", CounterReceiver.BEGIN, 6);
         } else {
             button(c, v, R.id.w_main, "＋1", CounterReceiver.INC, 1);
+            if (on) ring(c, v);
             if (on) {
                 button(c, v, R.id.w_sub1, "−1", CounterReceiver.DEC, 2);
                 button(c, v, R.id.w_sub2, "회기 끝", CounterReceiver.END, 3);
