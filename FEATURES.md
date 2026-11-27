@@ -21,7 +21,7 @@
 - 위 막대 상태 신호 · sigUI·sigOpen·sigSave·sigSync·sigServer · 입력 모드, 저장, 공유
 - 설정 창 · SET_ROWS·setRow·setOpen·setCtx·setRefresh · 거의 모든 켜고 끄기 옵션, 설정 계정 저장, 도움말 'set:'
 - 설정 계정 저장 · PREF_KEYS·prefPush·prefLoad·prefMerge·prefApply·natPrefApply · 설정 창, 로그인, 앱 밖 측정 옵션
-- 유리·고대비·앱 색 · GLASS_KEY·HC_KEY·lookApply·huePal·hueApply·hueSave·HUE_PRE · 설정, 계정 저장. 고대비는 기기 다크여도 흰 바탕(:root.hc, isDark)
+- 유리·고대비·앱 색 · GLASS_KEY·HC_KEY·lookApply·huePal·hueApply·hueSave·HUE_PRE · 설정, 계정 저장. 고대비는 기기 다크여도 흰 바탕(:root.hc, isDark), 고대비+앱 색은 hcPal(버튼·강조만 진하게, 글씨 검정)
 - 배경 색 일렁임 · WAVE_KEY(pbs-wave)·waveOn·WAVE_AMP·WAVE_SPD·waveOpt·waveApply(--wa·--wd)·lookApply(.wave)·CSS :root.wave::after·@keyframes bgwave·huePal --wave1~3 · 설정 유리 효과 하위(par:glass), 크기·속도, 계정 저장(PREF_KEYS), 기본 꺼짐
 - 도움말 ⓘ · HELP·hpBtn·hpOpen·hpProc · 설정, 절차, 묶음
 - 첫날 안내 · GD_KEY·gdSteps·gdPaint·gdAuto · 회기 시작 준비하기, 새 계정

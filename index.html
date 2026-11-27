@@ -7080,9 +7080,13 @@ function huePalDark(h,uL){
     '--line':hx(hexL(h,18,21)),'--line-strong':hx(hexL(h,16,30)),'--ink':hx(hexL(h,15,91)),'--muted':hx(hexL(h,9,64)),'--qc0':hx(hexL(h,45,l)),
     '--glow1':rgba(h,45,55,.12),'--glow3':rgba(h,45,55,.08),'--wave1':rgba(h,45,55,.16),'--wave2':rgba((h+28)%360,45,52,.14),'--wave3':rgba((h+305)%360,40,55,.10),'--glass':rgba(h,23,12,.62),'--glass-strong':rgba(h,23,12,.88),'--tint-sh':'rgba(0,0,0,.3)'};
 }
-const HUE_VARS=Object.keys(Object.assign({},huePal(0,false),huePal(0,true)));
+/* 고대비 + 앱 색: 흰 바탕·검은 글자는 그대로, 버튼·강조만 앱 색을 아주 진하게(흰 바탕 대비 7 이상) */
+function hcPal(h){const W=[1,1,1];let l=34;while(l>8&&cr(hexL(h,85,l),W)<7)l--;
+  return {'--accent':hx(hexL(h,85,l)),'--accent-hover':hx(hexL(h,85,Math.max(5,l-7))),'--accent-ink':'#FFFFFF','--accent-tx':hx(hexL(h,85,l)),'--accent-soft':hx(hexL(h,75,91)),
+    '--qc0':hx(hexL(h,85,l)),'--sunk':hx(hexL(h,40,94)),'--ser-b':hx(hexL(h,85,l))};}
+const HUE_VARS=Object.keys(Object.assign({},huePal(0,false),huePal(0,true),hcPal(0)));
 function hueApply(h){const r=document.documentElement;HUE_VARS.forEach(k=>r.style.removeProperty(k));
-  if(h===undefined)h=hueGet();const L=hueLGet();if(h===null&&L!==null)h=HUE_DEF;if(h===null||isNaN(h)||hcOn())return;Object.entries(huePal(h,isDark(),L)).forEach(([k,v])=>r.style.setProperty(k,v));}
+  if(h===undefined)h=hueGet();const L=hueLGet();if(h===null&&L!==null)h=HUE_DEF;if(h===null||isNaN(h))return;if(hcOn()){Object.entries(hcPal(h)).forEach(([k,v])=>r.style.setProperty(k,v));return;}Object.entries(huePal(h,isDark(),L)).forEach(([k,v])=>r.style.setProperty(k,v));}
 hueApply();try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>hueApply());}catch(e){}
 function hueLocal(v,l){/* l을 안 주면 밝기는 그대로 */
   const put=(k,x)=>{try{if(x===null||x===undefined||isNaN(Number(x)))localStorage.removeItem(k);else localStorage.setItem(k,String(x));}catch(e){}};
@@ -7208,7 +7212,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState!==
 prefScan();
 const HUE_PRE=[[173,'민트'],[205,'바다'],[228,'파랑'],[262,'보라'],[330,'분홍'],[18,'노을'],[40,'호박'],[135,'풀잎']];
 function hueMore(){const h=hueGet();const cur=h===null?HUE_DEF:h;
-  return `<div class="hue-wrap"><input type="range" class="hue-sl" min="0" max="359" step="1" value="${cur}" data-hue="sl" aria-label="앱 색 고르기"${hcOn()?' disabled':''}>
+  return `<div class="hue-wrap"><input type="range" class="hue-sl" min="0" max="359" step="1" value="${cur}" data-hue="sl" aria-label="앱 색 고르기">
     <div class="lum-row"><span class="lum-end" aria-hidden="true">밝게</span><input type="range" class="lum-sl" min="15" max="85" step="1" value="${100-(hueLGet()??hueAutoL(cur))}" style="--h:${cur}" data-hue="lum" aria-label="밝기"${hcOn()?' disabled':''}><span class="lum-end" aria-hidden="true">어둡게</span></div>
     <div class="hue-pre" role="group" aria-label="자주 쓰는 색">${HUE_PRE.map(([v,n])=>`<button type="button" class="hue-dot" style="--sw:${hx(hexL(v,72,30))}" data-act="hue-pre" data-v="${v}" title="${n}" aria-label="${n}" aria-pressed="${v===cur}"></button>`).join('')}</div>
     <div class="hue-prev" aria-label="미리보기"><button type="button" class="btn small primary" tabindex="-1">저장</button><button type="button" class="btn small" tabindex="-1">취소</button><span class="pill-s">선택됨</span><span class="card-s">기록 칸</span><span class="sunk-s">빈 칸</span></div>
@@ -7403,7 +7407,7 @@ function swPrepList(p,ph){const k=swCheck(p,ph);return ['ok','fix'].includes(k.s
 const HELP={
   'set:glass':{w:'위·아래 막대와 창 뒤가 흐리게 비쳐 보여요.',u:'글자가 잘 안 보이거나 화면이 버벅이면 끄세요.'},
   'set:wave':{w:'배경 색이 앱 색을 따라 천천히 흘러요(장식). 크기·속도를 고를 수 있어요.',u:'보기 좋게 쓰고, 화면이 버벅이거나 눈에 거슬리면 끄세요. 유리 효과를 끄거나 고대비·동작 줄이기면 멈춰요.'},
-  'set:hc':{w:'흰 바탕에 검은 글자, 굵은 테두리로 보여 줘요.',u:'밝은 교실이나 칠판에서 잘 안 보일 때 켜세요. 기기가 다크 모드여도 흰 바탕이에요. 켜면 유리 효과·앱 색은 꺼져요.'},
+  'set:hc':{w:'흰 바탕에 검은 글자, 굵은 테두리로 보여 줘요.',u:'밝은 교실이나 칠판에서 잘 안 보일 때 켜세요. 기기가 다크 모드여도 흰 바탕이에요. 켜면 유리 효과는 꺼지고, 앱 색은 버튼·테두리에만 아주 진하게 들어가요. 글씨는 검정 그대로예요.'},
   'set:hue':{w:'버튼·배경 색을 고르고 밝기를 맞춰요.',u:'그래프의 기초선·중재 색과 진행 중·완료·경고 색은 그대로예요.'},
   'set:pg':{w:'절차 화면을 묶음 한 장씩 나눠 보여 줘요. 위 띠나 아래 이전·다음으로 옮겨요.',u:'한 화면에 모두 보고 싶으면 끄세요. 아래 가운데 숫자를 눌러도 바뀌어요.'},
   'set:ink':{w:'S펜으로 칸에 바로 써요. 숫자 칸은 키보드로 입력해요.',u:'\'S펜만 쓰기\'를 켜면 손바닥·손가락 터치는 무시해요. 이 기기에만 저장돼요.'},
@@ -7577,7 +7581,7 @@ Object.assign(actions,{
 const SET_ROWS=[
   {id:'glass',g:'화면',t:'유리 효과',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:()=>glassOn()&&!hcOn(),dis:()=>hcOn(),hint:()=>hcOn()?'고대비면 꺼져요':'막대·창 뒤가 흐리게 비침'},
   {id:'hc',g:'화면',t:'고대비',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:()=>hcOn(),hint:()=>'흰 바탕·검은 글자'},
-  {id:'hue',g:'화면',t:'앱 색',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:null,ctl:()=>`<button type="button" class="btn small${setUI.hue?' primary':''}" data-act="hue-fold" aria-expanded="${!!setUI.hue}">${setUI.hue?'접기':'색 고르기'}</button><button type="button" class="btn small" data-act="hue-reset"${hueGet()===null&&hueLGet()===null?' disabled':''}>기본색으로</button>`,hint:()=>hcOn()?'고대비면 기본색':syncMe()?'버튼·배경 색이 함께 바뀜':'로그인하면 계정에 저장',more:()=>setUI.hue?hueMore():''},
+  {id:'hue',g:'화면',t:'앱 색',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:null,ctl:()=>`<button type="button" class="btn small${setUI.hue?' primary':''}" data-act="hue-fold" aria-expanded="${!!setUI.hue}">${setUI.hue?'접기':'색 고르기'}</button><button type="button" class="btn small" data-act="hue-reset"${hueGet()===null&&hueLGet()===null?' disabled':''}>기본색으로</button>`,hint:()=>hcOn()?'고대비: 버튼만 진하게':syncMe()?'버튼·배경 색이 함께 바뀜':'로그인하면 계정에 저장',more:()=>setUI.hue?hueMore():''},
   {id:'wave',g:'화면',par:'glass',t:'색 일렁임',get sc(){return syncMe()?'내 계정':'이 기기';},rel:[],on:()=>waveOn()&&glassOn()&&!hcOn(),dis:()=>!glassOn()||hcOn(),hint:()=>hcOn()?'고대비면 꺼져요':!glassOn()?'유리 효과를 끄면 꺼져요':'배경 색이 천천히 흘러요',
     more:()=>{const sel=(k,L,lb)=>{const c=waveOpt(k,L)[0];return `<label class="field"><span>${lb}</span><select data-wave="${k}">${L.map(x=>`<option value="${x[0]}"${x[0]===c?' selected':''}>${x[1]}${x[0]==='m'?'(기본)':''}</option>`).join('')}</select></label>`;};
       return sel('pbs-wave-amp',WAVE_AMP,'크기')+sel('pbs-wave-spd',WAVE_SPD,'속도');}},
@@ -8316,6 +8320,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-27-4',d:'2026-11-27',k:'web',t:'고대비에서도 앱 색',items:['고대비 켜도 앱 색 고르기 가능','버튼·강조만 아주 진한 앱 색','바탕 흰색·글씨 검정은 그대로']},
   {id:'2026-11-27-3',d:'2026-11-27',k:'apk',need:16,t:'위젯 ＋1에 남은 시간 고리',items:['앱 밖 측정 빈도 위젯 ＋1 둘레에 남은 측정 시간','시계 방향으로 줄고 끝나면 빨간 고리','측정 시간(회기 길이)을 정했을 때만, 10초마다 갱신']},
   {id:'2026-11-27-2',d:'2026-11-27',k:'web',t:'아래 이동 바·안내 문구',items:['묶음이 하나인 화면에도 아래 이전·다음 절차 바','전체 보기에서도 얇은 이동 바(한 장씩 보기로 돌아가기)','평가: \'변화 칸에 넣기\'로 이름과 안내를 맞춤','QABF: X(상황 없음)와 0(행동 없음) 차이 설명']},
   {id:'2026-11-27-1',d:'2026-11-27',k:'web',t:'조원 피드백 반영',items:['＋ 회기 추가가 맨 뒤 회기로(시간이 앞설 때만 앞에)','삭제 확인을 화면 가운데 창으로','평가 마지막 버튼 → 종합 결과(보고서)','고대비는 늘 흰 바탕·검은 글자','작은 ＋1 창 동그라미에 남은 관찰 시간','기초선은 3~5회기면 믿을 만']},
