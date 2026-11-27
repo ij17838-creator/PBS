@@ -13,14 +13,15 @@
 
 ## 화면
 - 홈·프로젝트 카드 · viewHome·homeFold·projCard·viewProject·viewCat·procCard · 계정별 목록, 공유 카드, 공지 점
-- 절차 한 장씩(묶음) · pgBuild·pgGo·pgPaint·pgAll·PG_* · 모든 절차, 찾기, 도움말 'pg:'
+- 절차 한 장씩(묶음) · pgBuild·pgGo·pgPaint·pgAll·PG_* · 모든 절차, 찾기, 도움말 'pg:', 마지막 절차 아래 '종합 결과'(rep-open)
 - 찾기 · findIndex·findRun·findOpen·findGo · 묶음 나누기
 - 고르는 창(select·날짜·시각) · pkOpen·pkOpenSel·pkOpenDate·pkOpenTime·pkKey · 모든 입력 칸 자동
 - 상태·완료·저장 버튼 · statusInfo·setDone·saveSend·doneBar·refreshStatus · 공유 보내기
+- 삭제 확인 창 · confirmBox·cfLift·#cf-layer·.cf-layer·.cf-box · ui.confirm 쓰는 모든 삭제(그 자리 상자를 화면 위 창으로 옮김), 뒤로 버튼·Esc·바깥 누르면 취소
 - 위 막대 상태 신호 · sigUI·sigOpen·sigSave·sigSync·sigServer · 입력 모드, 저장, 공유
 - 설정 창 · SET_ROWS·setRow·setOpen·setCtx·setRefresh · 거의 모든 켜고 끄기 옵션, 설정 계정 저장, 도움말 'set:'
 - 설정 계정 저장 · PREF_KEYS·prefPush·prefLoad·prefMerge·prefApply·natPrefApply · 설정 창, 로그인, 앱 밖 측정 옵션
-- 유리·고대비·앱 색 · GLASS_KEY·HC_KEY·lookApply·huePal·hueApply·hueSave·HUE_PRE · 설정, 계정 저장
+- 유리·고대비·앱 색 · GLASS_KEY·HC_KEY·lookApply·huePal·hueApply·hueSave·HUE_PRE · 설정, 계정 저장. 고대비는 기기 다크여도 흰 바탕(:root.hc, isDark)
 - 배경 색 일렁임 · WAVE_KEY(pbs-wave)·waveOn·WAVE_AMP·WAVE_SPD·waveOpt·waveApply(--wa·--wd)·lookApply(.wave)·CSS :root.wave::after·@keyframes bgwave·huePal --wave1~3 · 설정 유리 효과 하위(par:glass), 크기·속도, 계정 저장(PREF_KEYS), 기본 꺼짐
 - 도움말 ⓘ · HELP·hpBtn·hpOpen·hpProc · 설정, 절차, 묶음
 - 첫날 안내 · GD_KEY·gdSteps·gdPaint·gdAuto · 회기 시작 준비하기, 새 계정
@@ -33,7 +34,7 @@
 ## 절차
 - 학생 기본 정보 · viewProfile·pfRef·PF_* · 가설·중재 계획 요약 카드
 - 표적행동 정의 · viewDefine·defWarnings·MEASURES·MEASURE_GUIDE·measureTip · 기초선·중재(측정 단위), 회기 시작 줄
-- 기초선 · viewBaseline·blStats·blJudge·blChart·sesRow·sesSection·BL_* · 정의, 중재, 평가, 앱 밖 측정, 함께 ＋1
+- 기초선 · viewBaseline·blStats·blJudge·blChart·sesRow·sesSection·BL_* · 정의, 중재, 평가, 앱 밖 측정, 함께 ＋1. 회기 순서 blSorted(빈 시각은 같은 날 맨 뒤), ses-add는 시작 시각=지금
 - 회기 안 기록(지속·지연·강도·간격) · durEdit·latEd·lvlEd·ivEd·measureOpts·IV_*·LAT_MAXS · 기초선·중재, 앱 밖 측정
 - QABF · viewQabf·qabfScores·qCompare·QABF_* · 가설
 - 행동평정척도 · viewRating·ratingCompare·RATING_* · 가설
@@ -51,6 +52,7 @@
 - 간편 측정(앱) · qmStart·qmFinish·qmEvent·qmCard·qmZone·QM_* · 위젯·떠 있는 아이콘·음량, ABC
 - 간편 측정(PC 단축키) · qmPcStart·qmPcInc·qkDown·QPC_KEY·QK_KEY · 작은 ＋1 창
 - 작은 ＋1 창(PC, 화면 안도 가로 한 줄) · miniShow·miniInc·miniCount·miniWho·miniTrig·padBind · 간편 측정 PC, 함께 ＋1
+- ＋1 동그라미 남은 시간 고리 · miniTimerSrc·miniTimerPaint · 회기 관찰 시간(분)+시작 시각 있을 때만, 끝나면 빨간 고리
 - 휴대폰 회기 ↔ PC 함께 ＋1 · liveHostTick·liveWatch·liveInc·liveShow·liveArmRow·LIVE_* · 공유(~live), 작은 ＋1 창, 앱 회기
 - 앱 밖 측정(설치 앱) · natInit·natToggle·natTargetRow·natSync·natDrain·NAT_MODES·PCN · 안드로이드 PbsCounterPlugin·CounterStore, 설정 '앱 밖 측정'
 - 앱 밖 측정 고르기 창 · npOpen·npList·npDraw·NP_PH · 앱 밖 측정
