@@ -129,6 +129,8 @@ textarea[data-f][rows="3"]{min-height:94px}
 textarea[data-f][rows="4"]{min-height:118px}
 textarea[data-f][rows="6"]{min-height:166px}
 textarea.one{resize:none;min-height:46px;overflow:hidden}
+/* PC 마우스: 입력칸 위 글자 커서(I)를 흰 테두리+검은 심으로 키워 어느 배경에서나 보이게 */
+@media (hover:hover) and (pointer:fine){input[type=text],input:not([type]),input[type=number],input[type=search],input[type=email],input[type=password],input[type=url],input[type=tel],textarea,[contenteditable="true"],[contenteditable=""]{cursor:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='20'%20height='30'%20viewBox='0%200%2020%2030'%3E%3Cg%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M5%203c2.4%200%203.8.8%205%202.4C11.2%203.8%2012.6%203%2015%203M10%205.4v19.2M5%2027c2.4%200%203.8-.8%205-2.4%201.2%201.6%202.6%202.4%205%202.4M7%2015h6'%20stroke='%23fff'%20stroke-width='4.2'/%3E%3Cpath%20d='M5%203c2.4%200%203.8.8%205%202.4C11.2%203.8%2012.6%203%2015%203M10%205.4v19.2M5%2027c2.4%200%203.8-.8%205-2.4%201.2%201.6%202.6%202.4%205%202.4M7%2015h6'%20stroke='%23111'%20stroke-width='1.8'/%3E%3C/g%3E%3C/svg%3E") 10 15,text}}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
 .check{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
 .check input{width:20px;height:20px;margin:2px 0 0;accent-color:var(--accent);flex-shrink:0}
@@ -8320,6 +8322,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-27-5',d:'2026-11-27',k:'web',t:'PC 입력칸 마우스 커서 잘 보이게',items:['입력칸 위 글자 커서(I)를 더 크게','흰 테두리+검은 심, 밝은·다크·고대비 모두 보임','마우스 쓰는 PC에서만, 탭·폰 그대로']},
   {id:'2026-11-27-4',d:'2026-11-27',k:'web',t:'고대비에서도 앱 색',items:['고대비 켜도 앱 색 고르기 가능','버튼·강조만 아주 진한 앱 색','바탕 흰색·글씨 검정은 그대로']},
   {id:'2026-11-27-3',d:'2026-11-27',k:'apk',need:16,t:'위젯 ＋1에 남은 시간 고리',items:['앱 밖 측정 빈도 위젯 ＋1 둘레에 남은 측정 시간','시계 방향으로 줄고 끝나면 빨간 고리','측정 시간(회기 길이)을 정했을 때만, 10초마다 갱신']},
   {id:'2026-11-27-2',d:'2026-11-27',k:'web',t:'아래 이동 바·안내 문구',items:['묶음이 하나인 화면에도 아래 이전·다음 절차 바','전체 보기에서도 얇은 이동 바(한 장씩 보기로 돌아가기)','평가: \'변화 칸에 넣기\'로 이름과 안내를 맞춤','QABF: X(상황 없음)와 0(행동 없음) 차이 설명']},

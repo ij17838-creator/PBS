@@ -23,6 +23,7 @@
 - 설정 계정 저장 · PREF_KEYS·prefPush·prefLoad·prefMerge·prefApply·natPrefApply · 설정 창, 로그인, 앱 밖 측정 옵션
 - 유리·고대비·앱 색 · GLASS_KEY·HC_KEY·lookApply·huePal·hueApply·hueSave·HUE_PRE · 설정, 계정 저장. 고대비는 기기 다크여도 흰 바탕(:root.hc, isDark), 고대비+앱 색은 hcPal(버튼·강조만 진하게, 글씨 검정)
 - 배경 색 일렁임 · WAVE_KEY(pbs-wave)·waveOn·WAVE_AMP·WAVE_SPD·waveOpt·waveApply(--wa·--wd)·lookApply(.wave)·CSS :root.wave::after·@keyframes bgwave·huePal --wave1~3 · 설정 유리 효과 하위(par:glass), 크기·속도, 계정 저장(PREF_KEYS), 기본 꺼짐
+- PC 입력칸 마우스 커서 · CSS 'PC 마우스: 입력칸 위 글자 커서'(@media hover:hover and pointer:fine, data SVG I 커서 흰 테두리+검은 심)
 - 도움말 ⓘ · HELP·hpBtn·hpOpen·hpProc · 설정, 절차, 묶음
 - 첫날 안내 · GD_KEY·gdSteps·gdPaint·gdAuto · 회기 시작 준비하기, 새 계정
 - 공지 · NOTICES·noticeUnseen·noticeOpen·noticeHome·noticeInit · 위 막대, 홈, apk 버전(PbsCounterPlugin ver)
