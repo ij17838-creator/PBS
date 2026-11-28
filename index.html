@@ -691,7 +691,7 @@ html.in-ink .ink-host{caret-color:transparent}
 .sync-hist .sync-text{border-left:3px solid var(--line);padding-left:8px;width:100%}
 .sync-pick{gap:8px}
 .sync-box .lg-form{display:flex;flex-direction:column;gap:10px;max-width:420px}
-.lg-form input[type=email],.lg-form input[type=password]{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface-2);color:var(--ink);font:inherit;font-size:16px;line-height:1.5}
+.lg-form input[type=email],.lg-form input[type=password],.ai-box input[type=password]{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface-2);color:var(--ink);font:inherit;font-size:16px;line-height:1.5}
 .lg-msg{margin:0;min-height:1.2em;font-size:.9rem;color:var(--warn)}
 .lg-msg:empty{display:none}
 .acct-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
@@ -8031,13 +8031,18 @@ const APPCHECK_SITE_KEY='6LfIIikuAAAAAP_Ne2drq1rA6aGdCNR1EdbdwDlr';
 const AI_BACKEND='vertex';
 const AI_LEVELS=[['HIGH','높음'],['MEDIUM','보통']];/* Gemini 4 Neon·Hydrogen은 높음만 받는다(보통이면 모델 기본값으로 다시 부름). xhigh는 쓰지 않는다 */
 /* 고를 수 있는 모델(누르면 모델 이름 칸에 들어감). 다른 이름은 칸에 직접 적는다 */
-const AI_MODELS=[['gemini-4-neon','Neon'],['gemini-4-hydrogen','Hydrogen']];
+const AI_MODELS=[['gemini-4-neon','Neon'],['gemini-4-hydrogen','Hydrogen'],['claude-opus-5-5','Claude Opus'],['claude-sonnet-5-5','Claude Sonnet']];
+/* 클로드(Anthropic API): 사용자가 넣은 자기 API 키로 브라우저에서 바로 부른다(Firebase 거치지 않음). 키는 이 기기 localStorage에만, 서버·계정에 올리지 않는다 */
+const AI_CKEY_KEY='pbs-ai-ckey',ANTHROPIC_SDK='https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.8.0/+esm';
+const aiIsClaude=m=>/^claude-/i.test(String(m||''));
+function aiCKey(){try{return String(localStorage.getItem(AI_CKEY_KEY)||'').trim();}catch(e){return '';}}
+function aiCKeySet(v){try{v=String(v||'').trim();if(v)localStorage.setItem(AI_CKEY_KEY,v);else localStorage.removeItem(AI_CKEY_KEY);}catch(e){toast('이 기기에 저장하지 못했습니다');}}
 const AI_SYS='너는 특수교육과 긍정적 행동지원(PBS)을 돕는 조력자다. 교사가 입력한 자료만 근거로 삼고, 자료에 없는 사실을 지어내지 않는다. 학생을 진단하거나 낙인찍는 말을 쓰지 않는다. 한국어로, 교사가 바로 쓸 수 있는 쉬운 문장으로 쓴다.';
 const ai={busy:'',err:{},sdk:null,run:null};
 function aiCfg(){let o={};try{o=JSON.parse(localStorage.getItem(AI_CFG_KEY)||'{}')||{};}catch(e){}return {model:String(o.model||'').trim()||AI_MODEL_DEF,level:'HIGH'};}/* 사고 수준 고르기는 뺌(4.x는 높음만 받음). 예전에 저장된 MEDIUM도 높음으로 */
 function aiCfgSet(o){try{localStorage.setItem(AI_CFG_KEY,JSON.stringify(Object.assign(aiCfg(),o)));}catch(e){toast('이 기기에 저장하지 못했습니다');}}
-function aiAvail(){return !!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey);}
-function aiReady(){return aiAvail()&&(!!Sync.user||!!window.__pbsAi);}/* __pbsAi: 시험용 가짜 */
+function aiAvail(){return aiIsClaude(aiCfg().model)||!!(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey);}
+function aiReady(){if(aiIsClaude(aiCfg().model))return !!aiCKey()||!!window.__pbsClaude;return aiAvail()&&(!!Sync.user||!!window.__pbsAi);}/* __pbsAi: 시험용 가짜 */
 function aiOutAll(){try{return JSON.parse(localStorage.getItem(AI_OUT_KEY)||'{}')||{};}catch(e){return {};}}
 function aiOut(p,k){const o=aiOutAll()[p.id];return o&&o[k]||null;}
 function aiOutSet(p,k,v){const o=aiOutAll();o[p.id]=o[p.id]||{};if(v==null)delete o[p.id][k];else o[p.id][k]=v;try{localStorage.setItem(AI_OUT_KEY,JSON.stringify(o));}catch(e){}}
@@ -8064,6 +8069,7 @@ function aiErrMsg(e){
 }
 /* 제미나이 호출 → 글자. 사고 수준을 모델이 받지 않으면(400) 그 칸만 빼고 한 번 더 */
 async function aiCall(prompt,json){
+  if(aiIsClaude(aiCfg().model))return aiClaude(prompt,json);
   if(!aiAvail())throw new Error('이 앱에는 Firebase 설정이 없습니다');
   if(!aiReady())throw new Error('로그인하면 AI를 쓸 수 있습니다');
   const run=ai.run;/* aiRun 중이면 취소(aiStop)되는 순간 기다림을 끊는다 */
@@ -8076,6 +8082,41 @@ async function aiCall(prompt,json){
     try{text=await ask(gen);}
     catch(e){if(!(run&&run.off)&&/thinking/i.test(String(e&&e.message))){delete gen.thinkingConfig;text=await ask(gen);}else throw e;}
   }catch(e){if(run&&run.off)throw e;throw new Error(aiErrMsg(e));}
+  if(run&&run.off)throw new Error('취소됨');
+  text=String(text||'').trim();if(!text)throw new Error('빈 응답을 받았습니다');
+  return text;
+}
+/* 클로드 호출 → 글자. 공식 SDK(브라우저용)를 한 번만 불러 쓴다. 사고는 늘 켜짐(adaptive), 노력 high(xhigh는 쓰지 않음) */
+async function aiClaudeSdk(){
+  if(ai.csdk)return ai.csdk;
+  if(window.__pbsClaude){ai.csdk=window.__pbsClaude;return ai.csdk;}/* 시험용 가짜 */
+  const M=await import(ANTHROPIC_SDK);ai.csdk=M;return M;
+}
+function aiClaudeErr(M,e){
+  const A=M&&(M.default||M.Anthropic);const m=String(e&&e.message||e||'');const st=e&&e.status;
+  if((A&&A.AuthenticationError&&e instanceof A.AuthenticationError)||st===401)return '클로드 API 키가 맞지 않습니다(AI 설정에서 키 확인)';
+  if((A&&A.PermissionDeniedError&&e instanceof A.PermissionDeniedError)||st===403)return '이 키로는 이 모델을 쓸 권한이 없습니다';
+  if((A&&A.NotFoundError&&e instanceof A.NotFoundError)||st===404)return '모델을 찾지 못했습니다(AI 설정의 모델 이름 확인)';
+  if((A&&A.RateLimitError&&e instanceof A.RateLimitError)||st===429)return '사용 한도를 넘었습니다. 잠시 뒤 다시';
+  if(st===400&&/credit|balance|billing/i.test(m))return '크레딧이 부족합니다(Anthropic 콘솔 결제 확인)';
+  if((A&&A.APIConnectionError&&e instanceof A.APIConnectionError)||/network|fetch|Failed to fetch|import/i.test(m))return '인터넷 연결을 확인하세요';
+  return '실패: '+m.replace(/\s+/g,' ').slice(0,160);
+}
+async function aiClaude(prompt,json){
+  const key=aiCKey();if(!key&&!window.__pbsClaude)throw new Error('AI 설정에 클로드 API 키를 넣으세요');
+  const run=ai.run;const wait=x=>run?Promise.race([x,run.stop]):x;
+  const model=aiCfg().model;let M=null,text;
+  try{
+    M=await wait(aiClaudeSdk());
+    const A=M.default||M.Anthropic;const client=new A({apiKey:key||'test',dangerouslyAllowBrowser:true,maxRetries:1});
+    const req={model,max_tokens:16000,system:AI_SYS+(json?' 답은 설명 없이 JSON 객체 하나만 쓴다.':''),output_config:{effort:'high'},messages:[{role:'user',content:prompt}]};
+    const opt=run?{signal:run.ac.signal}:undefined;
+    /* 안전 분류기가 거절하면 서버가 다른 모델로 다시 쓰게 한다(fallbacks 'default', 오퍼스·소넷 5.5) */
+    const r=await wait(/opus-5-5|sonnet-5-5/i.test(model)?client.beta.messages.create(Object.assign({betas:['server-side-fallback-2026-07-01'],fallbacks:'default'},req),opt):client.messages.create(req,opt));
+    if(r.stop_reason==='refusal')throw Object.assign(new Error('AI가 이 요청에 답하지 않았습니다(안전 거절). 내용을 고쳐 다시'),{pbs:1});
+    text=(r.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    if(r.stop_reason==='max_tokens'&&!text)throw Object.assign(new Error('답이 너무 길어 끊겼습니다. 다시'),{pbs:1});
+  }catch(e){if(run&&run.off)throw e;if(e&&e.pbs)throw e;throw new Error(aiClaudeErr(M,e));}
   if(run&&run.off)throw new Error('취소됨');
   text=String(text||'').trim();if(!text)throw new Error('빈 응답을 받았습니다');
   return text;
@@ -8257,20 +8298,22 @@ function evPut(p,t){
 
 /* AI 설정 창(모델·사고 수준·연결 시험). 키는 없다: 이 Firebase 프로젝트로 부른다 */
 function aiDlgOpen(){
-  const d=$('#ai-dlg');const c=aiCfg();
+  const d=$('#ai-dlg');const c=aiCfg();const cl=aiIsClaude(c.model),ck=aiCKey();
   d.innerHTML=`<div class="find-box ai-box" role="dialog" aria-modal="true" aria-label="AI 설정">
-    <div class="sec-head"><h2 class="h3">AI 설정 <small class="muted">제미나이</small></h2><button type="button" class="btn small ghost" data-act="ai-dlg-close">닫기</button></div>
-    ${!aiAvail()?'<p class="ai-err">Firebase 설정 없음</p>':!Sync.user?'<p class="ai-err">로그인하면 사용</p>':'<p class="hint">로그인 계정으로 사용</p>'}
+    <div class="sec-head"><h2 class="h3">AI 설정 <small class="muted">${cl?'클로드':'제미나이'}</small></h2><button type="button" class="btn small ghost" data-act="ai-dlg-close">닫기</button></div>
+    ${cl?(ck?'<p class="hint">이 기기에 넣은 클로드 API 키로 사용</p>':'<p class="ai-err">클로드 API 키를 넣으면 사용</p>'):!aiAvail()?'<p class="ai-err">Firebase 설정 없음</p>':!Sync.user?'<p class="ai-err">로그인하면 사용</p>':'<p class="hint">로그인 계정으로 사용</p>'}
         <fieldset class="field"><legend>모델</legend><div class="chips">${AI_MODELS.map(([v,l])=>`<button type="button" class="chip c-b${c.model===v?' on':''}" data-act="ai-model-pick" data-v="${v}" aria-pressed="${c.model===v}">${l}</button>`).join('')}</div></fieldset>
     <label class="field"><span>모델 이름</span><input id="ai-model" autocomplete="off" spellcheck="false" value="${esc(c.model)}" placeholder="${AI_MODEL_DEF}"></label>
+    ${cl?`<label class="field"><span>클로드 API 키</span><input id="ai-ckey" type="password" autocomplete="off" spellcheck="false" value="${esc(ck)}" placeholder="sk-ant-..."></label>
+    <p class="hint">Anthropic 콘솔(console.anthropic.com)에서 만든 키. 이 기기에만 저장되고 서버·계정에는 올라가지 않습니다(기기마다 따로 넣기). 요금은 그 콘솔 계정으로 나갑니다</p>`:''}
     <p class="hint">사고 수준: 높음(늘 높음으로 생각)</p>
     <p class="ai-test" id="ai-test" role="status"></p>
-    <div class="row"><button type="button" class="btn primary" data-act="ai-save">저장</button><button type="button" class="btn" data-act="ai-test"${aiReady()?'':' disabled'}>연결 시험</button></div>
+    <div class="row"><button type="button" class="btn primary" data-act="ai-save">저장</button><button type="button" class="btn" data-act="ai-test"${aiReady()||cl?'':' disabled'}>연결 시험</button></div>
   </div>`;
   d.hidden=false;d.onclick=e=>{if(e.target===d)aiDlgClose();};
 }
 function aiDlgClose(){const d=$('#ai-dlg');d.hidden=true;d.innerHTML='';}
-function aiDlgSave(){const m=$('#ai-model');if(m)aiCfgSet({model:m.value.trim()});}
+function aiDlgSave(){const m=$('#ai-model');if(m)aiCfgSet({model:m.value.trim()});const k=$('#ai-ckey');if(k)aiCKeySet(k.value);}
 
 /* 최종 보고서(화면 위에 덮어 보여 주고, 인쇄·PDF 또는 HTML 파일로 저장) */
 const rep={on:false};
@@ -8322,6 +8365,7 @@ async function repSave(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&rep.on&&!e.defaultPrevented){const d=$('#ai-dlg');if(d&&!d.hidden)aiDlgClose();else repClose();}});
 
 const NOTICES=[
+  {id:'2026-11-28-1',d:'2026-11-28',k:'web',t:'AI 도우미에 클로드 추가',items:['AI 설정 모델에 Claude Opus·Claude Sonnet','클로드는 내 Anthropic API 키를 넣어 사용(이 기기에만 저장)','요금은 Anthropic 콘솔 계정으로, 제미나이는 그대로']},
   {id:'2026-11-27-6',d:'2026-11-27',k:'web',t:'입력칸 커서 작고 얇게',items:['PC 입력칸 커서를 입력 글자와 같은 크기로','흰 테두리는 그대로라 계속 잘 보임']},
   {id:'2026-11-27-5',d:'2026-11-27',k:'web',t:'PC 입력칸 마우스 커서 잘 보이게',items:['입력칸 위 글자 커서(I)를 또렷하게','흰 테두리+검은 심, 밝은·다크·고대비 모두 보임','마우스 쓰는 PC에서만, 탭·폰 그대로']},
   {id:'2026-11-27-4',d:'2026-11-27',k:'web',t:'고대비에서도 앱 색',items:['고대비 켜도 앱 색 고르기 가능','버튼·강조만 아주 진한 앱 색','바탕 흰색·글씨 검정은 그대로']},
@@ -8475,7 +8519,7 @@ Object.assign(actions,{
   'pg-all':()=>{const all=!pgAll();pgAllSet(all);const y=window.scrollY;pgBuild();if(all)window.scrollTo(0,y);else pgGo(pg.cur);toast(all?'전체 보기: 한 화면에 모두':'한 장씩 보기');},
   'ai-set':()=>aiDlgOpen(),'ai-dlg-close':()=>aiDlgClose(),
   'ai-level':el=>{aiDlgSave();aiCfgSet({level:el.dataset.v});aiDlgOpen();},
-  'ai-model-pick':el=>{aiCfgSet({model:el.dataset.v});aiDlgOpen();},
+  'ai-model-pick':el=>{aiDlgSave();aiCfgSet({model:el.dataset.v});aiDlgOpen();},
   'ai-save':()=>{aiDlgSave();aiDlgClose();toast('AI 설정을 저장했습니다');},
   'ai-test':async()=>{aiDlgSave();const o=$('#ai-test');if(o)o.textContent='시험 중…';
     try{const t=await aiCall('연결 시험이다. "연결됨" 한 단어로만 답하라.',false);const x=$('#ai-test');if(x)x.textContent='연결됨 · '+aiCfg().model+' · 응답: '+t.slice(0,30);}

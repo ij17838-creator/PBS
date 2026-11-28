@@ -76,6 +76,7 @@
 
 ## AI 도우미
 - 호출·설정 · aiCall·aiSdk·aiCfg·AI_BACKEND·AI_MODELS·APPCHECK_SITE_KEY · 아래 모든 AI
+- 클로드 호출 · aiClaude·aiClaudeSdk·aiClaudeErr·aiIsClaude·aiCKey·AI_CKEY_KEY·ANTHROPIC_SDK · AI 설정 모델 Claude Opus·Sonnet, 기기 저장 API 키
 - 쓰임 · aiPlanRun(중재 계획)·ivAutoView(실행 기록)·aiEvRun(평가 문장)·flowRun(ABC 흐름 읽기)·aiRepRun·repHTML(최종 보고서) · 각 절차
 
 ## 안드로이드(android/app/src/main/java/.../pbs)

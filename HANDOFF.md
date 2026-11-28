@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-11-28 · AI 도우미에 클로드(Opus·Sonnet) 추가
+### 한 일
+- AI 설정 모델 칩에 Claude Opus(claude-opus-5-5)·Claude Sonnet(claude-sonnet-5-5) 추가(사용자 요청으로 하이쿠는 뺌). 클로드를 고르면 'Claude API 키' 칸(가림)이 나오고, 키를 넣으면 중재 제안·실행 기록·평가 문장·흐름 읽기·보고서가 모두 클로드로 감
+- 클로드는 Firebase를 거치지 않고 브라우저에서 Anthropic API로 바로 부름(공식 SDK 1.8.0을 jsDelivr에서 불러옴, 로그인 없어도 키만 있으면 됨). 사고 늘 켜짐·effort high, 안전 거절 시 서버 대체 모델(fallbacks 'default'). 공지 2026-11-28-1(web). 앱 재시작만
+### 데이터
+- 키는 이 기기 localStorage 'pbs-ai-ckey'에만(서버·계정 동기화 없음, 기기마다 따로 넣기). 모델은 기존 'pbs-ai'.model
+### 확인한 것
+- Anthropic API의 CORS 사전 요청(브라우저 직접 호출 헤더·authorization 허용, allow-origin *) curl로 확인
+- Playwright(가짜 API 응답): 틀린 키 → '키가 맞지 않습니다', 맞는 키 → 연결됨(Opus·Sonnet), 칩 바꿔도 키 유지, 제미나이 고르면 키 칸 없음, 페이지 오류 없음. 화면 screens/AI-클로드/
+- 시험 못 함: 실제 키로 실제 호출(키 없음), jsDelivr SDK 실제 로딩(작업 환경에서 막힘, 같은 버전 로컬 번들로 대신 시험), 탭·폰 앱
+### 알려진 한계
+- 키가 기기 브라우저 저장소에 그대로 있음(공용 기기 주의). 요금은 사용자의 Anthropic 콘솔 크레딧(구글 크레딧과 별개)
+- SDK 1.x는 키를 Authorization: Bearer로 보냄(정상)
+### 코드 위치 (index.html)
+- AI_MODELS·AI_CKEY_KEY·ANTHROPIC_SDK·aiIsClaude·aiCKey·aiCKeySet·aiClaudeSdk·aiClaudeErr·aiClaude, aiCall 첫 줄 분기, aiAvail·aiReady, aiDlgOpen·aiDlgSave(#ai-ckey), CSS .ai-box input[type=password]
+### 다음에 할 일
+- 사용자: console.anthropic.com에서 키 만들기 → AI 설정에서 Claude Opus 고르고 키 넣고 '연결 시험'
+
+---
+
 ## 2026-11-27 · PC 입력칸 마우스 커서 잘 보이게
 ### 한 일
 - PC에서 입력칸에 마우스를 올리면 커서가 안 보이던 문제 → 입력칸·글상자 위 커서를 흰 테두리+검은 심의 I 모양(처음 20×30, 지금 11×16)으로 바꿈. 밝은·다크·고대비·유리·색 일렁임 어느 배경에서나 보임
@@ -30,53 +50,6 @@
 - hcPal·hueApply·HUE_VARS, SET_ROWS id hue hint, hueMore 슬라이더 disabled 제거
 ### 다음에 할 일
 - 사용자: 탭에서 고대비 켜고 앱 색 바꿔 보기, 새 apk(ver 16) 위젯 고리 확인
-
----
-
-## 2026-11-27 · 이동 바·평가 문구·QABF 설명·위젯 고리(apk ver 16)·고대비 앱 색 시안
-### 한 일
-- 아래 이동 바: 묶음이 하나뿐인 절차(빈 ABC·중재 계획 등)에도 '‹ 이전 절차 · 다음 절차 ›'(다음은 강조색), 전체 보기에서도 얇은 바(높이 44px, 가운데 '한 장씩 보기'). 마지막 절차는 '종합 결과'
-- 평가: 버튼 이름 '아래 칸에 넣기' → '변화 칸에 넣기', 2번 묶음 칸 안내를 "1번 묶음 '기초선 대비 변화'에서 …"로
-- QABF: 점수 X·0~3 그대로, 범례에 (상황 자체가 없음)/(상황은 있고 행동 없음), 버튼 title·ⓘ에 예시
-- 위젯 ＋1 둘레 남은 측정 시간 고리(빈도·회기 열림·측정 시간 있을 때만, 10초마다, 끝나면 빨간 고리). 플러그인 ver 16 → 새 apk
-- 고대비+앱 색 시안만(main 아님): screens/고대비-앱색-시안/(PNG 8장·시안-index.html·patch.py). A=글씨 검정, B=글씨도 앱 색(아주 진하게, 흰 바탕 대비 13 이상)
-- 공지 2026-11-27-2(web)·2026-11-27-3(apk, need 16)
-### 확인한 것
-- Playwright(탭 라이트·휴대폰 다크): 빈 ABC·중재 계획 얇은 바, 기초선 한 장씩↔전체 보기 왕복, 홈엔 바 없음, 평가 안내·QABF 범례. 오류 없음
-- 위젯: Actions 빌드만 확인. 실기기 못 함
-### 알려진 한계
-- 위젯 고리는 앱 설정 '측정 시간(회기 길이)' 기준(sesMin). 웹 작은 ＋1 창은 회기의 관찰 시간(분) 기준이라 둘이 다를 수 있음
-- 떠 있는 아이콘엔 고리 없음
-### 코드 위치
-- index.html: pgNav·pgNavProcs·pgNextBtn·.pg-nav.slim·body.pg-slim, MEMO_FIELDS.evaluate, evAutoView, QABF_OPTS(sub·tip), HELP 'pg:qabf/문항'
-- android: CounterWidget.ring·ringBitmap·has, widget_counter.xml w_mainbox·w_ring, DurWatch.onRing·RING_MS, PbsCounterPlugin ver 16
-### 다음에 할 일
-- 사용자: 고대비 시안 A/B 중 고르기 → 고르면 hcPal을 index.html hueApply에 넣고 앱 색 칸 disabled 풀기(patch.py 참고)
-- 사용자: 새 apk 덮어 설치 후 위젯 고리 확인
-
----
-
-## 2026-11-27 · 조원 피드백 반영(회기 순서·삭제 창·종합 결과·고대비·남은 시간)
-### 한 일
-- '+ 회기 추가'가 1회기로 들어가던 오류: 새 회기는 시작 시각=지금, 시작 시각이 빈 회기는 같은 날 맨 뒤 → 시간이 앞설 때만 앞에
-- 삭제 확인(회기·관찰지·행·녹음·프로젝트 등 모든 ui.confirm)을 화면 가운데 창으로. 바깥 누름·Esc·뒤로 버튼은 취소
-- 평가(마지막 절차) 아래 이동 바 '마지막 절차' → '종합 결과 ›'(최종 보고서 열림)
-- 고대비: 기기 다크여도 흰 바탕·검은 글자. 설정 설명 문구 바꿈
-- 작은 ＋1 창(화면 안·PiP)의 ＋1 동그라미 둘레에 남은 관찰 시간 고리(시계 방향으로 줄어듦, 끝나면 빨간 고리). 회기에 관찰 시간(분)·시작 시각이 있을 때만
-- 기초선 판단 문구 3~5회기 기준(3회기부터 안정이면 '확정해도 됨')
-- 공지 2026-11-27-1(web). 앱 재시작만. 정리 문서 docs/조원-피드백-적용절차.md 4장
-### 확인한 것
-- Playwright(시험 사본, 탭 1280 라이트·휴대폰 390 다크): 6회기 뒤 회기 추가 → '기초선 7회기', 빈 시각 맨 뒤·이른 시각 맨 앞, 삭제 창(회기·ABC 행·관찰지·프로젝트) 띄우기·Esc·바깥 취소·삭제, 종합 결과 → 보고서, 고대비 다크 기기 흰 바탕, 남은 시간 고리·끝·관찰 시간 비우면 고리 없음. 오류 없음
-- 못 한 것: 실기기, PiP 창 안 고리(같은 함수로 칠함), 휴대폰 회기 함께 세기 중 고리
-### 알려진 한계
-- 예전에 시작 시각 없이 만든 같은 날 회기는 이제 그날 맨 뒤로 보임
-- 휴대폰 회기 함께 세기 고리는 이 PC에 같은 공유 프로젝트가 있어야 보임. 앱 떠 있는 아이콘·위젯엔 고리 없음(apk 필요)
-- 관찰 시간(분)은 기본 회기 길이로 늘 채워져 사실상 늘 보임
-### 코드 위치 (index.html)
-- blSorted·actions['ses-add']·cfLift·#cf-layer·.cf-layer·.cf-box·pbsBack·pgPaint(rep-open)·:root.hc·isDark·HELP 'set:hc'·miniTimerSrc·miniTimerPaint·blJudge
-### 다음에 할 일
-- 사용자: 탭·폰에서 회기 추가 순서, 삭제 창, 고대비, ＋1 창 고리 확인
-- 남은 피드백: 묶음 1개 절차 아래 이동 줄·전체 보기 뒤 줄(pgBuild·pgPaint), "아래 칸에 넣기" 위치(viewEvaluate), QABF X/0 설명
 
 ---
 
